@@ -2,9 +2,9 @@
 
 Exoline provides several commands:
 
-* _exo_ - command to talk to the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API)
+* __exo__ - command to talk to the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API)
 
-* _exodata_ - command to talk to the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API)
+* __exodata__ - command to talk to the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API)
 
 
 ## Setup 
