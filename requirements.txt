@@ -1,0 +1,6 @@
+argparse==1.2.1
+docopt==0.6.1
+-e git://github.com/dweaver/pyonep.git@72b3a8f3d3deb3b30384ba6cca6f172df2389a37#egg=onepv1lib-dev
+requests==1.2.3
+selenium==2.33.0
+wsgiref==0.1.2
