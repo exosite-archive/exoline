@@ -1,9 +1,11 @@
 # Exoline - Exosite Command Line
 
-Exoline provides a command line interface (CLI) for accessing Exosite.
+Exoline provides several commands:
 
-exo - CLI for the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API)
-exodata - CLI for the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API)
+* _exo_ - command to talk to the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API)
+
+* _exodata_ - command to talk to the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API)
+
 
 ## Setup 
 
@@ -35,12 +37,51 @@ For convenience, several command line options may be replaced by environment var
 * EXO\_HOST: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
 
 
-## Run 
+## Help 
 
-1. Run tests:
+For help, run each command with -h from the command line. For example:
 
-    $ cd portals
-    $ python test.pyxoline
+```
+    $ ./exo -h
+
+Exosite RPC API Command Line Interface
+   Provides command line access to the Remote Procedure Call API:
+   http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
+
+Usage:
+  exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
+  exo [options] create-client <cik> [--name=<name>]
+  exo [options] map <cik> <rid> <alias>
+  exo [options] drop <cik> <rid>
+  exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ...
+  exo [options] info <cik> <rid> [--cikonly]
+  exo [options] tree <cik> [--show-rid] [--show-aliases]
+
+Options:
+  -h --help            Show this screen.
+  -v --version         Show version.
+  --host=<host>        OneP URL. Default is $EXO\_HOST or m2.exosite.com.
+  --httptimeout=<sec>  HTTP timeout setting.
+  --pretty             Pretty print output
+```
+
+```
+    $ ./exodata -h
+
+Exosite Data API Command Line Interface
+   Provides access to the HTTP Data Interface API:
+   http://developers.exosite.com/display/OP/HTTP+Data+Interface+API
+
+Usage:
+    exodata read [options] <cik> <alias> ... 
+    exodata write [options] <cik> <alias>=<value> ...
+    exodata ip [options]
+
+Options:
+    -h --help     Show this screen
+    -v --version  Show version
+    --url=<url>   One Platform URL [default: http://m2.exosite.com]
+```
 
 ## Examples
 
