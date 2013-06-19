@@ -108,9 +108,9 @@ class ExoRPC():
             return response
 
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast):
-        # print(info)
         typ = info['basic']['type']
-        id = 'cik: ' + info['key'] if typ=='client' else 'rid:' + rid
+        id = 'cik: ' + info['key'] if typ=='client' else 'rid: ' + rid
+        name = info['description']['name']
 
         # This is strange. Sometimes aliases is a dict, sometimes a list.
         # Translate it into a list. 
@@ -126,10 +126,11 @@ class ExoRPC():
         add_opt('--show-rid', 'rid', rid)
         add_opt('--show-aliases', 'aliases', 'none' if len(aliases) == 0 else ', '.join(aliases))
         
-        print('{}{}{} {}'.format(
+        print('{}{} {} {} {}'.format(
             spacer,
-            '' if typ == 'client' else typ + ': ',
             id,
+            typ,
+            name,            
             '' if len(opt) == 0 else '({})'.format(', '.join(
                 ['{}: {}'.format(k, v) for k, v in opt.iteritems()]))))
 

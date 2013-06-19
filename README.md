@@ -11,19 +11,19 @@ Exoline is a set of commands for accessing the Exosite [One Platform](http://exo
 Installation 
 ------------
 
-To install exoline, simply:
+To install the latest released version of exoline:
+
+```bash
+
+    $ pip install exoline
+
+```
+
+Alternatively, install straight from github:
 
 ```bash
 
     $ pip install -e git://github.com/dweaver/exoline#egg=exoline
-
-```
-
-Or, to install the source directly:
-
-```bash
-
-    $ python setup.py install
 
 ```
 
