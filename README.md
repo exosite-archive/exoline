@@ -1,6 +1,6 @@
 # Exoline - Exosite Command Line
 
-Exoline provides several commands for talking to Exosite's [One Platform](http://exosite.com/products/onep)
+Exoline provides several commands for using the Exosite [One Platform](http://exosite.com/products/onep) from the command line.
 
 * __exo__ - command to talk to the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API)
 
