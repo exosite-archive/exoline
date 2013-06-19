@@ -126,7 +126,7 @@ class ExoRPC():
         add_opt('--show-rid', 'rid', rid)
         add_opt('--show-aliases', 'aliases', 'none' if len(aliases) == 0 else ', '.join(aliases))
         
-        print('{}{} {} {} {}'.format(
+        print('{}{} type: {} name: {} {}'.format(
             spacer,
             id,
             typ,
