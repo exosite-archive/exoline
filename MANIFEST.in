@@ -1,4 +1,7 @@
 include LICENSE
 include README.md
+include HISTORY.md
+include requirements.txt
 include exoline/exo
 include exoline/exodata
+
