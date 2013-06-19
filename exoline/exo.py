@@ -30,8 +30,8 @@ from pprint import pprint
 
 from docopt import docopt
 from onepv1lib import onep
+from __init__ import __version__
 
-__version__ = "0.1"
 DEFAULT_HOST='m2.exosite.com'
 
 class AppException(Exception):
