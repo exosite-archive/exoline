@@ -3,8 +3,7 @@
 from setuptools import setup
 from exoline import __version__ as version
 
-with open('requirements.txt') as f:
-    required = f.read().splitlines()
+requires = []
 
 setup(
     name='exoline',
@@ -19,6 +18,6 @@ setup(
     package_dir={'exoline': 'exoline'},
     keywords=['exosite', 'onep', 'one platform', 'm2m'],
     dependency_links=['https://github.com/dweaver/pyonep/tarball/master#egg=onepv1lib-0.3'],
-    install_requires=required,
+    install_requires=requires,
     zip_safe=False,
     )
