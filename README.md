@@ -1,47 +1,48 @@
-# Exoline - Exosite Command Line
+Exoline: Command Line for Exosite
+=================================
 
-Exoline provides several commands for using the Exosite [One Platform](http://exosite.com/products/onep) from the command line.
+Exoline is a set of commands for accessing the Exosite [One Platform](http://exosite.com/products/onep). from the command line.
 
-* __exo__ - command to talk to the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API)
+- **exo** - command for the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API)
 
-* __exodata__ - command to talk to the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API)
+- **exodata** - command for the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API)
 
 
-## Setup 
+Installation 
+------------
 
-1. Install [pip](https://pypi.python.org/pypi/pip). E.g., for Debian:
+To install exoline, simply:
 
-    $ sudo apt-get install python-pip 
+```bash
 
-2. Install [virtualenv](https://pypi.python.org/pypi/virtualenv).
+    $ pip install -e git://github.com/dweaver/exoline#egg=exoline
 
-    $ sudo pip install virtualenv 
+```
 
-3. Create virtual environment for this project. E.g.:
+Or, to install the source directly:
 
-    $ virtualenv ve
+```bash
 
-4. Activate virtual environment. E.g.:
- 
-    $ source ve/bin/activate
-    
-5. Install required python modules:
+    $ python setup.py install
 
-    $ pip install -r requirements.txt
-    
+```
 
-## Environment Variables
+
+Environment Variables
+---------------------
 
 For convenience, several command line options may be replaced by environment variables.
 
 * EXO\_HOST: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
 
 
-## Help 
+Help 
+----
 
 For help, run each command with -h from the command line. For example:
 
-```
+```bash
+
     $ ./exo -h
 
 Exosite RPC API Command Line Interface
@@ -65,7 +66,8 @@ Options:
   --pretty             Pretty print output
 ```
 
-```
+```bash
+
     $ ./exodata -h
 
 Exosite Data API Command Line Interface
@@ -83,7 +85,7 @@ Options:
     --url=<url>   One Platform URL [default: http://m2.exosite.com]
 ```
 
-## Examples
+Examples
+--------
 
-For usage examples, see examples/.
-
+TODO: Usage examples.
