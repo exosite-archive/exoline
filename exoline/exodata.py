@@ -22,7 +22,7 @@ import re
 
 import requests
 from docopt import docopt
-from __init__ import __version__
+from exoline import __version__
 
 class AppException(Exception):
     pass

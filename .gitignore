@@ -8,9 +8,9 @@
 *.egg-info
 dist
 build
+bin
 eggs
 parts
-bin
 var
 sdist
 develop-eggs
