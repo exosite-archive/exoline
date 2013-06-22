@@ -5,6 +5,8 @@
    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
 
 Usage:
+  exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
+  exo [options] write <cik> <rid> <value>
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
@@ -16,11 +18,11 @@ Usage:
   exo [options] drop-all-children <cik>
 
 Options:
-  -h --help            Show this screen.
-  -v --version         Show version.
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
   --httptimeout=<sec>  HTTP timeout setting.
   --pretty             Pretty print output
+  -h --help            Show this screen.
+  -v --version         Show version.
 
 """
 # Copyright (c) 2013, Exosite, LLC
@@ -28,6 +30,9 @@ Options:
 import sys
 import os
 import json
+import csv
+from datetime import datetime
+import time
 from pprint import pprint
 
 from docopt import docopt
@@ -51,6 +56,24 @@ class ExoRPC():
     def _raise_for_response(self, isok, response):
         if not isok:
             raise AppException(response)
+
+    def read(self, cik, rid, limit, sort='asc', starttime=None, selection='all'):
+        options = {'limit': limit,
+               'sort': sort,
+               'selection': selection}
+        if starttime is not None:
+            options['starttime'] = starttime
+        isok, response = self.exo.read(
+            cik,
+            rid,
+            options)
+        self._raise_for_response(isok, response)
+        return response
+
+    def write(self, cik, rid, value):
+        #print("cik {}, rid {}, value {}".format(cik, rid, value))
+        isok, response = self.exo.write(cik, rid, value, {})
+        self._raise_for_response(isok, response)
 
     def create(self, cik, type, desc):
         return self.exo.create(cik, type, desc)
@@ -104,9 +127,6 @@ class ExoRPC():
         return response
 
     def info(self, cik, rid, options={}, cikonly=False):
-        # TODO: why is rid coming across as a list?
-        if type(rid) == list:
-            rid = rid[0]
         isok, response = self.exo.info(cik, rid, options)
         self._raise_for_response(isok, response)
         if cikonly:
@@ -194,6 +214,7 @@ class ExoRPC():
 
                 if response['key'] == cik_to_find:
                     return listing[0][idx]
+
        
 
 def plain_print(arg):
@@ -206,12 +227,50 @@ def handle_args(args):
         pr = pprint
     else:
         pr = plain_print
-    if args['create-dataport']:
+    if args['read']:
+        rid = args['<rid>'][0]
+        limit = args['--limit']
+        print("limit {}".format(limit))
+        limit = 1 if limit is None else int(limit)
+        dr = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
+        def printline(timestamp, val):
+            dt = datetime.fromtimestamp(timestamp)
+            dr.writerow({'timestamp': str(dt), 'value': val})
+        
+        if args['--follow']:
+            results = er.read(cik, 
+                              rid, 
+                              limit=1,
+                              sort='desc')
+            last_t, last_v = results[-1]
+            printline(last_t, last_v)
+
+            while True:
+                results = er.read(cik, 
+                                  rid,
+                                  limit=10000,
+                                  starttime=last_t + 1)
+
+                for t, v in results:
+                    printline(t, v)
+
+                if len(results) > 0:
+                    last_t, last_v = results[-1]
+
+                time.sleep(2)
+        else:
+            for t, v in er.read(cik,
+                                rid,
+                                limit=limit):
+                printline(t, v)
+    elif args['write']:
+        er.write(cik, args['<rid>'][0], args['<value>'])
+    elif args['create-dataport']:
         pr(er.create_dataport(cik, args['--format'], name=args['--name']))
     elif args['create-client']:
         pr(er.create_client(cik, name=args['--name']))
     elif args['map']:
-        er.map(cik, args['<rid>'], args['<alias>'])
+        er.map(cik, args['<rid>'][0], args['<alias>'])
     elif args['drop']:
         er.drop(cik, args['<rid>'])
     elif args['listing']:
@@ -225,7 +284,7 @@ def handle_args(args):
         else:
             pr(listing)
     elif args['info']:
-        pr(er.info(cik, args['<rid>'], cikonly=args['--cikonly']))
+        pr(er.info(cik, args['<rid>'][0], cikonly=args['--cikonly']))
     # special commands
     elif args['tree']:
         er.tree(cik, cli_args=args)
