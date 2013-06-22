@@ -12,8 +12,8 @@ Usage:
   exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
   exo [options] info <cik> <rid> [--cikonly] 
   exo [options] tree <cik> [--show-rid] [--show-aliases]
-  exo [options] lookup_rid <cik> <parent-cik>
-  exo [options] drop_all_children <cik>
+  exo [options] lookup-rid <cik> <cik-to-find>
+  exo [options] drop-all-children <cik>
 
 Options:
   -h --help            Show this screen.
@@ -107,7 +107,6 @@ class ExoRPC():
         # TODO: why is rid coming across as a list?
         if type(rid) == list:
             rid = rid[0]
-        print("cik {}, rid {}".format(cik, rid))
         isok, response = self.exo.info(cik, rid, options)
         self._raise_for_response(isok, response)
         if cikonly:
@@ -175,27 +174,25 @@ class ExoRPC():
                     self._print_node(rid, info, aliases, cli_args, new_spacer + indent_spacer, islast)
                    
     def drop_all_children(self, cik):
-
         isok, listing = self.exo.listing(cik, types=['client'])
         self._raise_for_response(isok, listing)
 
-        isok, response = self.exo.drop(cik, listing[0])
-        self._raise_for_response(isok, response)
+        self.drop(cik, listing[0])
 
-    def lookup_rid(self, cik, parent_cik):
-        isok, listing = self.exo.listing(parent_cik, types=['client'])
+    def lookup_rid(self, cik, cik_to_find):
+        isok, listing = self.exo.listing(cik, types=['client'])
         self._raise_for_response(isok, listing)
 
         for rid in listing[0]:
-            self.exo.info(parent_cik, rid, defer=True)
+            self.exo.info(cik, rid, defer=True)
 
-        if self.exo.has_deferred(parent_cik):
-            responses = self.exo.send_deferred(parent_cik)
+        if self.exo.has_deferred(cik):
+            responses = self.exo.send_deferred(cik)
             for idx, r in enumerate(responses):
                 call, isok, response = r
                 self._raise_for_response(isok, response)
 
-                if response['key'] == cik:
+                if response['key'] == cik_to_find:
                     return listing[0][idx]
        
 
@@ -219,23 +216,25 @@ def handle_args(args):
         er.drop(cik, args['<rid>'])
     elif args['listing']:
         types = args['--type']
-        print(args['--plain'])
+        listing = er.listing(cik, types)
         if args['--plain'] == True:
             if len(types) != 1:
                 raise AppException("--plain not valid with more than one type")
-            for cik in er.listing(cik, types)[0]:
+            for cik in listing[0]:
                 print(cik)
         else:
-            pr(er.listing(cik, types))
+            pr(listing)
     elif args['info']:
-        pr(er.info(cik, args['<rid>'], cikonly=['--cikonly']))
+        pr(er.info(cik, args['<rid>'], cikonly=args['--cikonly']))
     # special commands
     elif args['tree']:
         er.tree(cik, cli_args=args)
-    elif args['lookup_rid']:
-        rid = er.lookup_rid(cik, args['<parent-cik>'])
+    elif args['lookup-rid']:
+        rid = er.lookup_rid(cik, args['<cik-to-find>'])
         if rid is not None:
             pr(rid)
+    elif args['drop-all-children']:
+        er.drop_all_children(cik)
 
 
 if __name__ == '__main__':
