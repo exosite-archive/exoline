@@ -8,10 +8,12 @@ Usage:
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
-  exo [options] drop <cik> <rid>
-  exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ...
-  exo [options] info <cik> <rid> [--cikonly]
+  exo [options] drop <cik> <rid> ...
+  exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
+  exo [options] info <cik> <rid> [--cikonly] 
   exo [options] tree <cik> [--show-rid] [--show-aliases]
+  exo [options] lookup_rid <cik> <parent-cik>
+  exo [options] drop_all_children <cik>
 
 Options:
   -h --help            Show this screen.
@@ -82,10 +84,14 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def drop(self, cik, rid):
-        isok, response = self.exo.drop(cik, rid)
-        self._raise_for_response(isok, response)
-        return response
+    def drop(self, cik, rids):
+        for rid in rids:
+            self.exo.drop(cik, rid, defer=True)
+
+        if self.exo.has_deferred(cik):
+            responses = self.exo.send_deferred(cik)
+            for call, isok, response in responses:
+                self._raise_for_response(isok, response)
 
     def map(self, cik, rid, alias):
         isok, response = self.exo.map(cik, rid, alias)
@@ -98,6 +104,10 @@ class ExoRPC():
         return response
 
     def info(self, cik, rid, options={}, cikonly=False):
+        # TODO: why is rid coming across as a list?
+        if type(rid) == list:
+            rid = rid[0]
+        print("cik {}, rid {}".format(cik, rid))
         isok, response = self.exo.info(cik, rid, options)
         self._raise_for_response(isok, response)
         if cikonly:
@@ -134,7 +144,7 @@ class ExoRPC():
             '' if len(opt) == 0 else '({})'.format(', '.join(
                 ['{}: {}'.format(k, v) for k, v in opt.iteritems()]))))
 
-    def tree(self, cik, aliases=None, cli_args={}, spacer=''):
+    def tree(self, cik, aliases=None, cli_args={}, spacer=''): 
         '''Print a tree of entities in OneP'''
         types = ['dataport', 'datarule', 'dispatch', 'client']
         isok, response = self.exo.listing(cik, types=types)
@@ -164,6 +174,30 @@ class ExoRPC():
                 else:
                     self._print_node(rid, info, aliases, cli_args, new_spacer + indent_spacer, islast)
                    
+    def drop_all_children(self, cik):
+
+        isok, listing = self.exo.listing(cik, types=['client'])
+        self._raise_for_response(isok, listing)
+
+        isok, response = self.exo.drop(cik, listing[0])
+        self._raise_for_response(isok, response)
+
+    def lookup_rid(self, cik, parent_cik):
+        isok, listing = self.exo.listing(parent_cik, types=['client'])
+        self._raise_for_response(isok, listing)
+
+        for rid in listing[0]:
+            self.exo.info(parent_cik, rid, defer=True)
+
+        if self.exo.has_deferred(parent_cik):
+            responses = self.exo.send_deferred(parent_cik)
+            for idx, r in enumerate(responses):
+                call, isok, response = r
+                self._raise_for_response(isok, response)
+
+                if response['key'] == cik:
+                    return listing[0][idx]
+       
 
 def plain_print(arg):
     print(arg)
@@ -182,15 +216,27 @@ def handle_args(args):
     elif args['map']:
         er.map(cik, args['<rid>'], args['<alias>'])
     elif args['drop']:
-        pr(er.drop(cik, args['<rid>']))
+        er.drop(cik, args['<rid>'])
     elif args['listing']:
-        pr(er.listing(cik, args['--type']))
+        types = args['--type']
+        print(args['--plain'])
+        if args['--plain'] == True:
+            if len(types) != 1:
+                raise AppException("--plain not valid with more than one type")
+            for cik in er.listing(cik, types)[0]:
+                print(cik)
+        else:
+            pr(er.listing(cik, types))
     elif args['info']:
         pr(er.info(cik, args['<rid>'], cikonly=['--cikonly']))
     # special commands
     elif args['tree']:
         er.tree(cik, cli_args=args)
-        
+    elif args['lookup_rid']:
+        rid = er.lookup_rid(cik, args['<parent-cik>'])
+        if rid is not None:
+            pr(rid)
+
 
 if __name__ == '__main__':
     args = docopt(__doc__, version="Exosite Data API {}".format(__version__))
