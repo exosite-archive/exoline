@@ -1,6 +1,11 @@
 History
 =======
 
+0.0.7 (2013-6-23)
+-----------------
+
+- Time series data write and read commands, with --follow option
+
 
 0.0.6 (2013-6-23)
 -----------------
