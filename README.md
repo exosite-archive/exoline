@@ -43,33 +43,38 @@ For help, run each command with -h from the command line. For example:
 
 ```bash
 
-    $ ./exo -h
+$ exo --help
 
 Exosite RPC API Command Line Interface
    Provides command line access to the Remote Procedure Call API:
    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
 
 Usage:
+  exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
+  exo [options] write <cik> <rid> <value>
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
-  exo [options] drop <cik> <rid>
-  exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ...
-  exo [options] info <cik> <rid> [--cikonly]
+  exo [options] drop <cik> <rid> ...
+  exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
+  exo [options] info <cik> <rid> [--cikonly] 
   exo [options] tree <cik> [--show-rid] [--show-aliases]
+  exo [options] lookup-rid <cik> <cik-to-find>
+  exo [options] drop-all-children <cik>
 
 Options:
-  -h --help            Show this screen.
-  -v --version         Show version.
-  --host=<host>        OneP URL. Default is $EXO\_HOST or m2.exosite.com.
+  --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
   --httptimeout=<sec>  HTTP timeout setting.
   --pretty             Pretty print output
+  -h --help            Show this screen.
+  -v --version         Show version.
+
+
 ```
 
 ```bash
 
-    $ ./exodata -h
-
+$ exodata --help
 Exosite Data API Command Line Interface
    Provides access to the HTTP Data Interface API:
    http://developers.exosite.com/display/OP/HTTP+Data+Interface+API
@@ -83,6 +88,7 @@ Options:
     -h --help     Show this screen
     -v --version  Show version
     --url=<url>   One Platform URL [default: http://m2.exosite.com]
+
 ```
 
 Examples
