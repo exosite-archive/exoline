@@ -6,13 +6,14 @@
 
 Usage:
   exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
-  exo [options] write <cik> <rid> <value>
+  exo [options] write <cik> <rid> --value=<value>
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
   exo [options] drop <cik> <rid> ...
   exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
   exo [options] info <cik> <rid> [--cikonly] 
+  exo [options] flush <cik> <rid>
   exo [options] tree <cik> [--show-rid] [--show-aliases]
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
@@ -136,6 +137,9 @@ class ExoRPC():
         else:
             return response
 
+    def flush(self, cik, rid):
+        self.exo.flush(cik, rid)
+
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast):
         typ = info['basic']['type']
         id = 'cik: ' + info['key'] if typ=='client' else 'rid: ' + rid
@@ -194,10 +198,11 @@ class ExoRPC():
                     self._print_node(rid, info, aliases, cli_args, new_spacer + indent_spacer, islast)
                    
     def drop_all_children(self, cik):
-        isok, listing = self.exo.listing(cik, types=['client'])
+        isok, listing = self.exo.listing(cik, types=['client', 'dataport', 'datarule', 'dispatch'])
         self._raise_for_response(isok, listing)
 
-        self.drop(cik, listing[0])
+        for l in listing:
+            self.drop(cik, l)
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'])
@@ -230,7 +235,6 @@ def handle_args(args):
     if args['read']:
         rid = args['<rid>'][0]
         limit = args['--limit']
-        print("limit {}".format(limit))
         limit = 1 if limit is None else int(limit)
         dr = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
         def printline(timestamp, val):
@@ -264,7 +268,7 @@ def handle_args(args):
                                 limit=limit):
                 printline(t, v)
     elif args['write']:
-        er.write(cik, args['<rid>'][0], args['<value>'])
+        er.write(cik, args['<rid>'][0], args['--value'])
     elif args['create-dataport']:
         pr(er.create_dataport(cik, args['--format'], name=args['--name']))
     elif args['create-client']:
@@ -285,6 +289,8 @@ def handle_args(args):
             pr(listing)
     elif args['info']:
         pr(er.info(cik, args['<rid>'][0], cikonly=args['--cikonly']))
+    elif args['flush']:
+        er.flush(cik, args['<rid>'])
     # special commands
     elif args['tree']:
         er.tree(cik, cli_args=args)
