@@ -14,7 +14,7 @@ Usage:
   exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
   exo [options] info <cik> <rid> [--cikonly] 
   exo [options] flush <cik> <rid>
-  exo [options] tree <cik> [--show-rid] [--show-aliases] [--show-units]
+  exo [options] tree <cik> [--show-rid] [--show-aliases] [--show-unit] [--show-name]
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
 
@@ -166,10 +166,12 @@ class ExoRPC():
             if o is True or (cli_args.has_key(o) and cli_args[o] == True):
                 opt[label] = value
         add_opt(True, 'type', typ)
-        add_opt(True, 'name', name)
+        if info['description'].has_key('format'):
+            add_opt(True, 'format', info['description']['format'])
         add_opt('--show-aliases', 'aliases', 'none' if len(aliases) == 0 else ', '.join(aliases))
+        add_opt('--show-unit', 'unit', units)
+        add_opt('--show-name', 'name', name)
         add_opt('--show-rid', 'rid', rid)
-        add_opt('--show-units', 'units', units)
         
         print('{}{} {}'.format(
             spacer,
