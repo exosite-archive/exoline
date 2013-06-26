@@ -1,6 +1,11 @@
 History
 =======
 
+0.0.8 (2013-6-26)
+-----------------
+
+- Added units to tree output, support writing negative numeric values
+
 0.0.7 (2013-6-23)
 -----------------
 

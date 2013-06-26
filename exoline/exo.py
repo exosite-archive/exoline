@@ -14,7 +14,7 @@ Usage:
   exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
   exo [options] info <cik> <rid> [--cikonly] 
   exo [options] flush <cik> <rid>
-  exo [options] tree <cik> [--show-rid] [--show-aliases]
+  exo [options] tree <cik> [--show-rid] [--show-aliases] [--show-units]
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
 
@@ -35,6 +35,7 @@ import csv
 from datetime import datetime
 import time
 from pprint import pprint
+from collections import OrderedDict
 
 from docopt import docopt
 from onepv1lib import onep
@@ -144,26 +145,35 @@ class ExoRPC():
         typ = info['basic']['type']
         id = 'cik: ' + info['key'] if typ=='client' else 'rid: ' + rid
         name = info['description']['name']
+        try:
+            # Units are a portals only thing
+            # u'comments': [[u'public', u'{"unit":"Fahrenheit"}']],']]
+            units = json.loads(info['comments'][0][1])['unit']
+            if len(units.strip()) == 0:
+                units = 'none'
+        except:
+            units = 'none'
 
-        # This is strange. Sometimes aliases is a dict, sometimes a list.
+        # Sometimes aliases is a dict, sometimes a list. TODO: Why?
         # Translate it into a list. 
         if type(aliases) is dict:
             aliases = aliases.get(rid, [])
         elif aliases is None:
             aliases = []
 
-        opt = {}
+        opt = OrderedDict()
         def add_opt(o, label, value):
-            if cli_args.has_key(o) and cli_args[o] == True:
+            if o is True or (cli_args.has_key(o) and cli_args[o] == True):
                 opt[label] = value
-        add_opt('--show-rid', 'rid', rid)
+        add_opt(True, 'type', typ)
+        add_opt(True, 'name', name)
         add_opt('--show-aliases', 'aliases', 'none' if len(aliases) == 0 else ', '.join(aliases))
+        add_opt('--show-rid', 'rid', rid)
+        add_opt('--show-units', 'units', units)
         
-        print('{}{} type: {} name: {} {}'.format(
+        print('{}{} {}'.format(
             spacer,
             id,
-            typ,
-            name,            
             '' if len(opt) == 0 else '({})'.format(', '.join(
                 ['{}: {}'.format(k, v) for k, v in opt.iteritems()]))))
 
