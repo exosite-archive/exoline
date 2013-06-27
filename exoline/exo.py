@@ -12,6 +12,7 @@ Usage:
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
   exo [options] unmap <cik> <alias>
+  exo [options] lookup <cik> <alias>
   exo [options] drop <cik> <rid> ...
   exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
   exo [options] info <cik> <rid> [--cikonly] 
@@ -47,9 +48,11 @@ from exoline import __version__
 
 DEFAULT_HOST='m2.exosite.com'
 
-class AppException(Exception):
+class ExoException(Exception):
     pass
 
+class RPCException(Exception):
+    pass
 
 class ExoRPC():
     '''Wrapper for onepv1lib RPC API. Raises exceptions on error and provides some reasonable defaults.'''
@@ -61,7 +64,7 @@ class ExoRPC():
 
     def _raise_for_response(self, isok, response):
         if not isok:
-            raise AppException(response)
+            raise RPCException(response)
 
     def read(self, cik, rid, limit, sort='asc', starttime=None, selection='all'):
         options = {'limit': limit,
@@ -140,6 +143,11 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
+    def lookup(self, cik, alias):
+        isok, response = self.exo.lookup(cik, 'alias', alias)
+        self._raise_for_response(isok, response)
+        return response
+
     def listing(self, cik, types):
         isok, response = self.exo.listing(cik, types)
         self._raise_for_response(isok, response)
@@ -150,7 +158,7 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         if cikonly:
             if not response.has_key('key'):
-                raise AppException('{} has no CIK'.format(rid))
+                raise ExoException('{} has no CIK'.format(rid))
             return response['key'] 
         else:
             return response
@@ -321,6 +329,8 @@ def handle_args(args):
         er.map(cik, args['<rid>'][0], args['<alias>'])
     elif args['unmap']:
         er.unmap(cik, args['<alias>'])
+    elif args['lookup']:
+        pr(er.lookup(cik, args['<alias>']))
     elif args['drop']:
         er.drop(cik, args['<rid>'])
     elif args['listing']:
@@ -328,7 +338,7 @@ def handle_args(args):
         listing = er.listing(cik, types)
         if args['--plain'] == True:
             if len(types) != 1:
-                raise AppException("--plain not valid with more than one type")
+                raise ExoException("--plain not valid with more than one type")
             for cik in listing[0]:
                 print(cik)
         else:
@@ -357,9 +367,15 @@ if __name__ == '__main__':
 
     try:
         handle_args(args)
-    except AppException as ex:
-        print("AppException: {}".format(ex))
+    except ExoException as ex:
+        # command line tool threw an exception on purpose
+        sys.stderr.write("Command line error: {}\r\n".format(ex))
+        sys.exit(1)
+    except RPCException as ex:
+        # pyonep library call signaled an error in return values 
+        sys.stderr.write("One Platform error: {}\r\n".format(ex))
         sys.exit(1)
     except onep_exceptions.OnePlatformException as ex:
-        print("OnePlatformException: {}".format(ex))
+        # pyonep library call threw an exception on purpose
+        sys.stderr.write("One Platform exception: {}\r\n".format(ex))
         sys.exit(1)
