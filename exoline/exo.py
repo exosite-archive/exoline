@@ -11,6 +11,7 @@ Usage:
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
+  exo [options] unmap <cik> <alias>
   exo [options] drop <cik> <rid> ...
   exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
   exo [options] info <cik> <rid> [--cikonly] 
@@ -131,6 +132,11 @@ class ExoRPC():
 
     def map(self, cik, rid, alias):
         isok, response = self.exo.map(cik, rid, alias)
+        self._raise_for_response(isok, response)
+        return response
+    
+    def unmap(self, cik, alias):
+        isok, response = self.exo.unmap(cik, alias)
         self._raise_for_response(isok, response)
         return response
 
@@ -313,6 +319,8 @@ def handle_args(args):
         pr(er.create_client(cik, name=args['--name']))
     elif args['map']:
         er.map(cik, args['<rid>'][0], args['<alias>'])
+    elif args['unmap']:
+        er.unmap(cik, args['<alias>'])
     elif args['drop']:
         er.drop(cik, args['<rid>'])
     elif args['listing']:
