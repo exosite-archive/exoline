@@ -1,6 +1,11 @@
 History
 =======
 
+0.0.12 (2013-6-27)
+------------------
+
+- Show OnePlatform library exceptions nicely
+
 0.0.11 (2013-6-27)
 ------------------
 

@@ -39,6 +39,7 @@ from collections import OrderedDict
 
 from docopt import docopt
 from onepv1lib import onep
+from onepv1lib import onep_exceptions
 from exoline import __version__
 
 DEFAULT_HOST='m2.exosite.com'
@@ -331,4 +332,7 @@ if __name__ == '__main__':
         handle_args(args)
     except AppException as ex:
         print("AppException: {}".format(ex))
+        sys.exit(1)
+    except onep_exceptions.OnePlatformException as ex:
+        print("OnePlatformException: {}".format(ex))
         sys.exit(1)
