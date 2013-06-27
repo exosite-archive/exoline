@@ -138,8 +138,14 @@ class ExoRPC():
         else:
             return response
 
-    def flush(self, cik, rid):
-        self.exo.flush(cik, rid)
+    def flush(self, cik, rids):
+        for rid in rids:
+            self.exo.flush(cik, rid, defer=True)
+
+        if self.exo.has_deferred(cik):
+            responses = self.exo.send_deferred(cik)
+            for call, isok, response in responses:
+                self._raise_for_response(isok, response)
 
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast):
         typ = info['basic']['type']
