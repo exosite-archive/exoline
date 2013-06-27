@@ -7,6 +7,7 @@
 Usage:
   exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
   exo [options] write <cik> <rid> --value=<value>
+  exo [options] record <cik> <rid> --value=<timestamp,value> ...
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
@@ -32,6 +33,7 @@ import sys
 import os
 import json
 import csv
+import re
 from datetime import datetime
 import time
 from pprint import pprint
@@ -73,9 +75,17 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def write(self, cik, rid, value):
-        #print("cik {}, rid {}, value {}".format(cik, rid, value))
-        isok, response = self.exo.write(cik, rid, value, {})
+    def write(self, cik, rid, values):
+        for v in values:
+            self.exo.write(cik, rid, v, {}, defer=True)
+
+        if self.exo.has_deferred(cik):
+            responses = self.exo.send_deferred(cik)
+            for call, isok, response in responses:
+                self._raise_for_response(isok, response)
+
+    def record(self, cik, rid, entries):
+        isok, response = self.exo.record(cik, rid, entries, {})
         self._raise_for_response(isok, response)
 
     def create(self, cik, type, desc):
@@ -288,6 +298,15 @@ def handle_args(args):
                 printline(t, v)
     elif args['write']:
         er.write(cik, args['<rid>'][0], args['--value'])
+    elif args['record']:
+        entries = []
+        # split timestamp, value
+        reentry = re.compile('(\d+),(.*)')
+        for v in args['--value']:
+            match = reentry.match(v)    
+            g = match.groups()
+            entries.append([int(g[0]), g[1]])
+        er.record(cik, args['<rid>'][0], entries)
     elif args['create-dataport']:
         pr(er.create_dataport(cik, args['--format'], name=args['--name']))
     elif args['create-client']:
