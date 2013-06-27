@@ -301,7 +301,7 @@ def handle_args(args):
     elif args['record']:
         entries = []
         # split timestamp, value
-        reentry = re.compile('(\d+),(.*)')
+        reentry = re.compile('(-?\d+),(.*)')
         for v in args['--value']:
             match = reentry.match(v)    
             g = match.groups()
