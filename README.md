@@ -15,7 +15,7 @@ To install the latest released version of exoline:
 
 ```bash
 
-    $ pip install exoline
+    $ pip install --upgrade exoline
 
 ```
 
@@ -43,22 +43,24 @@ For help, run each command with -h from the command line. For example:
 
 ```bash
 
-$ exo --help
-
 Exosite RPC API Command Line Interface
    Provides command line access to the Remote Procedure Call API:
    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
 
 Usage:
   exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
-  exo [options] write <cik> <rid> <value>
+  exo [options] write <cik> <rid> --value=<value>
+  exo [options] record <cik> <rid> --value=<timestamp,value> ...
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
+  exo [options] unmap <cik> <alias>
+  exo [options] lookup <cik> <alias>
   exo [options] drop <cik> <rid> ...
   exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
   exo [options] info <cik> <rid> [--cikonly] 
-  exo [options] tree <cik> [--show-rid] [--show-aliases]
+  exo [options] flush <cik> <rid>
+  exo [options] tree <cik> [--verbose]
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
 
@@ -69,12 +71,10 @@ Options:
   -h --help            Show this screen.
   -v --version         Show version.
 
-
 ```
 
 ```bash
 
-$ exodata --help
 Exosite Data API Command Line Interface
    Provides access to the HTTP Data Interface API:
    http://developers.exosite.com/display/OP/HTTP+Data+Interface+API
@@ -95,3 +95,14 @@ Examples
 --------
 
 TODO: Usage examples.
+
+
+TODO
+----
+
+- Add script upload support 
+- Add support for update command 
+- Add regression tests
+- Document release procedure
+- Add remaining create commands (create-datarule, create-dispatch)
+- Add support for sending JSON on stdin
