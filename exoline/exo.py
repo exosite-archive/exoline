@@ -243,7 +243,8 @@ class ExoRPC():
     def tree(self, cik, aliases=None, cli_args={}, spacer=''): 
         '''Print a tree of entities in OneP'''
         # print root node
-        if len(spacer) == 0:
+        isroot = len(spacer) == 0
+        if isroot:
             print(cik)
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
@@ -259,14 +260,19 @@ class ExoRPC():
                 info = typelisting[rid]
                 islastoftype = rid_idx == len(typelisting) - 1
                 islast = islast_nonempty_type and islastoftype
-                new_spacer = spacer + '  ' # TODO: fancy piping with '│ ' 
-                indent_spacer = '└──' if islast else '├──'
+                if islast:
+                    child_spacer = spacer + '    '
+                    own_spacer   = spacer + '  └─' 
+                else:
+                    child_spacer = spacer + '  │ '
+                    own_spacer   = spacer + '  ├─'
+
                 if t == 'client':
                     next_cik = info['key']
-                    self._print_node(rid, info, aliases, cli_args, new_spacer + indent_spacer, islast)
-                    self.tree(next_cik, info['aliases'], cli_args, new_spacer)
+                    self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
+                    self.tree(next_cik, info['aliases'], cli_args, child_spacer)
                 else:
-                    self._print_node(rid, info, aliases, cli_args, new_spacer + indent_spacer, islast)
+                    self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
                    
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(cik, types=['client', 'dataport', 'datarule', 'dispatch'])
