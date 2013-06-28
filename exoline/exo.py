@@ -153,6 +153,36 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
+    def listing_with_info(self, cik, types):
+        listing = self.listing(cik, types)
+        # listing is a list of lists per type, like: [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']] 
+        
+        # build up a deferred request per element in each sublist
+        for type_list in listing:
+            for rid in type_list:
+                self.exo.info(cik, rid, defer=True)
+
+        if self.exo.has_deferred(cik):
+            responses = self.exo.send_deferred(cik)
+            for call, isok, response in responses:
+                self._raise_for_response(isok, response)
+        else:
+            raise RpcException("No listing info was requested.") 
+
+        # From the return values make a list of dicts like this: 
+        # [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}] 
+        # use ordered dicts in case someone cares about order in the output (?)
+        response_index = 0
+        listing_with_info = []
+        for type_list in listing:
+            type_response = OrderedDict() 
+            for rid in type_list:
+                type_response[rid] = responses[response_index][2]
+                response_index += 1
+            listing_with_info.append(type_response)
+
+        return listing_with_info
+
     def info(self, cik, rid, options={}, cikonly=False):
         isok, response = self.exo.info(cik, rid, options)
         self._raise_for_response(isok, response)
@@ -212,25 +242,23 @@ class ExoRPC():
 
     def tree(self, cik, aliases=None, cli_args={}, spacer=''): 
         '''Print a tree of entities in OneP'''
-        types = ['dataport', 'datarule', 'dispatch', 'client']
-        isok, response = self.exo.listing(cik, types=types)
-        self._raise_for_response(isok, response)
-        listing = response
-        
         # print root node
         if len(spacer) == 0:
             print(cik)
 
+        types = ['dataport', 'datarule', 'dispatch', 'client']
+        listing = self.listing_with_info(cik, types=types)
+        # previously: [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']] 
+        # now: [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}] 
+
         # print everything
         for t_idx, t in enumerate(types):
             typelisting = listing[t_idx]
-            islast_nonempty = (t_idx == len(types) - 1) or (all(len(x) == 0 for x in listing[t_idx + 1:]))
+            islast_nonempty_type = (t_idx == len(types) - 1) or (all(len(x) == 0 for x in listing[t_idx + 1:]))
             for rid_idx, rid in enumerate(typelisting):
-                isok, response = self.exo.info(cik, rid)
-                self._raise_for_response(isok, response)
-                info = response
+                info = typelisting[rid]
                 islastoftype = rid_idx == len(typelisting) - 1
-                islast = islast_nonempty and islastoftype
+                islast = islast_nonempty_type and islastoftype
                 new_spacer = spacer + '  ' # TODO: fancy piping with '│ ' 
                 indent_spacer = '└──' if islast else '├──'
                 if t == 'client':
