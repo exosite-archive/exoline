@@ -74,7 +74,7 @@ def handle_args(args):
 
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version="Exosite Data API {}".format(__version__))
+    args = docopt(__doc__, version="Exosite Data API Command Line {}".format(__version__))
     try:
         handle_args(args)
     except AppException as ex:

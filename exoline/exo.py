@@ -20,6 +20,7 @@ Usage:
   exo [options] tree <cik> [--verbose]
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
+  exo [options] upload <cik> <script-file> [--name=<name>]
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
@@ -166,8 +167,6 @@ class ExoRPC():
             responses = self.exo.send_deferred(cik)
             for call, isok, response in responses:
                 self._raise_for_response(isok, response)
-        else:
-            raise RpcException("No listing info was requested.") 
 
         # From the return values make a list of dicts like this: 
         # [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}] 
@@ -275,11 +274,79 @@ class ExoRPC():
                     self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
                    
     def drop_all_children(self, cik):
-        isok, listing = self.exo.listing(cik, types=['client', 'dataport', 'datarule', 'dispatch'])
+        isok, listing = self.exo.listing(cik, 
+            types=['client', 'dataport', 'datarule', 'dispatch'])
         self._raise_for_response(isok, listing)
 
         for l in listing:
             self.drop(cik, l)
+
+    def _lookup_rid_by_name(self, cik, name, types=['datarule']):
+        '''Look up RID by name. We use name rather than alias to identify 
+        scripts created in Portals, which only shows names, not aliases. 
+        Note that if multiple scripts have the same name, the first one 
+        in the listing is returned.'''
+        found_rid = None
+        listing = self.listing_with_info(cik, types)
+        for type_listing in listing:
+            for rid in type_listing:
+                if type_listing[rid]['description']['name'] == name:
+                    # return first match
+                    return rid
+        return None
+
+    def _upload_script(self, cik, name, text, rid=None, meta=''):
+        '''Upload a lua script, either creating one or updating the existing one'''
+        desc = {
+            'format': 'string',
+            'meta': '',
+            'name': name,
+            'preprocess': [],
+            'public': True,
+            'retention': {
+                'count': 0,
+                'duration': 0 
+            },
+            'rule': {
+                'script': text 
+            },
+            'subscribe': ''
+        }
+
+        if rid is None:
+            success, rid = self.exo.create(cik, 'datarule', desc)
+            if success:
+                print("New script RID: {}".format(rid))
+            else:
+                print('cik: "{}" name: "{}" script: "{}"'.format(cik, name, text, rid))
+                raise ExoException("Error creating datarule: {}".format(rid))
+            success, rid = self.exo.map(cik, rid, name)
+            if success:
+                print("Aliased script to: {}".format(name))
+            else:
+                raise ExoException("Error aliasing script")
+        else:
+            success = self.exo.update(cik, rid, description)
+            if success:
+                print ("Updated script RID: {}".format(rid))
+            else:
+                raise ExoException("Error updating datarule.")
+
+            
+    def upload(self, cik, filename, name=None):
+        try:
+            f = open(filename)
+        except IOError as ex:
+            raise ExoException('Error opening file.')
+        else:
+            with f:
+                text = f.read().strip()
+                if name is None:
+                    # if no name is specified, use the file name as a name 
+                    name = os.path.basename(filename)
+                rid = self._lookup_rid_by_name(cik, name) 
+                self._upload_script(cik, name, text, rid) 
+
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'])
@@ -390,10 +457,12 @@ def handle_args(args):
             pr(rid)
     elif args['drop-all-children']:
         er.drop_all_children(cik)
+    elif args['upload']:
+        er.upload(cik, args['<script-file>'], args['--name'])
 
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version="Exosite Data API {}".format(__version__))
+    args = docopt(__doc__, version="Exosite RPC API Command Line {}".format(__version__))
 
     # substitute environment variables
     if args['--host'] is None:

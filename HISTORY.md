@@ -1,6 +1,11 @@
 History
 =======
 
+0.0.13 (2013-7-03)
+------------------
+
+- record, unmap, lookup commands, better/stronger/faster tree 
+
 0.0.12 (2013-6-27)
 ------------------
 
