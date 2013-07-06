@@ -106,3 +106,4 @@ TODO
 - Document release procedure
 - Add remaining create commands (create-datarule, create-dispatch)
 - Add support for sending JSON on stdin
+- Add command-level help (e.g. exo help tree)
