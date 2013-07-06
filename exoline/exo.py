@@ -7,7 +7,8 @@
 Usage:
   exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
   exo [options] write <cik> <rid> --value=<value>
-  exo [options] record <cik> <rid> --value=<timestamp,value> ...
+  exo [options] record <cik> <rid> ((--value=<timestamp,value> ...) | -)
+  exo [options] create <cik> (--type=client|dataport|datarule|dispatch) -
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
@@ -21,6 +22,7 @@ Usage:
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
   exo [options] upload <cik> <script-file> [--name=<name>]
+  exo [options] record-backdate <cik> <rid> --interval=<seconds> ((--value=<value> ...) | -)
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
@@ -60,12 +62,22 @@ class ExoRPC():
     def __init__(self, 
             host='http://' + DEFAULT_HOST, 
             httptimeout=60, 
-            verbose=False):
+            verbose=True):
         self.exo = onep.OnepV1(host=host, httptimeout=httptimeout)       
 
     def _raise_for_response(self, isok, response):
         if not isok:
             raise RPCException(response)
+
+    def _raise_for_response_record(self, isok, response):
+        '''Undocumented RPC behavior-- if record timestamps are invalid, isok is True
+           but response is an array of timestamps and error messages.'''
+        self._raise_for_response(isok, response)
+        print(type(response))
+        print(response)
+        if type(response) is list:
+            # TODO: does this always indicate an error condition?
+            raise RPCException(', '.join(['{}: {}'.format(msg, t) for msg, t in response]))
 
     def read(self, cik, rid, limit, sort='asc', starttime=None, selection='all'):
         options = {'limit': limit,
@@ -90,24 +102,24 @@ class ExoRPC():
                 self._raise_for_response(isok, response)
 
     def record(self, cik, rid, entries):
+        print("Calling record with {}".format(entries))
         isok, response = self.exo.record(cik, rid, entries, {})
-        self._raise_for_response(isok, response)
+        self._raise_for_response_record(isok, response)
 
     def create(self, cik, type, desc):
-        return self.exo.create(cik, type, desc)
+        isok, response = self.exo.create(cik, type, desc)
+        self._raise_for_response(isok, response)
+        return response
 
     def create_dataport(self, cik, format, name=None):
-        desc = {'format': format,
-                'retention': {
-                    'count': 'infinity',
-                    'duration': 'infinity'}
+        desc = {"format": format,
+                "retention": {
+                    "count": "infinity",
+                    "duration": "infinity"}
                 }
         if name is not None:
             desc['name'] = name
-
-        isok, response = self.create(cik, 'dataport', desc)
-        self._raise_for_response(isok, response)
-        return response 
+        return self.create(cik, 'dataport', desc)
 
     def create_client(self, cik, name=None, desc=None):
         if desc is None:
@@ -120,10 +132,7 @@ class ExoRPC():
                     'writeinterval': 'inherit'}
         if name is not None:
             desc['name'] = name
-
-        isok, response = self.create(cik, 'client', desc)
-        self._raise_for_response(isok, response)
-        return response
+        return self.create(cik, 'client', desc)
 
     def drop(self, cik, rids):
         for rid in rids:
@@ -231,15 +240,18 @@ class ExoRPC():
         add_opt(True, 'name', name)
         add_opt(True, 'aliases', 'none' if len(aliases) == 0 else ', '.join(aliases))
         add_opt('--verbose', 'unit', units)
-        add_opt('--verbose', 'rid', rid)
+        if typ == 'client':
+            add_opt('--verbose', 'rid', rid)
+        if info.has_key('storage') and info['storage'].has_key('count'):
+            add_opt(True, 'count', info['storage']['count'])
         
-        print('{}{} {}'.format(
+        print(u'{}{} {}'.format(
             spacer,
             id,
-            '' if len(opt) == 0 else '({})'.format(', '.join(
-                ['{}: {}'.format(k, v) for k, v in opt.iteritems()]))))
+            u'' if len(opt) == 0 else u'({})'.format(u', '.join(
+                [u'{}: {}'.format(k, v) for k, v in opt.iteritems()]))))
 
-    def tree(self, cik, aliases=None, cli_args={}, spacer=''): 
+    def tree(self, cik, aliases=None, cli_args={}, spacer=u''): 
         '''Print a tree of entities in OneP'''
         # print root node
         isroot = len(spacer) == 0
@@ -260,11 +272,11 @@ class ExoRPC():
                 islastoftype = rid_idx == len(typelisting) - 1
                 islast = islast_nonempty_type and islastoftype
                 if islast:
-                    child_spacer = spacer + '    '
-                    own_spacer   = spacer + '  └─' 
+                    child_spacer = spacer + u'    '
+                    own_spacer   = spacer + u'  └─' 
                 else:
-                    child_spacer = spacer + '  │ '
-                    own_spacer   = spacer + '  ├─'
+                    child_spacer = spacer + u'  │ '
+                    own_spacer   = spacer + u'  ├─'
 
                 if t == 'client':
                     next_cik = info['key']
@@ -364,8 +376,19 @@ class ExoRPC():
                 if response['key'] == cik_to_find:
                     return listing[0][idx]
 
-       
+    def record_backdate(self, cik, rid, interval_seconds, values):
+        '''Record a list of values and record them as if they happened in the past
+        interval_seconds apart. For example, if values ['a', 'b', 'c'] are passed in 
+        with interval 10, they're recorded as [[0, 'c'], [-10, 'b'], [-20, 'a']]'''
+        timestamp = -interval_seconds 
+        tvalues = []
+        values.reverse()
+        for v in values:
+            tvalues.append([timestamp, v])
+            timestamp -= interval_seconds
+        return self.record(cik, rid, tvalues)
 
+       
 def plain_print(arg):
     print(arg)
 
@@ -412,16 +435,37 @@ def handle_args(args):
                                 limit=limit):
                 printline(t, v)
     elif args['write']:
-        er.write(cik, args['<rid>'][0], args['--value'])
+        tvalues = args['--value']
+        er.write(cik, args['<rid>'][0], tvalues)
     elif args['record']:
         entries = []
         # split timestamp, value
+        if args['-']:
+            tvalues = sys.stdin.readlines()
+        else:
+            tvalues = args['--value']
+            
         reentry = re.compile('(-?\d+),(.*)')
-        for v in args['--value']:
-            match = reentry.match(v)    
-            g = match.groups()
-            entries.append([int(g[0]), g[1]])
-        er.record(cik, args['<rid>'][0], entries)
+        has_errors = False
+        for tv in tvalues:
+            match = reentry.match(tv)    
+            if match is None:
+                sys.stderr.write('Line not in <timestamp>,<value> format: {}'.format(tv))
+                has_errors = True
+            else:
+                g = match.groups()
+                entries.append([int(g[0]), g[1]])
+        if has_errors or len(entries) == 0:
+            raise ExoException("Problems with input.")
+        else:
+            er.record(cik, args['<rid>'][0], entries)
+    elif args['create']:
+        s = sys.stdin.read()
+        try:
+            desc = json.loads(s)
+        except Exception as ex:
+            raise ExoException(ex)
+        pr(er.create(cik, type=args['--type'][0], desc=desc))
     elif args['create-dataport']:
         pr(er.create_dataport(cik, args['--format'], name=args['--name']))
     elif args['create-client']:
@@ -459,11 +503,17 @@ def handle_args(args):
         er.drop_all_children(cik)
     elif args['upload']:
         er.upload(cik, args['<script-file>'], args['--name'])
+    elif args['record-backdate']:
+        # split timestamp, value
+        if args['-']:
+            values = [v.strip() for v in sys.stdin.readlines()]
+        else:
+            values = args['--value']
+        er.record_backdate(cik, args['<rid>'][0], int(args['--interval']), values)
 
 
 if __name__ == '__main__':
     args = docopt(__doc__, version="Exosite RPC API Command Line {}".format(__version__))
-
     # substitute environment variables
     if args['--host'] is None:
         args['--host'] = os.environ.get('EXO_HOST', DEFAULT_HOST)
