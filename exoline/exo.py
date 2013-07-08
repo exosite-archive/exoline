@@ -73,8 +73,6 @@ class ExoRPC():
         '''Undocumented RPC behavior-- if record timestamps are invalid, isok is True
            but response is an array of timestamps and error messages.'''
         self._raise_for_response(isok, response)
-        print(type(response))
-        print(response)
         if type(response) is list:
             # TODO: does this always indicate an error condition?
             raise RPCException(', '.join(['{}: {}'.format(msg, t) for msg, t in response]))
