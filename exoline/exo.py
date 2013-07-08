@@ -22,6 +22,7 @@ Usage:
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
   exo [options] record-backdate <cik> <rid> --interval=<seconds> ((--value=<value> ...) | -)
+  exo [options] upload <cik> <script-file> [--name=<name>]
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
@@ -310,18 +311,16 @@ class ExoRPC():
         '''Upload a lua script, either creating one or updating the existing one'''
         desc = {
             'format': 'string',
-            'meta': '',
             'name': name,
             'preprocess': [],
-            'public': True,
-            'retention': {
-                'count': 'infinity',
-                'duration': 'infinity' 
-            },
             'rule': {
                 'script': text 
             },
-            'subscribe': ''
+            'visibility': 'parent',
+            'retention': {
+                'count': 'infinity',
+                'duration': 'infinity' 
+            }
         }
 
         if rid is None:
@@ -329,7 +328,7 @@ class ExoRPC():
             if success:
                 print("New script RID: {}".format(rid))
             else:
-                print('cik: "{}" name: "{}" script: "{}"'.format(cik, name, text, rid))
+                #print('cik: {} desc: {}'.format(cik, json.dumps(desc)))
                 raise ExoException("Error creating datarule: {}".format(rid))
             success, rid = self.exo.map(cik, rid, name)
             if success:
@@ -337,14 +336,13 @@ class ExoRPC():
             else:
                 raise ExoException("Error aliasing script")
         else:
-            success = self.exo.update(cik, rid, description)
+            success = self.exo.update(cik, rid, desc)
             if success:
                 print ("Updated script RID: {}".format(rid))
             else:
                 raise ExoException("Error updating datarule.")
 
             
-    # TODO  exo [options] upload <cik> <script-file> [--name=<name>]
     def upload(self, cik, filename, name=None):
         try:
             f = open(filename)
