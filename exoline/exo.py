@@ -102,7 +102,6 @@ class ExoRPC():
                 self._raise_for_response(isok, response)
 
     def record(self, cik, rid, entries):
-        print("Calling record with {}".format(entries))
         isok, response = self.exo.record(cik, rid, entries, {})
         self._raise_for_response_record(isok, response)
 

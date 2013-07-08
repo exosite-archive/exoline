@@ -117,6 +117,7 @@ TODO
 ----
 
 - Add support for update command 
+- Add support for watching script file and uploading whenever it changes
 - Document release procedure
 - Add command-level help (e.g. exo help tree)
 - Support binary datasource format
