@@ -98,7 +98,7 @@ Options:
 Test
 ----
 
-To run the tests, type:
+To run the tests, install the packages in test/requirements.txt, and then type:
 
 ```bash
 
