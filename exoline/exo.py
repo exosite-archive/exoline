@@ -18,7 +18,7 @@ Usage:
   exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
   exo [options] info <cik> <rid> [--cikonly] 
   exo [options] flush <cik> <rid>
-  exo [options] tree <cik> [--verbose]
+  exo [options] tree <cik> [--verbose] [--hide-keys]
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
   exo [options] record-backdate <cik> <rid> --interval=<seconds> ((--value=<value> ...) | -)
@@ -210,9 +210,17 @@ class ExoRPC():
             for call, isok, response in responses:
                 self._raise_for_response(isok, response)
 
+    def _disp_key(self, cli_args, k):
+        if cli_args['--hide-keys']:
+            # number of digits to show
+            num = 10
+            return k[:num] + '?' * len(k[num:])  
+        else:
+            return k
+
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast):
         typ = info['basic']['type']
-        id = 'cik: ' + info['key'] if typ=='client' else 'rid: ' + rid
+        id = 'cik: ' + self._disp_key(cli_args, info['key']) if typ=='client' else 'rid: ' + self._disp_key(cli_args, rid)
         name = info['description']['name']
         try:
             # Units are a portals only thing
@@ -241,7 +249,7 @@ class ExoRPC():
         add_opt(True, 'aliases', 'none' if len(aliases) == 0 else ', '.join(aliases))
         add_opt('--verbose', 'unit', units)
         if typ == 'client':
-            add_opt('--verbose', 'rid', rid)
+            add_opt('--verbose', 'rid', self._disp_key(cli_args, rid))
         if info.has_key('storage') and info['storage'].has_key('count'):
             add_opt(True, 'count', info['storage']['count'])
         
@@ -256,7 +264,7 @@ class ExoRPC():
         # print root node
         isroot = len(spacer) == 0
         if isroot:
-            print(cik)
+            print(self._disp_key(cli_args, cik))
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
         listing = self.listing_with_info(cik, types=types)
@@ -398,7 +406,7 @@ def handle_args(args):
     else:
         pr = plain_print
     if args['read']:
-        rid = args['<rid>'][0]
+        rid = rids[0]
         limit = args['--limit']
         limit = 1 if limit is None else int(limit)
         dr = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
@@ -430,11 +438,12 @@ def handle_args(args):
         else:
             for t, v in er.read(cik,
                                 rid,
+                                sort='desc',
                                 limit=limit):
                 printline(t, v)
     elif args['write']:
         tvalues = args['--value']
-        er.write(cik, args['<rid>'][0], tvalues)
+        er.write(cik, rids[0], tvalues)
     elif args['record']:
         entries = []
         # split timestamp, value
@@ -456,7 +465,7 @@ def handle_args(args):
         if has_errors or len(entries) == 0:
             raise ExoException("Problems with input.")
         else:
-            er.record(cik, args['<rid>'][0], entries)
+            er.record(cik, rids[0], entries)
     elif args['create']:
         s = sys.stdin.read()
         try:
@@ -469,13 +478,13 @@ def handle_args(args):
     elif args['create-client']:
         pr(er.create_client(cik, name=args['--name']))
     elif args['map']:
-        er.map(cik, args['<rid>'][0], args['<alias>'])
+        er.map(cik, rids[0], args['<alias>'])
     elif args['unmap']:
         er.unmap(cik, args['<alias>'])
     elif args['lookup']:
         pr(er.lookup(cik, args['<alias>']))
     elif args['drop']:
-        er.drop(cik, args['<rid>'])
+        er.drop(cik, rids)
     elif args['listing']:
         types = args['--type']
         listing = er.listing(cik, types)
@@ -487,14 +496,14 @@ def handle_args(args):
         else:
             pr(listing)
     elif args['info']:
-        info = er.info(cik, args['<rid>'][0], cikonly=args['--cikonly'])
+        info = er.info(cik, rids[0], cikonly=args['--cikonly'])
         if args['--pretty']:
             pr(info)
         else:
             # output json
             pr(json.dumps(info))
     elif args['flush']:
-        er.flush(cik, args['<rid>'])
+        er.flush(cik, rids)
     # special commands
     elif args['tree']:
         er.tree(cik, cli_args=args)
@@ -512,7 +521,7 @@ def handle_args(args):
             values = [v.strip() for v in sys.stdin.readlines()]
         else:
             values = args['--value']
-        er.record_backdate(cik, args['<rid>'][0], int(args['--interval']), values)
+        er.record_backdate(cik, rids[0], int(args['--interval']), values)
 
 
 if __name__ == '__main__':
@@ -520,6 +529,14 @@ if __name__ == '__main__':
     # substitute environment variables
     if args['--host'] is None:
         args['--host'] = os.environ.get('EXO_HOST', DEFAULT_HOST)
+
+    # support passing aliases
+    rids = []
+    for rid in args['<rid>']:
+        if re.match("[0-9a-zA-Z]{40}", rid) is None:
+            rids.append({"alias": rid})
+        else:
+            rids.append(rid)
 
     try:
         handle_args(args)

@@ -142,6 +142,7 @@ class TestRPC(TestCase):
             lines = r.stdout.split('\n')
             readValues = [line.split(',')[1] 
                 for line in lines if len(line.strip()) > 0]
+            readValues.reverse()
             print 'Wrote {}'.format(wroteValues)
             print 'Read {}'.format(readValues)
             self.assertTrue(wroteValues == readValues)

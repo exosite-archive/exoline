@@ -1,6 +1,12 @@
 History
 =======
 
+0.0.16 (2013-7-08)
+------------------
+
+- Support passing alias for <rid>
+- Make read return latest value by default
+
 0.0.15 (2013-7-08)
 ------------------
 
