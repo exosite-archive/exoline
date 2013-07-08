@@ -91,6 +91,18 @@ Options:
 
 ```
 
+Test
+----
+
+To run the tests, type:
+
+```bash
+
+    $ cd test
+    $ nosetests --verbose
+
+```
+
 Examples
 --------
 
@@ -102,8 +114,8 @@ TODO
 
 - Add script upload support 
 - Add support for update command 
-- Add regression tests
 - Document release procedure
-- Add remaining create commands (create-datarule, create-dispatch)
 - Add support for sending JSON on stdin
 - Add command-level help (e.g. exo help tree)
+- Support binary datasource format
+- Add coverage for tests

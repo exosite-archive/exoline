@@ -1,0 +1,3 @@
+config = {
+    'portalcik': '<portal cik from config.py>'
+}

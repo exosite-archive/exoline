@@ -8,7 +8,7 @@ Usage:
   exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
   exo [options] write <cik> <rid> --value=<value>
   exo [options] record <cik> <rid> ((--value=<timestamp,value> ...) | -)
-  exo [options] create <cik> (--type=client|dataport|datarule|dispatch) -
+  exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
@@ -21,7 +21,6 @@ Usage:
   exo [options] tree <cik> [--verbose]
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
-  exo [options] upload <cik> <script-file> [--name=<name>]
   exo [options] record-backdate <cik> <rid> --interval=<seconds> ((--value=<value> ...) | -)
 
 Options:
@@ -316,8 +315,8 @@ class ExoRPC():
             'preprocess': [],
             'public': True,
             'retention': {
-                'count': 0,
-                'duration': 0 
+                'count': 'infinity',
+                'duration': 'infinity' 
             },
             'rule': {
                 'script': text 
@@ -345,6 +344,7 @@ class ExoRPC():
                 raise ExoException("Error updating datarule.")
 
             
+    # TODO  exo [options] upload <cik> <script-file> [--name=<name>]
     def upload(self, cik, filename, name=None):
         try:
             f = open(filename)
@@ -489,7 +489,12 @@ def handle_args(args):
         else:
             pr(listing)
     elif args['info']:
-        pr(er.info(cik, args['<rid>'][0], cikonly=args['--cikonly']))
+        info = er.info(cik, args['<rid>'][0], cikonly=args['--cikonly'])
+        if args['--pretty']:
+            pr(info)
+        else:
+            # output json
+            pr(json.dumps(info))
     elif args['flush']:
         er.flush(cik, args['<rid>'])
     # special commands
