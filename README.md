@@ -43,6 +43,7 @@ For help, run each command with -h from the command line. For example:
 
 ```bash
 
+exo --help
 Exosite RPC API Command Line Interface
    Provides command line access to the Remote Procedure Call API:
    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
@@ -50,7 +51,8 @@ Exosite RPC API Command Line Interface
 Usage:
   exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
   exo [options] write <cik> <rid> --value=<value>
-  exo [options] record <cik> <rid> --value=<timestamp,value> ...
+  exo [options] record <cik> <rid> ((--value=<timestamp,value> ...) | -)
+  exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
   exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
   exo [options] create-client <cik> [--name=<name>]
   exo [options] map <cik> <rid> <alias>
@@ -63,6 +65,8 @@ Usage:
   exo [options] tree <cik> [--verbose]
   exo [options] lookup-rid <cik> <cik-to-find>
   exo [options] drop-all-children <cik>
+  exo [options] record-backdate <cik> <rid> --interval=<seconds> ((--value=<value> ...) | -)
+  exo [options] upload <cik> <script-file> [--name=<name>]
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
@@ -112,10 +116,8 @@ TODO: Usage examples.
 TODO
 ----
 
-- Add script upload support 
 - Add support for update command 
 - Document release procedure
-- Add support for sending JSON on stdin
 - Add command-level help (e.g. exo help tree)
 - Support binary datasource format
 - Add coverage for tests
