@@ -17,7 +17,7 @@ setup(
                       open('HISTORY.md').read(),
     packages=['exoline'],
     package_dir={'exoline': 'exoline'},
-    scripts=['bin/exo', 'bin/exodata'],
+    scripts=['bin/exo', 'bin/exoline', 'bin/exodata'],
     keywords=['exosite', 'onep', 'one platform', 'm2m'],
     dependency_links=['https://github.com/dweaver/pyonep/tarball/master#egg=onepv1lib-0.3'],
     install_requires=required,
