@@ -110,7 +110,38 @@ To run the tests, install the packages in test/requirements.txt, and then type:
 Examples
 --------
 
-TODO: Usage examples.
+Here are some examples of common tasks with Exoline.
+
+* Upload a Lua script
+
+```bash
+
+    $ exo upload e469e336ff9c8ed9176bc05ed7fa40d????????? translate_gps.lua
+    Updated script RID: 6c130838e14903f7e12d39b5e76c8e3?????????
+
+```
+
+* Monitor output of a script
+
+```bash
+
+    $ exo read e469e336ff9c8ed9176bc05ed7fa40d????????? translate_gps.lua --follow 
+    2013-07-09 11:57:45,line 2: Running translate_gps.lua...
+    2013-07-09 12:00:17,"line 12: New 4458.755987,N,09317.538945,W
+    line 23: Writing 4458.755987_-09317.538945"
+    ““2013-07-09 12:15:41,"line 12: New 4458.755987,N,09317.538945,W
+    line 23: Writing 4458.755987_-09317.538945"
+
+```
+
+* Write raw data
+
+```bash
+
+    $ exo write e469e336ff9c8ed9176bc05ed7fa40d????????? gps-raw --value=4458.755987,N,09317.538945,W
+
+```
+
 
 
 TODO

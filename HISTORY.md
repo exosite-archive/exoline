@@ -1,6 +1,13 @@
 History
 =======
 
+0.0.17 (2013-7-09)
+------------------
+
+- Handle keyboard interrupt gracefully for read --follow
+- Added example usage in README.md
+- Fixed read --follow when dataport has no data
+
 0.0.16 (2013-7-08)
 ------------------
 

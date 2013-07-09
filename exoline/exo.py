@@ -5,7 +5,7 @@
    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
 
 Usage:
-  exo [options] read [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] <cik> <rid>
+  exo [options] read <cik> <rid> [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] 
   exo [options] write <cik> <rid> --value=<value>
   exo [options] record <cik> <rid> ((--value=<timestamp,value> ...) | -)
   exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
@@ -410,28 +410,37 @@ def handle_args(args):
         def printline(timestamp, val):
             dt = datetime.fromtimestamp(timestamp)
             dr.writerow({'timestamp': str(dt), 'value': val})
-        
+        sleep_seconds = 2 
         if args['--follow']:
-            results = er.read(cik, 
-                              rid, 
-                              limit=1,
-                              sort='desc')
-            last_t, last_v = results[-1]
-            printline(last_t, last_v)
+            try:
+                results = []
+                while len(results) == 0:
+                    results = er.read(cik, 
+                                      rid, 
+                                      limit=1,
+                                      sort='desc')
+                    if len(results) > 0:
+                        last_t, last_v = results[0]
+                        printline(last_t, last_v)
+                    else:
+                        time.sleep(sleep_seconds)
 
-            while True:
-                results = er.read(cik, 
-                                  rid,
-                                  limit=10000,
-                                  starttime=last_t + 1)
 
-                for t, v in results:
-                    printline(t, v)
+                while True:
+                    results = er.read(cik, 
+                                      rid,
+                                      limit=10000,
+                                      starttime=last_t + 1)
 
-                if len(results) > 0:
-                    last_t, last_v = results[-1]
+                    for t, v in results:
+                        printline(t, v)
 
-                time.sleep(2)
+                    if len(results) > 0:
+                        last_t, last_v = results[-1]
+
+                    time.sleep(sleep_seconds)
+            except KeyboardInterrupt:
+                pass
         else:
             for t, v in er.read(cik,
                                 rid,
