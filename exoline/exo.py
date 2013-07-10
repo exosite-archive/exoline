@@ -592,8 +592,10 @@ def handle_args(cmd, args):
         er.tree(cik, cli_args=args)
     elif cmd == 'drop-all-children':
         er.drop_all_children(cik)
-    elif cmd == 'upload':
+    elif cmd == 'script':
         er.upload(cik, args['<script-file>'], args['--name'])
+    else:
+        raise ExoException("Command not handled")
 
 if __name__ == '__main__':
 
