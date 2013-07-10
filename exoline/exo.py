@@ -5,33 +5,36 @@
    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
 
 Usage:
-  exo [options] read <cik> <rid> [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow] 
-  exo [options] write <cik> <rid> --value=<value>
-  exo [options] record <cik> <rid> ((--value=<timestamp,value> ...) | -)
-  exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
-  exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]
-  exo [options] create-client <cik> [--name=<name>]
-  exo [options] map <cik> <rid> <alias>
-  exo [options] unmap <cik> <alias>
-  exo [options] lookup <cik> <alias>
-  exo [options] drop <cik> <rid> ...
-  exo [options] listing [--plain] <cik> (--type=client|dataport|datarule|dispatch) ...
-  exo [options] info <cik> <rid> [--cikonly] 
-  exo [options] flush <cik> <rid>
-  exo [options] tree <cik> [--verbose] [--hide-keys]
-  exo [options] lookup-rid <cik> <cik-to-find>
-  exo [options] drop-all-children <cik>
-  exo [options] record-backdate <cik> <rid> --interval=<seconds> ((--value=<value> ...) | -)
-  exo [options] upload <cik> <script-file> [--name=<name>]
+  exo [options] <command> [<args> ...]
+
+Commands: 
+  read
+  write
+  record
+  create
+  create-dataport
+  create-client
+  map
+  unmap
+  lookup
+  drop
+  listing
+  info
+  flush
+  tree
+  lookup-rid
+  drop-all-children
+  script
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
   --httptimeout=<sec>  HTTP timeout setting.
-  --pretty             Pretty print output
   -h --help            Show this screen.
   -v --version         Show version.
 
+See 'exo <command> -h' for more information on a specific command.
 """
+
 # Copyright (c) 2013, Exosite, LLC
 # All rights reserved
 import sys
@@ -50,6 +53,54 @@ from onepv1lib import onep_exceptions
 from exoline import __version__
 
 DEFAULT_HOST='m2.exosite.com'
+cmd_doc = {
+    'read': '''Read data from a resource.\n\nUsage:
+    exo [options] read <cik> <rid> [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow]''',
+    'write': '''Write data at the current time.\n\nUsage:
+    exo [options] write <cik> <rid> --value=<value>''',
+    'record': '''Write data at a specified time.\n\nUsage:
+    exo [options] record <cik> <rid> ((--value=<timestamp,value> ...) | -)
+    exo [options] record <cik> <rid> --interval=<seconds> ((--value=<value> ...) | -)
+
+    Pass - to read data from stdin.
+    Pass --interval to generate timestamps at a regular interval from now.
+    If --interval is positive, data will be placed in the future. If it's
+    negative, data will be placed in the past.''',
+    'create': '''Create a resource from a json description passed on stdin.\n\nUsage:
+    exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -''',
+    'listing': '''List a client's children based on their type.\n\nUsage:
+    exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ... [--plain] [--pretty]''',
+    'info': '''Get info for a resource in json format.\n\nUsage:
+    exo [options] info <cik> <rid> [--cikonly] [--pretty]''',
+    
+    'create-dataport': '''Create a dataport.\n\nUsage:
+    exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]''',
+    'create-client': '''Create a client.\n\nUsage:
+    exo [options] create-client <cik> [--name=<name>]''',
+    'map': '''Add an alias to a resource.\n\nUsage:
+    exo [options] map <cik> <rid> <alias>''',
+    'unmap': '''Remove an alias from a resource.\n\nUsage:
+    exo [options] unmap <cik> <alias>''',
+    'lookup': '''Look up a resource's RID based on its alias or cik.\n\nUsage:
+    exo [options] lookup <cik> <alias>
+    exo [options] lookup <cik> --cik=<cik-to-find>''',
+    'drop': '''Drop (permanently delete) a resource.\n\nUsage:
+    exo [options] drop <cik> <rid> ...''',
+    'flush': '''Remove all time series data from a resource.\n\nUsage:
+    exo [options] flush <cik> <rid>''',
+    'tree': '''Display a resource's descendents.\n\nUsage:
+    exo tree [--verbose] [--hide-keys] <cik>''',
+    'drop-all-children': '''Drop (delete permanently) all children of a resource.\n\nUsage:
+    exo [options] drop-all-children <cik>''',
+    'script': '''Upload a Lua script\n\nUsage:
+    exo [options] script <script-file> <cik> [--name=<name>]'''
+}
+
+for k in cmd_doc:
+    cmd_doc[k] += '''
+
+Options:
+    -h --help            Show this screen.'''
 
 class ExoException(Exception):
     pass
@@ -90,14 +141,9 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def write(self, cik, rid, values):
-        for v in values:
-            self.exo.write(cik, rid, v, {}, defer=True)
-
-        if self.exo.has_deferred(cik):
-            responses = self.exo.send_deferred(cik)
-            for call, isok, response in responses:
-                self._raise_for_response(isok, response)
+    def write(self, cik, rid, value):
+        isok, response = self.exo.write(cik, rid, value, {})
+        self._raise_for_response(isok, response)
 
     def record(self, cik, rid, entries):
         isok, response = self.exo.record(cik, rid, entries, {})
@@ -395,14 +441,30 @@ class ExoRPC():
 def plain_print(arg):
     print(arg)
 
-def handle_args(args):
+def handle_args(cmd, args):
     er = ExoRPC(host=args['--host'])
     cik = args['<cik>']
-    if args['--pretty']:
+    # support passing aliases
+    def rid_or_alias(rid):
+        if re.match("[0-9a-zA-Z]{40}", rid) is None:
+            return {"alias": rid}
+        else:
+            return rid
+
+    rids = []
+    if args.has_key('<rid>'):
+        if type(args['<rid>']) is list:
+            for rid in args['<rid>']:
+                rids.append(rid_or_alias(rid))
+        else:
+            rids.append(rid_or_alias(args['<rid>']))
+
+    if args.get('--pretty', False):
         pr = pprint
     else:
         pr = plain_print
-    if args['read']:
+
+    if cmd == 'read':
         rid = rids[0]
         limit = args['--limit']
         limit = 1 if limit is None else int(limit)
@@ -447,105 +509,111 @@ def handle_args(args):
                                 sort='desc',
                                 limit=limit):
                 printline(t, v)
-    elif args['write']:
-        tvalues = args['--value']
-        er.write(cik, rids[0], tvalues)
-    elif args['record']:
-        entries = []
-        # split timestamp, value
-        if args['-']:
-            tvalues = sys.stdin.readlines()
-        else:
-            tvalues = args['--value']
-            
-        reentry = re.compile('(-?\d+),(.*)')
-        has_errors = False
-        for tv in tvalues:
-            match = reentry.match(tv)    
-            if match is None:
-                sys.stderr.write('Line not in <timestamp>,<value> format: {}'.format(tv))
-                has_errors = True
+    elif cmd == 'write':
+        er.write(cik, rids[0], args['--value'])
+    elif cmd == 'record':
+        interval = args['--interval']
+        if interval is not None:
+            entries = []
+            # split timestamp, value
+            if args['-']:
+                tvalues = sys.stdin.readlines()
             else:
-                g = match.groups()
-                entries.append([int(g[0]), g[1]])
-        if has_errors or len(entries) == 0:
-            raise ExoException("Problems with input.")
+                tvalues = args['--value']
+                
+            reentry = re.compile('(-?\d+),(.*)')
+            has_errors = False
+            for tv in tvalues:
+                match = reentry.match(tv)    
+                if match is None:
+                    sys.stderr.write('Line not in <timestamp>,<value> format: {}'.format(tv))
+                    has_errors = True
+                else:
+                    g = match.groups()
+                    entries.append([int(g[0]), g[1]])
+            if has_errors or len(entries) == 0:
+                raise ExoException("Problems with input.")
+            else:
+                er.record(cik, rids[0], entries)
         else:
-            er.record(cik, rids[0], entries)
-    elif args['create']:
+            # split timestamp, value
+            if args['-']:
+                values = [v.strip() for v in sys.stdin.readlines()]
+            else:
+                values = args['--value']
+            er.record_backdate(cik, rids[0], int(interval), values)
+
+
+    elif cmd == 'create':
         s = sys.stdin.read()
         try:
             desc = json.loads(s)
         except Exception as ex:
             raise ExoException(ex)
-        pr(er.create(cik, type=args['--type'][0], desc=desc))
-    elif args['create-dataport']:
+        pr(er.create(cik, type=args['--type'], desc=desc))
+    elif cmd == 'create-dataport':
         pr(er.create_dataport(cik, args['--format'], name=args['--name']))
-    elif args['create-client']:
+    elif cmd == 'create-client':
         pr(er.create_client(cik, name=args['--name']))
-    elif args['map']:
+    elif cmd == 'map':
         er.map(cik, rids[0], args['<alias>'])
-    elif args['unmap']:
+    elif cmd == 'unmap':
         er.unmap(cik, args['<alias>'])
-    elif args['lookup']:
-        pr(er.lookup(cik, args['<alias>']))
-    elif args['drop']:
+    elif cmd == 'lookup':
+        # look up by cik or alias
+        if args['--cik'] is not None:
+            rid = er.lookup_rid(cik, args['--cik'])
+            if rid is not None:
+                pr(rid)
+        else:
+            pr(er.lookup(cik, args['<alias>']))
+    elif cmd == 'drop':
         er.drop(cik, rids)
-    elif args['listing']:
+    elif cmd == 'listing':
         types = args['--type']
         listing = er.listing(cik, types)
         if args['--plain'] == True:
-            if len(types) != 1:
-                raise ExoException("--plain not valid with more than one type")
-            for cik in listing[0]:
-                print(cik)
+            for l in listing:
+                for cik in listing[0]:
+                    print(cik)
         else:
             pr(listing)
-    elif args['info']:
+    elif cmd == 'info':
         info = er.info(cik, rids[0], cikonly=args['--cikonly'])
         if args['--pretty']:
             pr(info)
         else:
             # output json
             pr(json.dumps(info))
-    elif args['flush']:
+    elif cmd == 'flush':
         er.flush(cik, rids)
     # special commands
-    elif args['tree']:
+    elif cmd == 'tree':
         er.tree(cik, cli_args=args)
-    elif args['lookup-rid']:
-        rid = er.lookup_rid(cik, args['<cik-to-find>'])
-        if rid is not None:
-            pr(rid)
-    elif args['drop-all-children']:
+    elif cmd == 'drop-all-children':
         er.drop_all_children(cik)
-    elif args['upload']:
+    elif cmd == 'upload':
         er.upload(cik, args['<script-file>'], args['--name'])
-    elif args['record-backdate']:
-        # split timestamp, value
-        if args['-']:
-            values = [v.strip() for v in sys.stdin.readlines()]
-        else:
-            values = args['--value']
-        er.record_backdate(cik, rids[0], int(args['--interval']), values)
-
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version="Exosite RPC API Command Line {}".format(__version__))
+
+    args = docopt(__doc__, version="Exosite RPC API Command Line {}".format(__version__), options_first=True)
+
+    # get command args
+    cmd = args['<command>']
+    argv = [cmd] + args['<args>']
+    args_cmd = docopt(cmd_doc[cmd], argv=argv)
+
+    # merge command-specific arguments into general arguments
+    args.update(args_cmd)
+
+    #args = docopt(__doc__, version="Exosite RPC API Command Line {}".format(__version__))
     # substitute environment variables
     if args['--host'] is None:
         args['--host'] = os.environ.get('EXO_HOST', DEFAULT_HOST)
 
-    # support passing aliases
-    rids = []
-    for rid in args['<rid>']:
-        if re.match("[0-9a-zA-Z]{40}", rid) is None:
-            rids.append({"alias": rid})
-        else:
-            rids.append(rid)
-
     try:
-        handle_args(args)
+        handle_args(cmd, args)
     except ExoException as ex:
         # command line tool threw an exception on purpose
         sys.stderr.write("Command line error: {}\r\n".format(ex))

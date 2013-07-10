@@ -63,6 +63,7 @@ class TestRPC(TestCase):
         r = self.env.run(
             '{} info {} {}'.format(
             self.prg, res.parentcik, rid))
+        print('"' + r.stdout + '"')
         info = json.loads(r.stdout.strip())
         res.created(rid, info) 
         print("Created {}, rid: {}".format(res.type, res.rid))

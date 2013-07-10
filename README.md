@@ -149,6 +149,6 @@ TODO
 
 - Add support for update command 
 - Add --watch flag to script upload
-- Add command-level help (e.g. exo help tree)
 - Support binary datasource format
 - Add code coverage to tests
+- Combine drop and drop-all-children

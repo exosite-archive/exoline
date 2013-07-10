@@ -1,6 +1,14 @@
 History
 =======
 
+0.0.18 (2013-7-10)
+------------------
+
+- Help for individual commands, git style
+- Fixed regression in 0.0.17 affecting all commands taking <rid>
+- record-backdate is now record with --interval
+
+
 0.0.17 (2013-7-09)
 ------------------
 
