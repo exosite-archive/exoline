@@ -13,13 +13,13 @@ setup(
     author = 'Dan Weaver',
     author_email = 'danweaver@exosite.com',
     description = 'Command line interface for Exosite platform.',
-    long_description = open('README.md').read() + '\n\n' + 
+    long_description = open('README.md').read() + '\n\n' +
                       open('HISTORY.md').read(),
     packages=['exoline'],
     package_dir={'exoline': 'exoline'},
     scripts=['bin/exo', 'bin/exoline', 'bin/exodata'],
     keywords=['exosite', 'onep', 'one platform', 'm2m'],
-    dependency_links=['https://github.com/dweaver/pyonep/tarball/master#egg=onepv1lib-0.3'],
+    dependency_links=['https://github.com/dweaver/pyonep/tarball/master#egg=onepv1lib-0.4'],
     install_requires=required,
     zip_safe=False,
     )

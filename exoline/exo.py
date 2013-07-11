@@ -239,7 +239,7 @@ class ExoRPC():
         isok, response = self.exo.info(cik, rid, options)
         self._raise_for_response(isok, response)
         if cikonly:
-            if not response.has_key('key'):
+            if not 'key' in response:
                 raise ExoException('{} has no CIK'.format(rid))
             return response['key']
         else:
@@ -284,17 +284,17 @@ class ExoRPC():
 
         opt = OrderedDict()
         def add_opt(o, label, value):
-            if o is True or (cli_args.has_key(o) and cli_args[o] == True):
+            if o is True or (o in cli_args and cli_args[o] is True):
                 opt[label] = value
         add_opt(True, 'type', typ)
-        if info['description'].has_key('format'):
+        if 'format' in info['description']:
             add_opt(True, 'format', info['description']['format'])
         add_opt(True, 'name', name)
         add_opt(True, 'aliases', 'none' if len(aliases) == 0 else ', '.join(aliases))
         add_opt('--verbose', 'unit', units)
         if typ == 'client':
             add_opt('--verbose', 'rid', self._disp_key(cli_args, rid))
-        if info.has_key('storage') and info['storage'].has_key('count'):
+        if 'storage' in info and 'count' in info['storage']:
             add_opt(True, 'count', info['storage']['count'])
 
         print(u'{}{} {}'.format(
@@ -457,7 +457,7 @@ def handle_args(cmd, args):
             return rid
 
     rids = []
-    if args.has_key('<rid>'):
+    if '<rid>' in args:
         if type(args['<rid>']) is list:
             for rid in args['<rid>']:
                 rids.append(rid_or_alias(rid))
@@ -601,17 +601,21 @@ def handle_args(cmd, args):
 
 if __name__ == '__main__':
 
-    args = docopt(__doc__, version="Exosite RPC API Command Line {}".format(__version__), options_first=True)
+    args = docopt(__doc__,
+                  version="Exosite RPC API Command Line {}".format(__version__), options_first=True)
 
     # get command args
     cmd = args['<command>']
     argv = [cmd] + args['<args>']
-    args_cmd = docopt(cmd_doc[cmd], argv=argv)
+    if cmd in cmd_doc:
+        args_cmd = docopt(cmd_doc[cmd], argv=argv)
+    else:
+        print('Unknown command {}. Try "exo --help"'.format(cmd))
+        sys.exit(1)
 
     # merge command-specific arguments into general arguments
     args.update(args_cmd)
 
-    #args = docopt(__doc__, version="Exosite RPC API Command Line {}".format(__version__))
     # substitute environment variables
     if args['--host'] is None:
         args['--host'] = os.environ.get('EXO_HOST', DEFAULT_HOST)

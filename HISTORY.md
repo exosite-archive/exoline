@@ -1,6 +1,11 @@
 History
 =======
 
+0.0.22 (2013-7-11)
+------------------
+
+- Bumped up version requirement for pyonep
+
 0.0.21 (2013-7-11)
 ------------------
 
