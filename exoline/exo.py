@@ -7,7 +7,7 @@
 Usage:
   exo [options] <command> [<args> ...]
 
-Commands: 
+Commands:
   read
   write
   record
@@ -29,6 +29,7 @@ Commands:
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
   --httptimeout=<sec>  HTTP timeout setting.
+  --debug              Show info like stack traces
   -h --help            Show this screen.
   -v --version         Show version.
 
@@ -72,7 +73,7 @@ cmd_doc = {
     exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ... [--plain] [--pretty]''',
     'info': '''Get info for a resource in json format.\n\nUsage:
     exo [options] info <cik> <rid> [--cikonly] [--pretty]''',
-    
+
     'create-dataport': '''Create a dataport.\n\nUsage:
     exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]''',
     'create-client': '''Create a client.\n\nUsage:
@@ -110,11 +111,11 @@ class RPCException(Exception):
 
 class ExoRPC():
     '''Wrapper for onepv1lib RPC API. Raises exceptions on error and provides some reasonable defaults.'''
-    def __init__(self, 
-            host='http://' + DEFAULT_HOST, 
-            httptimeout=60, 
+    def __init__(self,
+            host='http://' + DEFAULT_HOST,
+            httptimeout=60,
             verbose=True):
-        self.exo = onep.OnepV1(host=host, httptimeout=httptimeout)       
+        self.exo = onep.OnepV1(host=host, httptimeout=httptimeout)
 
     def _raise_for_response(self, isok, response):
         if not isok:
@@ -190,7 +191,7 @@ class ExoRPC():
         isok, response = self.exo.map(cik, rid, alias)
         self._raise_for_response(isok, response)
         return response
-    
+
     def unmap(self, cik, alias):
         isok, response = self.exo.unmap(cik, alias)
         self._raise_for_response(isok, response)
@@ -208,8 +209,8 @@ class ExoRPC():
 
     def listing_with_info(self, cik, types):
         listing = self.listing(cik, types)
-        # listing is a list of lists per type, like: [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']] 
-        
+        # listing is a list of lists per type, like: [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']]
+
         # build up a deferred request per element in each sublist
         for type_list in listing:
             for rid in type_list:
@@ -220,13 +221,13 @@ class ExoRPC():
             for call, isok, response in responses:
                 self._raise_for_response(isok, response)
 
-        # From the return values make a list of dicts like this: 
-        # [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}] 
+        # From the return values make a list of dicts like this:
+        # [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
         # use ordered dicts in case someone cares about order in the output (?)
         response_index = 0
         listing_with_info = []
         for type_list in listing:
-            type_response = OrderedDict() 
+            type_response = OrderedDict()
             for rid in type_list:
                 type_response[rid] = responses[response_index][2]
                 response_index += 1
@@ -240,7 +241,7 @@ class ExoRPC():
         if cikonly:
             if not response.has_key('key'):
                 raise ExoException('{} has no CIK'.format(rid))
-            return response['key'] 
+            return response['key']
         else:
             return response
 
@@ -257,7 +258,7 @@ class ExoRPC():
         if cli_args['--hide-keys']:
             # number of digits to show
             num = 10
-            return k[:num] + '?' * len(k[num:])  
+            return k[:num] + '?' * len(k[num:])
         else:
             return k
 
@@ -275,7 +276,7 @@ class ExoRPC():
             units = 'none'
 
         # Sometimes aliases is a dict, sometimes a list. TODO: Why?
-        # Translate it into a list. 
+        # Translate it into a list.
         if type(aliases) is dict:
             aliases = aliases.get(rid, [])
         elif aliases is None:
@@ -295,14 +296,14 @@ class ExoRPC():
             add_opt('--verbose', 'rid', self._disp_key(cli_args, rid))
         if info.has_key('storage') and info['storage'].has_key('count'):
             add_opt(True, 'count', info['storage']['count'])
-        
+
         print(u'{}{} {}'.format(
             spacer,
             id,
             u'' if len(opt) == 0 else u'({})'.format(u', '.join(
                 [u'{}: {}'.format(k, v) for k, v in opt.iteritems()]))))
 
-    def tree(self, cik, aliases=None, cli_args={}, spacer=u''): 
+    def tree(self, cik, aliases=None, cli_args={}, spacer=u''):
         '''Print a tree of entities in OneP'''
         # print root node
         isroot = len(spacer) == 0
@@ -310,34 +311,38 @@ class ExoRPC():
             print(self._disp_key(cli_args, cik))
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
-        listing = self.listing_with_info(cik, types=types)
-        # previously: [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']] 
-        # now: [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}] 
+        try:
+            listing = self.listing_with_info(cik, types=types)
+            # listing(): [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']]
+            # listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
+            #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
+        except onep_exceptions.OnePlatformException:
+            print(spacer + u"  └─listing for {} failed. Is info['basic']['status'] == 'expired'?".format(cik))
+        else:
+            # print everything
+            for t_idx, t in enumerate(types):
+                typelisting = listing[t_idx]
+                islast_nonempty_type = (t_idx == len(types) - 1) or (all(len(x) == 0 for x in listing[t_idx + 1:]))
+                for rid_idx, rid in enumerate(typelisting):
+                    info = typelisting[rid]
+                    islastoftype = rid_idx == len(typelisting) - 1
+                    islast = islast_nonempty_type and islastoftype
+                    if islast:
+                        child_spacer = spacer + u'    '
+                        own_spacer   = spacer + u'  └─'
+                    else:
+                        child_spacer = spacer + u'  │ '
+                        own_spacer   = spacer + u'  ├─'
 
-        # print everything
-        for t_idx, t in enumerate(types):
-            typelisting = listing[t_idx]
-            islast_nonempty_type = (t_idx == len(types) - 1) or (all(len(x) == 0 for x in listing[t_idx + 1:]))
-            for rid_idx, rid in enumerate(typelisting):
-                info = typelisting[rid]
-                islastoftype = rid_idx == len(typelisting) - 1
-                islast = islast_nonempty_type and islastoftype
-                if islast:
-                    child_spacer = spacer + u'    '
-                    own_spacer   = spacer + u'  └─' 
-                else:
-                    child_spacer = spacer + u'  │ '
-                    own_spacer   = spacer + u'  ├─'
+                    if t == 'client':
+                        next_cik = info['key']
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
+                        self.tree(next_cik, info['aliases'], cli_args, child_spacer)
+                    else:
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
 
-                if t == 'client':
-                    next_cik = info['key']
-                    self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
-                    self.tree(next_cik, info['aliases'], cli_args, child_spacer)
-                else:
-                    self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
-                   
     def drop_all_children(self, cik):
-        isok, listing = self.exo.listing(cik, 
+        isok, listing = self.exo.listing(cik,
             types=['client', 'dataport', 'datarule', 'dispatch'])
         self._raise_for_response(isok, listing)
 
@@ -345,9 +350,9 @@ class ExoRPC():
             self.drop(cik, l)
 
     def _lookup_rid_by_name(self, cik, name, types=['datarule']):
-        '''Look up RID by name. We use name rather than alias to identify 
-        scripts created in Portals, which only shows names, not aliases. 
-        Note that if multiple scripts have the same name, the first one 
+        '''Look up RID by name. We use name rather than alias to identify
+        scripts created in Portals, which only shows names, not aliases.
+        Note that if multiple scripts have the same name, the first one
         in the listing is returned.'''
         found_rid = None
         listing = self.listing_with_info(cik, types)
@@ -365,12 +370,12 @@ class ExoRPC():
             'name': name,
             'preprocess': [],
             'rule': {
-                'script': text 
+                'script': text
             },
             'visibility': 'parent',
             'retention': {
                 'count': 'infinity',
-                'duration': 'infinity' 
+                'duration': 'infinity'
             }
         }
 
@@ -393,7 +398,7 @@ class ExoRPC():
             else:
                 raise ExoException("Error updating datarule.")
 
-            
+
     def upload(self, cik, filename, name=None):
         try:
             f = open(filename)
@@ -403,10 +408,10 @@ class ExoRPC():
             with f:
                 text = f.read().strip()
                 if name is None:
-                    # if no name is specified, use the file name as a name 
+                    # if no name is specified, use the file name as a name
                     name = os.path.basename(filename)
-                rid = self._lookup_rid_by_name(cik, name) 
-                self._upload_script(cik, name, text, rid) 
+                rid = self._lookup_rid_by_name(cik, name)
+                self._upload_script(cik, name, text, rid)
 
 
     def lookup_rid(self, cik, cik_to_find):
@@ -427,9 +432,9 @@ class ExoRPC():
 
     def record_backdate(self, cik, rid, interval_seconds, values):
         '''Record a list of values and record them as if they happened in the past
-        interval_seconds apart. For example, if values ['a', 'b', 'c'] are passed in 
+        interval_seconds apart. For example, if values ['a', 'b', 'c'] are passed in
         with interval 10, they're recorded as [[0, 'c'], [-10, 'b'], [-20, 'a']]'''
-        timestamp = -interval_seconds 
+        timestamp = -interval_seconds
         tvalues = []
         values.reverse()
         for v in values:
@@ -437,7 +442,7 @@ class ExoRPC():
             timestamp -= interval_seconds
         return self.record(cik, rid, tvalues)
 
-       
+
 def plain_print(arg):
     print(arg)
 
@@ -472,37 +477,34 @@ def handle_args(cmd, args):
         def printline(timestamp, val):
             dt = datetime.fromtimestamp(timestamp)
             dr.writerow({'timestamp': str(dt), 'value': val})
-        sleep_seconds = 2 
+        sleep_seconds = 2
         if args['--follow']:
-            try:
-                results = []
-                while len(results) == 0:
-                    results = er.read(cik, 
-                                      rid, 
-                                      limit=1,
-                                      sort='desc')
-                    if len(results) > 0:
-                        last_t, last_v = results[0]
-                        printline(last_t, last_v)
-                    else:
-                        time.sleep(sleep_seconds)
-
-
-                while True:
-                    results = er.read(cik, 
-                                      rid,
-                                      limit=10000,
-                                      starttime=last_t + 1)
-
-                    for t, v in results:
-                        printline(t, v)
-
-                    if len(results) > 0:
-                        last_t, last_v = results[-1]
-
+            results = []
+            while len(results) == 0:
+                results = er.read(cik,
+                                    rid,
+                                    limit=1,
+                                    sort='desc')
+                if len(results) > 0:
+                    last_t, last_v = results[0]
+                    printline(last_t, last_v)
+                else:
                     time.sleep(sleep_seconds)
-            except KeyboardInterrupt:
-                pass
+
+
+            while True:
+                results = er.read(cik,
+                                    rid,
+                                    limit=10000,
+                                    starttime=last_t + 1)
+
+                for t, v in results:
+                    printline(t, v)
+
+                if len(results) > 0:
+                    last_t, last_v = results[-1]
+
+                time.sleep(sleep_seconds)
         else:
             for t, v in er.read(cik,
                                 rid,
@@ -520,11 +522,11 @@ def handle_args(cmd, args):
                 tvalues = sys.stdin.readlines()
             else:
                 tvalues = args['--value']
-                
+
             reentry = re.compile('(-?\d+),(.*)')
             has_errors = False
             for tv in tvalues:
-                match = reentry.match(tv)    
+                match = reentry.match(tv)
                 if match is None:
                     sys.stderr.write('Line not in <timestamp>,<value> format: {}'.format(tv))
                     has_errors = True
@@ -621,10 +623,13 @@ if __name__ == '__main__':
         sys.stderr.write("Command line error: {}\r\n".format(ex))
         sys.exit(1)
     except RPCException as ex:
-        # pyonep library call signaled an error in return values 
+        # pyonep library call signaled an error in return values
         sys.stderr.write("One Platform error: {}\r\n".format(ex))
         sys.exit(1)
     except onep_exceptions.OnePlatformException as ex:
         # pyonep library call threw an exception on purpose
         sys.stderr.write("One Platform exception: {}\r\n".format(ex))
         sys.exit(1)
+    except KeyboardInterrupt:
+        if args['--debug']:
+            raise

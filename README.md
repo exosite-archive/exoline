@@ -90,12 +90,13 @@ Here are some examples of common tasks with Exoline.
 ```
 
 
-
 TODO
 ----
 
+- add support in read for multiple rids
+- Make the info command take multiple rids (or stdin)
 - Add support for update command 
-- Add --watch flag to script upload
+- Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
 - Add code coverage to tests
 - Combine drop and drop-all-children

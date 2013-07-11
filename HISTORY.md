@@ -1,6 +1,12 @@
 History
 =======
 
+0.0.21 (2013-7-11)
+------------------
+
+- Fixed tree output for devices with expired status
+- Hide KeyboardInterrupt exception except when --debug set
+
 0.0.20 (2013-7-10)
 ------------------
 
