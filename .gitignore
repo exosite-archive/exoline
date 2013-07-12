@@ -40,3 +40,6 @@ ve
 # test
 testconfig.py
 tmp
+
+# Vim
+.*.sw?
