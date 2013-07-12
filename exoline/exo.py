@@ -143,7 +143,8 @@ class ExoRPC():
             httptimeout=60,
             https=False,
             verbose=True):
-        self.exo = onep.OnepV1(host=host, httptimeout=httptimeout, https=https)
+        port = {False: '80', True: '443'}[https]
+        self.exo = onep.OnepV1(host=host, httptimeout=httptimeout, https=https, port=port)
 
     def _raise_for_response(self, isok, response):
         if not isok:
