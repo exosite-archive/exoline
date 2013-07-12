@@ -57,7 +57,13 @@ from exoline import __version__
 DEFAULT_HOST='m2.exosite.com'
 cmd_doc = {
     'read': '''Read data from a resource.\n\nUsage:
-    exo [options] read <cik> [<rid>] [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow]''',
+    exo [options] read <cik> [<rid>]
+
+Options:
+    --follow          continue reading
+    --limit=<limit>   limit to [default: 1]
+    --selection=all|autowindow|givenwindow  how to filter results [default: all]
+    --format=raw|csv output format [default: csv]''',
     'write': '''Write data at the current time.\n\nUsage:
     exo [options] write <cik> [<rid>] --value=<value>''',
     'record': '''Write data at a specified time.\n\nUsage:
@@ -519,10 +525,15 @@ def handle_args(cmd, args):
         limit = args['--limit']
         limit = 1 if limit is None else int(limit)
         dr = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
+        fmt = args['--format']
 
         def printline(timestamp, val):
-            dt = datetime.fromtimestamp(timestamp)
-            dr.writerow({'timestamp': str(dt), 'value': val})
+            if fmt == 'raw':
+                print(val)
+            else:
+                dt = datetime.fromtimestamp(timestamp)
+                dr.writerow({'timestamp': str(dt), 'value': val})
+
         sleep_seconds = 2
         if args['--follow']:
             results = []
