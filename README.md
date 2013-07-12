@@ -93,8 +93,13 @@ Here are some examples of common tasks with Exoline.
 TODO
 ----
 
+- add sparklines output
+- add support for exporting datapoint intervals over a time range
+- add support for /provision/register to get vendor info from CIK
 - add support in read for multiple rids
+- add sparkchart instructions in readme
 - Make the info command take multiple rids (or stdin)
+- Make the script command take multiple rids (or stdin)
 - Add support for update command 
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format

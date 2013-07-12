@@ -14,6 +14,7 @@ Commands:
   create
   create-dataport
   create-client
+  update
   map
   unmap
   lookup
@@ -56,12 +57,12 @@ from exoline import __version__
 DEFAULT_HOST='m2.exosite.com'
 cmd_doc = {
     'read': '''Read data from a resource.\n\nUsage:
-    exo [options] read <cik> <rid> [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow]''',
+    exo [options] read <cik> [<rid>] [--follow] [--limit=<limit>] [--selection=all|autowindow|givenwindow]''',
     'write': '''Write data at the current time.\n\nUsage:
-    exo [options] write <cik> <rid> --value=<value>''',
+    exo [options] write <cik> [<rid>] --value=<value>''',
     'record': '''Write data at a specified time.\n\nUsage:
-    exo [options] record <cik> <rid> ((--value=<timestamp,value> ...) | -)
-    exo [options] record <cik> <rid> --interval=<seconds> ((--value=<value> ...) | -)
+    exo [options] record <cik> [<rid>] ((--value=<timestamp,value> ...) | -)
+    exo [options] record <cik> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
 
     Pass - to read data from stdin.
     Pass --interval to generate timestamps at a regular interval from now.
@@ -72,12 +73,31 @@ cmd_doc = {
     'listing': '''List a client's children based on their type.\n\nUsage:
     exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ... [--plain] [--pretty]''',
     'info': '''Get info for a resource in json format.\n\nUsage:
-    exo [options] info <cik> <rid> [--cikonly] [--pretty]''',
-
+    exo [options] info <cik> [<rid>] [--cikonly] [--pretty]''',
     'create-dataport': '''Create a dataport.\n\nUsage:
     exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]''',
     'create-client': '''Create a client.\n\nUsage:
     exo [options] create-client <cik> [--name=<name>]''',
+    'update': '''Update a resource from a json description passed on stdin.\n\nUsage:
+    exo [options] update <cik> [<rid>] -
+
+Restrictions:
+
+Client Description
+    Resource limits must not be lowered below current use level. Resources must be
+    dropped prior to lowering the limits. For daily limits, those may be lowered at
+    any point and take immediate affect.
+
+Dataport Description
+    Format must not be changed.
+
+Datarule Descriptions
+    Format must not be changed.
+
+Dispatch Description
+    If the recipient or method is changed, and the recipient/method combination has
+    never been used before, then further dispatches will be halted until a
+    Validation Request is sent and validated.''',
     'map': '''Add an alias to a resource.\n\nUsage:
     exo [options] map <cik> <rid> <alias>''',
     'unmap': '''Remove an alias from a resource.\n\nUsage:
@@ -89,7 +109,7 @@ cmd_doc = {
     exo [options] drop <cik> <rid> ...''',
     'flush': '''Remove all time series data from a resource.\n\nUsage:
     exo [options] flush <cik> <rid>''',
-    'tree': '''Display a resource's descendents.\n\nUsage:
+    'tree': '''Display a resource's descendants.\n\nUsage:
     exo tree [--verbose] [--hide-keys] <cik>''',
     'drop-all-children': '''Drop (delete permanently) all children of a resource.\n\nUsage:
     exo [options] drop-all-children <cik>''',
@@ -152,6 +172,11 @@ class ExoRPC():
 
     def create(self, cik, type, desc):
         isok, response = self.exo.create(cik, type, desc)
+        self._raise_for_response(isok, response)
+        return response
+
+    def update(self, cik, rid, desc):
+        isok, response = self.exo.create(cik, rid, desc)
         self._raise_for_response(isok, response)
         return response
 
@@ -264,7 +289,10 @@ class ExoRPC():
 
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast):
         typ = info['basic']['type']
-        id = 'cik: ' + self._disp_key(cli_args, info['key']) if typ=='client' else 'rid: ' + self._disp_key(cli_args, rid)
+        if typ == 'client':
+            id = 'cik: ' + self._disp_key(cli_args, info['key'])
+        else:
+            id = 'rid: ' + self._disp_key(cli_args, rid)
         name = info['description']['name']
         try:
             # Units are a portals only thing
@@ -283,6 +311,7 @@ class ExoRPC():
             aliases = []
 
         opt = OrderedDict()
+
         def add_opt(o, label, value):
             if o is True or (o in cli_args and cli_args[o] is True):
                 opt[label] = value
@@ -290,7 +319,7 @@ class ExoRPC():
         if 'format' in info['description']:
             add_opt(True, 'format', info['description']['format'])
         add_opt(True, 'name', name)
-        add_opt(True, 'aliases', 'none' if len(aliases) == 0 else ', '.join(aliases))
+        add_opt(True, 'aliases', str(aliases))
         add_opt('--verbose', 'unit', units)
         if typ == 'client':
             add_opt('--verbose', 'rid', self._disp_key(cli_args, rid))
@@ -308,7 +337,20 @@ class ExoRPC():
         # print root node
         isroot = len(spacer) == 0
         if isroot:
-            print(self._disp_key(cli_args, cik))
+            # todo: combine these (maybe also the listing_with_info function
+            # below?)
+            rid = self.lookup(cik, "")
+            info = self.info(cik, {"alias": ""})
+            # info doesn't contain key
+            info['key'] = cik
+            root_aliases = '(see parent)'
+            # todo: can I get aliases for cik? For now, pass []
+            self._print_node(rid,
+                             info,
+                             root_aliases,
+                             cli_args,
+                             spacer,
+                             islast=True)
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
         try:
@@ -398,11 +440,10 @@ class ExoRPC():
             else:
                 raise ExoException("Error updating datarule.")
 
-
     def upload(self, cik, filename, name=None):
         try:
             f = open(filename)
-        except IOError as ex:
+        except IOError:
             raise ExoException('Error opening file.')
         else:
             with f:
@@ -412,7 +453,6 @@ class ExoRPC():
                     name = os.path.basename(filename)
                 rid = self._lookup_rid_by_name(cik, name)
                 self._upload_script(cik, name, text, rid)
-
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'])
@@ -449,8 +489,10 @@ def plain_print(arg):
 def handle_args(cmd, args):
     er = ExoRPC(host=args['--host'])
     cik = args['<cik>']
-    # support passing aliases
+
     def rid_or_alias(rid):
+        '''Translate what was passed for <rid> to an alias object if
+           it doesn't look like a RID.'''
         if re.match("[0-9a-zA-Z]{40}", rid) is None:
             return {"alias": rid}
         else:
@@ -462,7 +504,10 @@ def handle_args(cmd, args):
             for rid in args['<rid>']:
                 rids.append(rid_or_alias(rid))
         else:
-            rids.append(rid_or_alias(args['<rid>']))
+            if args['<rid>'] is None:
+                rids.append({"alias": ""})
+            else:
+                rids.append(rid_or_alias(args['<rid>']))
 
     if args.get('--pretty', False):
         pr = pprint
@@ -474,6 +519,7 @@ def handle_args(cmd, args):
         limit = args['--limit']
         limit = 1 if limit is None else int(limit)
         dr = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
+
         def printline(timestamp, val):
             dt = datetime.fromtimestamp(timestamp)
             dr.writerow({'timestamp': str(dt), 'value': val})
@@ -482,21 +528,20 @@ def handle_args(cmd, args):
             results = []
             while len(results) == 0:
                 results = er.read(cik,
-                                    rid,
-                                    limit=1,
-                                    sort='desc')
+                                  rid,
+                                  limit=1,
+                                  sort='desc')
                 if len(results) > 0:
                     last_t, last_v = results[0]
                     printline(last_t, last_v)
                 else:
                     time.sleep(sleep_seconds)
 
-
             while True:
                 results = er.read(cik,
-                                    rid,
-                                    limit=10000,
-                                    starttime=last_t + 1)
+                                  rid,
+                                  limit=10000,
+                                  starttime=last_t + 1)
 
                 for t, v in results:
                     printline(t, v)
@@ -528,7 +573,8 @@ def handle_args(cmd, args):
             for tv in tvalues:
                 match = reentry.match(tv)
                 if match is None:
-                    sys.stderr.write('Line not in <timestamp>,<value> format: {}'.format(tv))
+                    sys.stderr.write(
+                        'Line not in <timestamp>,<value> format: {}'.format(tv))
                     has_errors = True
                 else:
                     g = match.groups()
@@ -553,6 +599,13 @@ def handle_args(cmd, args):
         except Exception as ex:
             raise ExoException(ex)
         pr(er.create(cik, type=args['--type'], desc=desc))
+    elif cmd == 'update':
+        s = sys.stdin.read()
+        try:
+            desc = json.loads(s)
+        except Exception as ex:
+            raise ExoException(ex)
+        pr(er.update(cik, rids[0], desc=desc))
     elif cmd == 'create-dataport':
         pr(er.create_dataport(cik, args['--format'], name=args['--name']))
     elif cmd == 'create-client':

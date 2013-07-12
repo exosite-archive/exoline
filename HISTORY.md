@@ -1,6 +1,12 @@
 History
 =======
 
+0.0.23 (2013-7-12)
+------------------
+
+- Made <rid> optional for all commands
+- Added root node detail output to tree
+
 0.0.22 (2013-7-11)
 ------------------
 
