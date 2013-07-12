@@ -30,6 +30,7 @@ Commands:
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
   --httptimeout=<sec>  HTTP timeout setting.
+  --https              Enable HTTPS
   --debug              Show info like stack traces
   -h --help            Show this screen.
   -v --version         Show version.
@@ -140,8 +141,9 @@ class ExoRPC():
     def __init__(self,
             host='http://' + DEFAULT_HOST,
             httptimeout=60,
+            https=False,
             verbose=True):
-        self.exo = onep.OnepV1(host=host, httptimeout=httptimeout)
+        self.exo = onep.OnepV1(host=host, httptimeout=httptimeout, https=https)
 
     def _raise_for_response(self, isok, response):
         if not isok:
@@ -229,6 +231,7 @@ class ExoRPC():
         return response
 
     def lookup(self, cik, alias):
+        print(self.exo.lookup(cik, 'alias', alias))
         isok, response = self.exo.lookup(cik, 'alias', alias)
         self._raise_for_response(isok, response)
         return response
@@ -493,7 +496,7 @@ def plain_print(arg):
     print(arg)
 
 def handle_args(cmd, args):
-    er = ExoRPC(host=args['--host'])
+    er = ExoRPC(host=args['--host'], https=args['--https'])
     cik = args['<cik>']
 
     def rid_or_alias(rid):
