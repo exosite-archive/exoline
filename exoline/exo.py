@@ -57,7 +57,8 @@ from exoline import __version__
 
 DEFAULT_HOST='m2.exosite.com'
 cmd_doc = {
-    'read': '''Read data from a resource.\n\nUsage:
+    'read':
+        '''Read data from a resource.\n\nUsage:
     exo [options] read <cik> [<rid>]
 
 Options:
@@ -65,9 +66,11 @@ Options:
     --limit=<limit>   limit to [default: 1]
     --selection=all|autowindow|givenwindow  how to filter results [default: all]
     --format=raw|csv output format [default: csv]''',
-    'write': '''Write data at the current time.\n\nUsage:
+    'write':
+        '''Write data at the current time.\n\nUsage:
     exo [options] write <cik> [<rid>] --value=<value>''',
-    'record': '''Write data at a specified time.\n\nUsage:
+    'record':
+        '''Write data at a specified time.\n\nUsage:
     exo [options] record <cik> [<rid>] ((--value=<timestamp,value> ...) | -)
     exo [options] record <cik> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
 
@@ -75,17 +78,23 @@ Options:
     Pass --interval to generate timestamps at a regular interval from now.
     If --interval is positive, data will be placed in the future. If it's
     negative, data will be placed in the past.''',
-    'create': '''Create a resource from a json description passed on stdin.\n\nUsage:
+    'create':
+        '''Create a resource from a json description passed on stdin.\n\nUsage:
     exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -''',
-    'listing': '''List a client's children based on their type.\n\nUsage:
+    'listing':
+        '''List a client's children based on their type.\n\nUsage:
     exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ... [--plain] [--pretty]''',
-    'info': '''Get info for a resource in json format.\n\nUsage:
+    'info':
+        '''Get info for a resource in json format.\n\nUsage:
     exo [options] info <cik> [<rid>] [--cikonly] [--pretty]''',
-    'create-dataport': '''Create a dataport.\n\nUsage:
+    'create-dataport':
+        '''Create a dataport.\n\nUsage:
     exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]''',
-    'create-client': '''Create a client.\n\nUsage:
+    'create-client':
+        '''Create a client.\n\nUsage:
     exo [options] create-client <cik> [--name=<name>]''',
-    'update': '''Update a resource from a json description passed on stdin.\n\nUsage:
+    'update':
+        '''Update a resource from a json description passed on stdin.\n\nUsage:
     exo [options] update <cik> [<rid>] -
 
 Restrictions:
@@ -105,20 +114,27 @@ Dispatch Description
     If the recipient or method is changed, and the recipient/method combination has
     never been used before, then further dispatches will be halted until a
     Validation Request is sent and validated.''',
-    'map': '''Add an alias to a resource.\n\nUsage:
+    'map':
+        '''Add an alias to a resource.\n\nUsage:
     exo [options] map <cik> <rid> <alias>''',
-    'unmap': '''Remove an alias from a resource.\n\nUsage:
+    'unmap':
+        '''Remove an alias from a resource.\n\nUsage:
     exo [options] unmap <cik> <alias>''',
-    'lookup': '''Look up a resource's RID based on its alias or cik.\n\nUsage:
+    'lookup':
+        '''Look up a resource's RID based on its alias or cik.\n\nUsage:
     exo [options] lookup <cik> <alias>
     exo [options] lookup <cik> --cik=<cik-to-find>''',
-    'drop': '''Drop (permanently delete) a resource.\n\nUsage:
-    exo [options] drop <cik> <rid> ...''',
-    'flush': '''Remove all time series data from a resource.\n\nUsage:
-    exo [options] flush <cik> <rid>''',
-    'tree': '''Display a resource's descendants.\n\nUsage:
+    'drop':
+        '''Drop (permanently delete) a resource.\n\nUsage:
+    exo [options] drop <cik> [<rid> ...]''',
+    'flush':
+        '''Remove all time series data from a resource.\n\nUsage:
+    exo [options] flush <cik> [<rid>]''',
+    'tree':
+        '''Display a resource's descendants.\n\nUsage:
     exo tree [--verbose] [--hide-keys] <cik>''',
-    'drop-all-children': '''Drop (delete permanently) all children of a resource.\n\nUsage:
+    'drop-all-children':
+        '''Drop (delete permanently) all children of a resource.\n\nUsage:
     exo [options] drop-all-children <cik>''',
     'script': '''Upload a Lua script\n\nUsage:
     exo [options] script <script-file> <cik> [--name=<name>]'''
@@ -137,13 +153,18 @@ class RPCException(Exception):
     pass
 
 class ExoRPC():
-    '''Wrapper for onepv1lib RPC API. Raises exceptions on error and provides some reasonable defaults.'''
+    '''Wrapper for onepv1lib RPC API.
+    Raises exceptions on error and provides some reasonable defaults.'''
     def __init__(self,
-            host='http://' + DEFAULT_HOST,
+            host=DEFAULT_HOST,
             httptimeout=60,
             https=False,
             verbose=True):
-        self.exo = onep.OnepV1(host=host, httptimeout=httptimeout, https=https)
+        port = '443' if https else '80'
+        self.exo = onep.OnepV1(host=host,
+                               port=port,
+                               httptimeout=httptimeout,
+                               https=https)
 
     def _raise_for_response(self, isok, response):
         if not isok:
@@ -231,7 +252,6 @@ class ExoRPC():
         return response
 
     def lookup(self, cik, alias):
-        print(self.exo.lookup(cik, 'alias', alias))
         isok, response = self.exo.lookup(cik, 'alias', alias)
         self._raise_for_response(isok, response)
         return response
