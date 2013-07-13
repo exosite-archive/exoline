@@ -16,7 +16,6 @@ To install the latest released version of exoline:
 ```bash
 
     $ pip install --upgrade exoline
-
 ```
 
 Alternatively, install straight from github:
@@ -24,7 +23,6 @@ Alternatively, install straight from github:
 ```bash
 
     $ pip install -e git://github.com/dweaver/exoline#egg=exoline
-
 ```
 
 
@@ -51,7 +49,6 @@ To run the tests, install the packages in test/requirements.txt, and then type:
 
     $ cd test
     $ nosetests --verbose
-
 ```
 
 Examples
@@ -65,7 +62,6 @@ Here are some examples of common tasks with Exoline.
 
     $ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40d?????????     
     Updated script RID: 6c130838e14903f7e12d39b5e76c8e3?????????
-
 ```
 
 * Monitor output of a script
@@ -78,7 +74,6 @@ Here are some examples of common tasks with Exoline.
     line 23: Writing 4458.755987_-09317.538945"
     2013-07-09 12:15:41,"line 12: New 4458.755987,N,09317.538945,W
     line 23: Writing 4458.755987_-09317.538945"
-
 ```
 
 * Write raw data
@@ -86,13 +81,13 @@ Here are some examples of common tasks with Exoline.
 ```bash
 
     $ exo write e469e336ff9c8ed9176bc05ed7fa40d????????? gps-raw --value=4458.755987,N,09317.538945,W
-
 ```
 
 
 TODO
 ----
 
+- fix install issue with pyonep 0.5
 - add sparklines output
 - add support for exporting datapoint intervals over a time range
 - add support for /provision/register to get vendor info from CIK
