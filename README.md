@@ -98,5 +98,4 @@ TODO
 - Add support for update command 
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
-- Add code coverage to tests
 - Combine drop and drop-all-children

@@ -53,7 +53,10 @@ from collections import OrderedDict
 from docopt import docopt
 from onepv1lib import onep
 from onepv1lib import onep_exceptions
-from exoline import __version__
+try:
+    from ..exoline import __version__
+except:
+    from exoline import __version__
 
 DEFAULT_HOST='m2.exosite.com'
 cmd_doc = {
@@ -74,10 +77,8 @@ Options:
     exo [options] record <cik> [<rid>] ((--value=<timestamp,value> ...) | -)
     exo [options] record <cik> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
 
-    Pass - to read data from stdin.
-    Pass --interval to generate timestamps at a regular interval from now.
-    If --interval is positive, data will be placed in the future. If it's
-    negative, data will be placed in the past.''',
+    - reads data from stdin.
+    --interval generates timestamps at a regular interval into the past.''',
     'create':
         '''Create a resource from a json description passed on stdin.\n\nUsage:
     exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -''',
@@ -502,8 +503,10 @@ class ExoRPC():
     def record_backdate(self, cik, rid, interval_seconds, values):
         '''Record a list of values and record them as if they happened in the past
         interval_seconds apart. For example, if values ['a', 'b', 'c'] are passed in
-        with interval 10, they're recorded as [[0, 'c'], [-10, 'b'], [-20, 'a']]'''
+        with interval 10, they're recorded as [[0, 'c'], [-10, 'b'], [-20, 'a']].
+        interval_seconds must be positive.'''
         timestamp = -interval_seconds
+
         tvalues = []
         values.reverse()
         for v in values:
@@ -594,7 +597,7 @@ def handle_args(cmd, args):
         er.write(cik, rids[0], args['--value'])
     elif cmd == 'record':
         interval = args['--interval']
-        if interval is not None:
+        if interval is None:
             entries = []
             # split timestamp, value
             if args['-']:
@@ -623,9 +626,10 @@ def handle_args(cmd, args):
                 values = [v.strip() for v in sys.stdin.readlines()]
             else:
                 values = args['--value']
-            er.record_backdate(cik, rids[0], int(interval), values)
-
-
+            interval = int(interval)
+            if interval <= 0:
+                raise ExoException("--interval must be positive")
+            er.record_backdate(cik, rids[0], interval, values)
     elif cmd == 'create':
         s = sys.stdin.read()
         try:
@@ -686,10 +690,26 @@ def handle_args(cmd, args):
     else:
         raise ExoException("Command not handled")
 
-if __name__ == '__main__':
 
-    args = docopt(__doc__,
-                  version="Exosite RPC API Command Line {}".format(__version__), options_first=True)
+
+def cmd(argv=None, stdin=None, stdout=None, stderr=None):
+    '''Wrap the command line interface. Globally redirects args
+    and io so that the application can be tested externally.'''
+
+    # globally redirect args and io
+    if argv is not None:
+        sys.argv = argv
+    if stdin is not None:
+        sys.stdin = stdin
+    if stderr is not None:
+        sys.stderr = stderr
+    if stdout is not None:
+        sys.stdout = stdout
+
+    args = docopt(
+        __doc__,
+        version="Exosite RPC API Command Line {}".format(__version__),
+        options_first=True)
 
     # get command args
     cmd = args['<command>']
@@ -698,7 +718,7 @@ if __name__ == '__main__':
         args_cmd = docopt(cmd_doc[cmd], argv=argv)
     else:
         print('Unknown command {}. Try "exo --help"'.format(cmd))
-        sys.exit(1)
+        return 1
 
     # merge command-specific arguments into general arguments
     args.update(args_cmd)
@@ -712,15 +732,20 @@ if __name__ == '__main__':
     except ExoException as ex:
         # command line tool threw an exception on purpose
         sys.stderr.write("Command line error: {}\r\n".format(ex))
-        sys.exit(1)
+        return 1
     except RPCException as ex:
         # pyonep library call signaled an error in return values
         sys.stderr.write("One Platform error: {}\r\n".format(ex))
-        sys.exit(1)
+        return 1
     except onep_exceptions.OnePlatformException as ex:
         # pyonep library call threw an exception on purpose
         sys.stderr.write("One Platform exception: {}\r\n".format(ex))
-        sys.exit(1)
+        return 1
     except KeyboardInterrupt:
         if args['--debug']:
             raise
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(cmd(sys.argv))

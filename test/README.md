@@ -3,7 +3,6 @@ Exoline Tests
 
 Test exoline.
 
-
 Usage
 -----
 
@@ -11,6 +10,5 @@ First, copy testconfig.py.template to testconfig.py and set the 'portalcik' to t
 
 ```bash
 
-    $ nosetests
-
+    $ nosetests --verbose --with-coverage --cover-erase --cover-package=exoline
 ```
