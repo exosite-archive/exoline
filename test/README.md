@@ -10,5 +10,5 @@ First, copy testconfig.py.template to testconfig.py and set the 'portalcik' to t
 
 ```bash
 
-    $ nosetests --verbose --with-coverage --cover-erase --cover-package=exoline
+    $ ./test.sh
 ```

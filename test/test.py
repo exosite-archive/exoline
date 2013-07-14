@@ -95,7 +95,7 @@ class TestRPC(TestCase):
 
     def _create(self, res):
         '''Creates a resource at the command line.'''
-        r = rpc('create', res.parentcik, '--type=' + res.type, '-',
+        r = rpc('create', res.parentcik, '--type=' + res.type, '--ridonly', '-',
                 stdin=json.dumps(res.desc))
         rid = self._rid(r.stdout)
         r = rpc('info', res.parentcik, rid)

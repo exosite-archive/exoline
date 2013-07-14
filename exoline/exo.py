@@ -12,8 +12,6 @@ Commands:
   write
   record
   create
-  create-dataport
-  create-client
   update
   map
   unmap
@@ -24,7 +22,6 @@ Commands:
   flush
   tree
   lookup-rid
-  drop-all-children
   script
 
 Options:
@@ -80,20 +77,29 @@ Options:
     - reads data from stdin.
     --interval generates timestamps at a regular interval into the past.''',
     'create':
-        '''Create a resource from a json description passed on stdin.\n\nUsage:
-    exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -''',
+        '''Create a resource from a json description passed on stdin, or using
+    defaults.\n\nUsage:
+    exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
+    exo [options] create <cik> --type=client
+    exo [options] create <cik> --type=dataport (--format=binary|boolean|float|integer|string)
+
+Options:
+    --name=<name     set a resource name (overwriting the one in stdin if present)
+    --alias=<alias>  set an alias
+    --ridonly        just output the RID by itself on a line
+
+Details:
+    Pass - and a json description object on stdin for maximum control.
+    Description is documented here:
+    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API#RemoteProcedureCallAPI-create
+
+    If - is not present, creates a resource with common defaults.''',
     'listing':
         '''List a client's children based on their type.\n\nUsage:
     exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ... [--plain] [--pretty]''',
     'info':
         '''Get info for a resource in json format.\n\nUsage:
     exo [options] info <cik> [<rid>] [--cikonly] [--pretty]''',
-    'create-dataport':
-        '''Create a dataport.\n\nUsage:
-    exo [options] create-dataport <cik> (--format=binary|boolean|float|integer|string) [--name=<name>]''',
-    'create-client':
-        '''Create a client.\n\nUsage:
-    exo [options] create-client <cik> [--name=<name>]''',
     'update':
         '''Update a resource from a json description passed on stdin.\n\nUsage:
     exo [options] update <cik> [<rid>] -
@@ -127,16 +133,16 @@ Dispatch Description
     exo [options] lookup <cik> --cik=<cik-to-find>''',
     'drop':
         '''Drop (permanently delete) a resource.\n\nUsage:
-    exo [options] drop <cik> [<rid> ...]''',
+    exo [options] drop <cik> [<rid> ...]
+
+Options:
+    --all-children  drop all children of the resource.''',
     'flush':
         '''Remove all time series data from a resource.\n\nUsage:
     exo [options] flush <cik> [<rid>]''',
     'tree':
         '''Display a resource's descendants.\n\nUsage:
     exo tree [--verbose] [--hide-keys] <cik>''',
-    'drop-all-children':
-        '''Drop (delete permanently) all children of a resource.\n\nUsage:
-    exo [options] drop-all-children <cik>''',
     'script': '''Upload a Lua script\n\nUsage:
     exo [options] script <script-file> <cik> [--name=<name>]'''
 }
@@ -200,7 +206,9 @@ class ExoRPC():
         isok, response = self.exo.record(cik, rid, entries, {})
         self._raise_for_response_record(isok, response)
 
-    def create(self, cik, type, desc):
+    def create(self, cik, type, desc, name=None):
+        if name is not None:
+            desc['name'] = name
         isok, response = self.exo.create(cik, type, desc)
         self._raise_for_response(isok, response)
         return response
@@ -224,10 +232,10 @@ class ExoRPC():
         if desc is None:
             # default description
             desc = {'limits': {'dataport': 'inherit',
-                                'datarule': 'inherit',
-                                'dispatch': 'inherit',
-                                'disk': 'inherit',
-                                'io': 'inherit'},
+                               'datarule': 'inherit',
+                               'dispatch': 'inherit',
+                               'disk': 'inherit',
+                               'io': 'inherit'},
                     'writeinterval': 'inherit'}
         if name is not None:
             desc['name'] = name
@@ -345,14 +353,22 @@ class ExoRPC():
         def add_opt(o, label, value):
             if o is True or (o in cli_args and cli_args[o] is True):
                 opt[label] = value
-        add_opt(True, 'type', typ)
+        add_opt(True, typ + ' name', name)
         if 'format' in info['description']:
             add_opt(True, 'format', info['description']['format'])
-        add_opt(True, 'name', name)
-        add_opt(True, 'aliases', str(aliases))
-        add_opt('--verbose', 'unit', units)
+
+        has_alias = aliases is not None and len(aliases) > 0
+        if has_alias:
+            add_opt(True, 'aliases', str(aliases))
+        # show RID for clients with no alias, or if --verbose was passed
+        ridopt = False
         if typ == 'client':
-            add_opt('--verbose', 'rid', self._disp_key(cli_args, rid))
+            if has_alias:
+                ridopt = '--verbose'
+            else:
+                ridopt = True
+        add_opt(ridopt, 'rid', self._disp_key(cli_args, rid))
+        add_opt('--verbose', 'unit', units)
         if 'storage' in info and 'count' in info['storage']:
             add_opt(True, 'count', info['storage']['count'])
 
@@ -373,6 +389,7 @@ class ExoRPC():
             info = self.info(cik, {"alias": ""})
             # info doesn't contain key
             info['key'] = cik
+            aliases = info['aliases']
             root_aliases = '(see parent)'
             # todo: can I get aliases for cik? For now, pass []
             self._print_node(rid,
@@ -408,10 +425,10 @@ class ExoRPC():
 
                     if t == 'client':
                         next_cik = info['key']
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
+                        self._print_node(rid, info, aliases.get(rid), cli_args, own_spacer, islast)
                         self.tree(next_cik, info['aliases'], cli_args, child_spacer)
                     else:
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
+                        self._print_node(rid, info, aliases.get(rid), cli_args, own_spacer, islast)
 
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(cik,
@@ -631,12 +648,39 @@ def handle_args(cmd, args):
                 raise ExoException("--interval must be positive")
             er.record_backdate(cik, rids[0], interval, values)
     elif cmd == 'create':
-        s = sys.stdin.read()
-        try:
-            desc = json.loads(s)
-        except Exception as ex:
-            raise ExoException(ex)
-        pr(er.create(cik, type=args['--type'], desc=desc))
+        typ = args['--type']
+        if args['-']:
+            s = sys.stdin.read()
+            try:
+                desc = json.loads(s)
+            except Exception as ex:
+                raise ExoException(ex)
+            rid = er.create(cik,
+                            type=typ,
+                            desc=desc,
+                            name=args['--name'])
+        elif typ == 'client':
+            rid = er.create_client(cik,
+                                   name=args['--name'])
+        elif typ == 'dataport':
+            rid = er.create_dataport(cik,
+                                     args['--format'],
+                                     name=args['--name'])
+        else:
+            raise ExoException('No defaults for {}.'.format(args['--type']))
+        ridonly = args['--ridonly']
+        if ridonly:
+            pr(rid)
+        else:
+            pr('rid: {}'.format(rid))
+        if not ridonly and  typ == 'client':
+            # for convenience, look up the cik
+            print('cik: {}'.format(er.info(cik, rid, cikonly=True)))
+        if args['--alias'] is not None:
+            er.map(cik, rid, args['--alias'])
+            if not ridonly:
+                print("alias: {}".format(args['--alias']))
+
     elif cmd == 'update':
         s = sys.stdin.read()
         try:
@@ -644,10 +688,6 @@ def handle_args(cmd, args):
         except Exception as ex:
             raise ExoException(ex)
         pr(er.update(cik, rids[0], desc=desc))
-    elif cmd == 'create-dataport':
-        pr(er.create_dataport(cik, args['--format'], name=args['--name']))
-    elif cmd == 'create-client':
-        pr(er.create_client(cik, name=args['--name']))
     elif cmd == 'map':
         er.map(cik, rids[0], args['<alias>'])
     elif cmd == 'unmap':
@@ -661,11 +701,14 @@ def handle_args(cmd, args):
         else:
             pr(er.lookup(cik, args['<alias>']))
     elif cmd == 'drop':
-        er.drop(cik, rids)
+        if args['--all-children']:
+            er.drop_all_children(cik)
+        else:
+            er.drop(cik, rids)
     elif cmd == 'listing':
         types = args['--type']
         listing = er.listing(cik, types)
-        if args['--plain'] == True:
+        if args['--plain']:
             for l in listing:
                 for cik in listing[0]:
                     print(cik)
@@ -683,8 +726,6 @@ def handle_args(cmd, args):
     # special commands
     elif cmd == 'tree':
         er.tree(cik, cli_args=args)
-    elif cmd == 'drop-all-children':
-        er.drop_all_children(cik)
     elif cmd == 'script':
         er.upload(cik, args['<script-file>'], args['--name'])
     else:
