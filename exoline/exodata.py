@@ -5,7 +5,7 @@
    http://developers.exosite.com/display/OP/HTTP+Data+Interface+API
 
 Usage:
-    exodata read [options] <cik> <alias> ... 
+    exodata read [options] <cik> <alias> ...
     exodata write [options] <cik> <alias>=<value> ...
     exodata ip [options]
 
@@ -49,7 +49,7 @@ class ExoData():
         r.raise_for_status()
         return r.text
 
-    def ip(self): 
+    def ip(self):
         r = requests.get(self.url + '/ip')
         r.raise_for_status()
         return r.text
@@ -74,7 +74,7 @@ def handle_args(args):
 
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version="Exosite Data API Command Line {}".format(__version__))
+    args = docopt(__doc__, version="Exosite Command Line {}".format(__version__))
     try:
         handle_args(args)
     except AppException as ex:

@@ -5,7 +5,7 @@
    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
 
 Usage:
-  exo [options] <command> [<args> ...]
+  exo [--help] [options] <command> [<args> ...]
 
 Commands:
   read
@@ -31,7 +31,7 @@ Options:
   -h --help            Show this screen
   -v --version         Show version
 
-See 'exo <command> -h' for more information on a specific command.
+See 'exo <command> --help' for more information on a specific command.
 """
 
 # Copyright (c) 2013, Exosite, LLC
@@ -873,7 +873,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
 
     args = docopt(
         __doc__,
-        version="Exosite RPC API Command Line {}".format(__version__),
+        version="Exosite Command Line {}".format(__version__),
         options_first=True)
 
     # get command args
