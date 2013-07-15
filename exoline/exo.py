@@ -45,6 +45,8 @@ from datetime import datetime
 import time
 from pprint import pprint
 from collections import OrderedDict
+import itertools
+import math
 
 from docopt import docopt
 from onepv1lib import onep
@@ -62,10 +64,11 @@ cmd_doc = {
 
 Options:
     --follow                 continue reading
-    --limit=<limit>          limit to [default: 1]
-    --selection=all|autowindow|givenwindow  filter for results [default: all]
-    --format=raw|csv         output format [default: csv]
-    --timeformat=unix|human  timestamp format human-readable? [default: human]''',
+    --limit=<limit>          number of data points to read [default: 1]
+    --selection=all|autowindow|givenwindow  downsample method [default: all]
+    --format=csv|raw         output format [default: csv]
+    --timeformat=unix|human  unix timestamp or human-readable? [default: human]
+    --intervals              show distribution of intervals between points''',
     'write':
         '''Write data at the current time.\n\nUsage:
     exo [options] write <cik> [<rid>] --value=<value>''',
@@ -522,9 +525,11 @@ class ExoRPC():
                     return listing[0][idx]
 
     def record_backdate(self, cik, rid, interval_seconds, values):
-        '''Record a list of values and record them as if they happened in the past
-        interval_seconds apart. For example, if values ['a', 'b', 'c'] are passed in
-        with interval 10, they're recorded as [[0, 'c'], [-10, 'b'], [-20, 'a']].
+        '''Record a list of values and record them as if they happened in
+        the past interval_seconds apart. For example, if values
+            ['a', 'b', 'c']
+        are passed in with interval 10, they're recorded as
+            [[0, 'c'], [-10, 'b'], [-20, 'a']].
         interval_seconds must be positive.'''
         timestamp = -interval_seconds
 
@@ -535,6 +540,165 @@ class ExoRPC():
             timestamp -= interval_seconds
         return self.record(cik, rid, tvalues)
 
+
+def format_time(sec):
+    '''Formats a time interval for human consumption'''
+    intervals = [[60 * 60 * 24, 'd'],
+                    [60 * 60, 'h'],
+                    [60, 'm']]
+    text = ""
+    for s, label in intervals:
+        if sec > s:
+            text = "{} {}{}".format(text, sec / s, label)
+            sec -= s * (sec / s)
+    return "{} {}s".format(text, sec).strip()
+
+
+def spark(numbers, empty_val=None):
+    """Generate a text based sparkline graph from a list of numbers (ints or
+    floats).
+
+    When value is empty_val, show no bar.
+
+    https://github.com/1stvamp/py-sparkblocks
+
+    Based on:
+      https://github.com/holman/spark
+    and:
+      http://www.datadrivenconsulting.com/2010/06/twitter-sparkline-generator/
+    """
+
+    out = []
+
+    min_value = min(numbers)
+    max_value = max(numbers)
+    value_scale = max_value - min_value
+
+    for number in numbers:
+        if number == empty_val:
+            out.append(u" ")
+        else:
+            if (number - min_value) != 0 and value_scale != 0:
+                scaled_value = (number - min_value) / value_scale
+            else:
+                scaled_value = 0
+            num = math.floor(min([6, (scaled_value * 7)]))
+
+            # Hack because 9604 and 9608 aren't vertically aligned the same as
+            # other block elements
+            if num == 3:
+                if (scaled_value * 7) < 3.5:
+                    num = 2
+                else:
+                    num = 4
+            elif num == 7:
+                num = 6
+
+            out.append(unichr(int(9601 + num)))
+
+    return ''.join(out)
+
+def show_intervals(er, cik, rid, limit):
+    # show a distribution of intervals between data
+    data = er.read(cik,
+                   rid,
+                   sort='desc',
+                   limit=limit)
+
+    intervals = [data[i - 1][0] - data[i][0] for i in xrange(1, len(data))]
+    intervals = sorted(intervals)
+    num_bins = 60
+    min_t, max_t = min(intervals), max(intervals)
+    bin_size = float(max_t - min_t) / num_bins * 1.0
+
+    bins = []
+    for i in range(num_bins):
+        bin_min = min_t + i * bin_size
+        bin_max = min_t + (i + 1) * bin_size
+        if i != 0:
+            critfn = lambda x: bin_min < x and x <= bin_max
+        else:
+            critfn = lambda x: bin_min <= x and x <= bin_max
+        #bins.append((bin_min, bin_max, float(
+        #    sum(itertools.imap(critfn, intervals)))))
+        bins.append(float(
+            sum(itertools.imap(critfn, intervals))))
+
+    if False:
+        # debug
+        print(bins)
+        print(num_bins * bin_size)
+        print(bin_size)
+        print(min_t)
+        print(max_t)
+        print(set(intervals))
+
+    print(spark(bins, empty_val=0))
+
+    min_label = format_time(min_t)
+    max_label = format_time(max_t)
+    sys.stdout.write(min_label)
+    sys.stdout.write(' ' * (num_bins - len(min_label) - len(max_label)))
+    sys.stdout.write(max_label + '\n')
+
+def read_cmd(er, cik, rids, args):
+    rid = rids[0]
+    limit = args['--limit']
+    limit = 1 if limit is None else int(limit)
+
+    # --intervals is practically another command. Only
+    # shares time specifications (see above).
+    if args['--intervals']:
+        show_intervals(er, cik, rid, limit)
+        return
+
+    timeformat = args['--timeformat']
+    dw = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
+    fmt = args['--format']
+
+    def printline(timestamp, val):
+        if fmt == 'raw':
+            print(val)
+        else:
+            if timeformat == 'unix':
+                dt = timestamp
+            else:
+                dt = datetime.fromtimestamp(timestamp)
+            dw.writerow({'timestamp': str(dt), 'value': val})
+
+    sleep_seconds = 2
+    if args['--follow']:
+        results = []
+        while len(results) == 0:
+            results = er.read(cik,
+                                rid,
+                                limit=1,
+                                sort='desc')
+            if len(results) > 0:
+                last_t, last_v = results[0]
+                printline(last_t, last_v)
+            else:
+                time.sleep(sleep_seconds)
+
+        while True:
+            results = er.read(cik,
+                                rid,
+                                limit=10000,
+                                starttime=last_t + 1)
+
+            for t, v in results:
+                printline(t, v)
+
+            if len(results) > 0:
+                last_t, last_v = results[-1]
+
+            time.sleep(sleep_seconds)
+    else:
+        for t, v in er.read(cik,
+                            rid,
+                            sort='desc',
+                            limit=limit):
+            printline(t, v)
 
 def plain_print(arg):
     print(arg)
@@ -568,56 +732,7 @@ def handle_args(cmd, args):
         pr = plain_print
 
     if cmd == 'read':
-        rid = rids[0]
-        limit = args['--limit']
-        limit = 1 if limit is None else int(limit)
-        timeformat = args['--timeformat']
-        dr = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
-        fmt = args['--format']
-
-        def printline(timestamp, val):
-            if fmt == 'raw':
-                print(val)
-            else:
-                if timeformat == 'unix':
-                    dt = timestamp
-                else:
-                    dt = datetime.fromtimestamp(timestamp)
-                dr.writerow({'timestamp': str(dt), 'value': val})
-
-        sleep_seconds = 2
-        if args['--follow']:
-            results = []
-            while len(results) == 0:
-                results = er.read(cik,
-                                  rid,
-                                  limit=1,
-                                  sort='desc')
-                if len(results) > 0:
-                    last_t, last_v = results[0]
-                    printline(last_t, last_v)
-                else:
-                    time.sleep(sleep_seconds)
-
-            while True:
-                results = er.read(cik,
-                                  rid,
-                                  limit=10000,
-                                  starttime=last_t + 1)
-
-                for t, v in results:
-                    printline(t, v)
-
-                if len(results) > 0:
-                    last_t, last_v = results[-1]
-
-                time.sleep(sleep_seconds)
-        else:
-            for t, v in er.read(cik,
-                                rid,
-                                sort='desc',
-                                limit=limit):
-                printline(t, v)
+        read_cmd(er, cik, rids, args)
     elif cmd == 'write':
         er.write(cik, rids[0], args['--value'])
     elif cmd == 'record':

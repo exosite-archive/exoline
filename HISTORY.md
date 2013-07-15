@@ -1,6 +1,14 @@
 History
 =======
 
+0.0.27 (2013-7-14)
+------------------
+
+- Support uploading script to multiple CIKs
+- Added code coverage for tests
+- read --intervals shows the distribution of 
+  delays between points
+
 0.0.26 (2013-7-12)
 ------------------
 
