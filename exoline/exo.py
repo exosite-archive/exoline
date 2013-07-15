@@ -62,10 +62,11 @@ cmd_doc = {
     exo [options] read <cik> [<rid>]
 
 Options:
-    --follow          continue reading
-    --limit=<limit>   limit to [default: 1]
-    --selection=all|autowindow|givenwindow  how to filter results [default: all]
-    --format=raw|csv output format [default: csv]''',
+    --follow                 continue reading
+    --limit=<limit>          limit to [default: 1]
+    --selection=all|autowindow|givenwindow  filter for results [default: all]
+    --format=raw|csv         output format [default: csv]
+    --timeformat=unix|human  timestamp format human-readable? [default: human]''',
     'write':
         '''Write data at the current time.\n\nUsage:
     exo [options] write <cik> [<rid>] --value=<value>''',
@@ -425,10 +426,10 @@ class ExoRPC():
 
                     if t == 'client':
                         next_cik = info['key']
-                        self._print_node(rid, info, aliases.get(rid), cli_args, own_spacer, islast)
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
                         self.tree(next_cik, info['aliases'], cli_args, child_spacer)
                     else:
-                        self._print_node(rid, info, aliases.get(rid), cli_args, own_spacer, islast)
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
 
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(cik,
@@ -567,6 +568,7 @@ def handle_args(cmd, args):
         rid = rids[0]
         limit = args['--limit']
         limit = 1 if limit is None else int(limit)
+        timeformat = args['--timeformat']
         dr = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
         fmt = args['--format']
 
@@ -574,7 +576,10 @@ def handle_args(cmd, args):
             if fmt == 'raw':
                 print(val)
             else:
-                dt = datetime.fromtimestamp(timestamp)
+                if timeformat == 'unix':
+                    dt = timestamp
+                else:
+                    dt = datetime.fromtimestamp(timestamp)
                 dr.writerow({'timestamp': str(dt), 'value': val})
 
         sleep_seconds = 2

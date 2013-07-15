@@ -12,3 +12,10 @@ First, copy testconfig.py.template to testconfig.py and set the 'portalcik' to t
 
     $ ./test.sh
 ```
+
+To run a specific test:
+
+```bash
+
+    $ nosetests test.py:TestRPC.record_test
+```
