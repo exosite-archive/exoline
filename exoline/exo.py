@@ -21,16 +21,15 @@ Commands:
   info
   flush
   tree
-  lookup-rid
   script
 
 Options:
-  --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com.
-  --httptimeout=<sec>  HTTP timeout setting.
+  --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
+  --httptimeout=<sec>  HTTP timeout
   --https              Enable HTTPS
   --debug              Show info like stack traces
-  -h --help            Show this screen.
-  -v --version         Show version.
+  -h --help            Show this screen
+  -v --version         Show version
 
 See 'exo <command> -h' for more information on a specific command.
 """
@@ -145,7 +144,10 @@ Options:
         '''Display a resource's descendants.\n\nUsage:
     exo tree [--verbose] [--hide-keys] <cik>''',
     'script': '''Upload a Lua script\n\nUsage:
-    exo [options] script <script-file> <cik> [--name=<name>]'''
+    exo [options] script <script-file> <cik> ...
+
+Options:
+    --name=<name>  script name, if different from script filename.'''
 }
 
 for k in cmd_doc:
@@ -488,19 +490,20 @@ class ExoRPC():
             else:
                 raise ExoException("Error updating datarule.")
 
-    def upload(self, cik, filename, name=None):
+    def upload(self, ciks, filename, name=None):
         try:
             f = open(filename)
         except IOError:
-            raise ExoException('Error opening file.')
+            raise ExoException('Error opening file {}.'.format(filename))
         else:
             with f:
                 text = f.read().strip()
                 if name is None:
                     # if no name is specified, use the file name as a name
                     name = os.path.basename(filename)
-                rid = self._lookup_rid_by_name(cik, name)
-                self._upload_script(cik, name, text, rid)
+                for cik in ciks:
+                    rid = self._lookup_rid_by_name(cik, name)
+                    self._upload_script(cik, name, text, rid)
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'])
@@ -732,6 +735,7 @@ def handle_args(cmd, args):
     elif cmd == 'tree':
         er.tree(cik, cli_args=args)
     elif cmd == 'script':
+        # cik is a list of ciks
         er.upload(cik, args['<script-file>'], args['--name'])
     else:
         raise ExoException("Command not handled")
