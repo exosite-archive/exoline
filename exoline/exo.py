@@ -22,6 +22,7 @@ Commands:
   flush
   tree
   script
+  spark
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
@@ -42,6 +43,7 @@ import json
 import csv
 import re
 from datetime import datetime
+from datetime import timedelta
 import time
 from pprint import pprint
 from collections import OrderedDict
@@ -67,8 +69,7 @@ Options:
     --limit=<limit>          number of data points to read [default: 1]
     --selection=all|autowindow|givenwindow  downsample method [default: all]
     --format=csv|raw         output format [default: csv]
-    --timeformat=unix|human  unix timestamp or human-readable? [default: human]
-    --intervals              show distribution of intervals between points''',
+    --timeformat=unix|human  unix timestamp or human-readable? [default: human]''',
     'write':
         '''Write data at the current time.\n\nUsage:
     exo [options] write <cik> [<rid>] --value=<value>''',
@@ -150,7 +151,12 @@ Options:
     exo [options] script <script-file> <cik> ...
 
 Options:
-    --name=<name>  script name, if different from script filename.'''
+    --name=<name>  script name, if different from script filename.''',
+    'spark': '''Show distribution of intervals between points.\n\nUsage:
+    exo [options] spark <cik> [<rid>] --days=<days>
+
+Options:
+    --stddev=<num>  exclude intervals more than num standard deviations from mean'''
 }
 
 for k in cmd_doc:
@@ -191,12 +197,21 @@ class ExoRPC():
             # TODO: does this always indicate an error condition?
             raise RPCException(', '.join(['{}: {}'.format(msg, t) for msg, t in response]))
 
-    def read(self, cik, rid, limit, sort='asc', starttime=None, selection='all'):
+    def read(self,
+             cik,
+             rid,
+             limit,
+             sort='asc',
+             starttime=None,
+             endtime=None,
+             selection='all'):
         options = {'limit': limit,
                'sort': sort,
                'selection': selection}
         if starttime is not None:
-            options['starttime'] = starttime
+            options['starttime'] = int(starttime)
+        if endtime is not None:
+            options['endtime'] = int(endtime)
         isok, response = self.exo.read(
             cik,
             rid,
@@ -548,10 +563,12 @@ def format_time(sec):
                     [60, 'm']]
     text = ""
     for s, label in intervals:
-        if sec > s:
+        if sec >= s and sec / s > 0:
             text = "{} {}{}".format(text, sec / s, label)
             sec -= s * (sec / s)
-    return "{} {}s".format(text, sec).strip()
+    if sec > 0:
+        text += " {}s".format(sec)
+    return text.strip()
 
 
 def spark(numbers, empty_val=None):
@@ -598,19 +615,40 @@ def spark(numbers, empty_val=None):
 
     return ''.join(out)
 
-def show_intervals(er, cik, rid, limit):
+def meanstdv(l):
+    '''Calculate mean and standard deviation'''
+    n, mean, std = len(l), 0, 0
+    mean = sum(l) / float(len(l))
+    std = math.sqrt(sum([(x - mean)**2 for x in l]) / (len(l) - 1))
+    return mean, std
+
+
+def show_intervals(er, cik, rid, start, end, limit, numstd=None):
     # show a distribution of intervals between data
     data = er.read(cik,
                    rid,
+                   limit,
                    sort='desc',
-                   limit=limit)
+                   starttime=start,
+                   endtime=end)
 
+    if len(data) == 0:
+        return
     intervals = [data[i - 1][0] - data[i][0] for i in xrange(1, len(data))]
     intervals = sorted(intervals)
+
+    if numstd is not None:
+        # only include data within numstd standard deviations
+        # of the mean
+        mean, std = meanstdv(intervals)
+        intervals = [x for x in intervals
+                    if mean - numstd * std <= x
+                    and x <= mean + numstd * std]
+        if len(intervals) == 0:
+            return
     num_bins = 60
     min_t, max_t = min(intervals), max(intervals)
     bin_size = float(max_t - min_t) / num_bins * 1.0
-
     bins = []
     for i in range(num_bins):
         bin_min = min_t + i * bin_size
@@ -645,12 +683,6 @@ def read_cmd(er, cik, rids, args):
     rid = rids[0]
     limit = args['--limit']
     limit = 1 if limit is None else int(limit)
-
-    # --intervals is practically another command. Only
-    # shares time specifications (see above).
-    if args['--intervals']:
-        show_intervals(er, cik, rid, limit)
-        return
 
     timeformat = args['--timeformat']
     dw = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
@@ -852,6 +884,13 @@ def handle_args(cmd, args):
     elif cmd == 'script':
         # cik is a list of ciks
         er.upload(cik, args['<script-file>'], args['--name'])
+    elif cmd == 'spark':
+        days = int(args['--days'])
+        end = time.mktime(datetime.now().timetuple())
+        start = time.mktime((datetime.now() - timedelta(days=days)).timetuple())
+        numstd = args['--stddev']
+        numstd = int(numstd) if numstd is not None else None
+        show_intervals(er, cik, rids[0], start, end, limit=1000000, numstd=numstd)
     else:
         raise ExoException("Command not handled")
 

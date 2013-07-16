@@ -22,9 +22,10 @@ except:
 
 
 class CmdResult():
-    def __init__(self, exitcode, stdout):
+    def __init__(self, exitcode, stdout, stderr):
         self.exitcode = exitcode
         self.stdout = stdout
+        self.stderr = stderr
 
 logging.basicConfig(stream=sys.stderr)
 logging.getLogger("TestRPC").setLevel(logging.DEBUG)
@@ -45,16 +46,19 @@ def _cmd(argv, stdin):
         sio.seek(0)
         stdin = sio
     stdout = StringIO.StringIO()
+    stderr = StringIO.StringIO()
 
     # unicode causes problems in docopt
     argv = [str(a) for a in argv]
-    exitcode = exo.cmd(argv=argv, stdin=stdin, stdout=stdout)
+    exitcode = exo.cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
 
     stdout.seek(0)
     stdout = stdout.read().strip()  # strip to get rid of leading newline
+    stderr.seek(0)
+    stderr = stderr.read().strip()
     if exitcode != 0:
         log.debug("Exit code was {}".format(exitcode))
-    return CmdResult(exitcode, stdout)
+    return CmdResult(exitcode, stdout, stderr)
 
 
 def rpc(*args, **kwargs):
@@ -64,13 +68,14 @@ def rpc(*args, **kwargs):
 
 class Resource():
     '''Contains information for creating and testing resource.'''
-    def __init__(self, parentcik, type, desc, write=None, record=None):
+    def __init__(self, parentcik, type, desc, write=None, record=None, alias=None):
         self.parentcik = parentcik
         self.type = type
         self.desc = desc
         self.write = write
         self.record = record
         self.rid = None
+        self.alias = alias
         if self.type == 'dataport':
             self.desc['retention'] = {"count": "infinity",
                                       "duration": "infinity"}
@@ -85,24 +90,88 @@ class Resource():
 
 
 class TestRPC(TestCase):
+    RE_RID = '[0-9a-f]{40}'
     def _rid(self, s):
         '''Parse rid from s, raising an exception if it doesn't validate.'''
-        m = re.match("^([a-zA-Z0-9]{40}).*", s)
+        m = re.match("^({}).*".format(self.RE_RID), s)
         self.assertFalse(m is None, "rid: {}".format(s))
         return str(m.groups()[0])
 
+    def _createMultiple(self, cik, resList):
+        # use pyonep directly
+        pyonep = exo.ExoRPC().exo
+        for res in resList:
+            pyonep.create(cik, res.type, res.desc, defer=True)
+
+        rids = []
+        # create resources
+        if pyonep.has_deferred(cik):
+            responses = pyonep.send_deferred(cik)
+            for i, trio in enumerate(responses):
+                call, isok, response = trio
+                if not isok:
+                    raise Exception("_createMultiple failed create()")
+                # response is an rid
+                rid = response
+                rids.append(rid)
+                pyonep.info(cik, rid, defer=True)
+
+        # get info
+        if pyonep.has_deferred(cik):
+            responses = pyonep.send_deferred(cik)
+            for i, trio in enumerate(responses):
+                call, isok, response = trio
+                if not isok:
+                    raise Exception("_createMultiple failed info()")
+                # response is info
+                info = response
+                resList[i].created(rids[i], info)
+                res = resList[i]
+                if res.alias is not None:
+                    pyonep.map(cik, resList[i].rid, res.alias, defer=True)
+                self.l("Created {}, rid: {}".format(res.type, res.rid))
+
+        # map to aliases
+        if pyonep.has_deferred(cik):
+            responses = pyonep.send_deferred(cik)
+            for i, trio in enumerate(responses):
+                call, isok, response = trio
+                if not isok:
+                    raise Exception("_createMultiple failed map()")
+
     def _create(self, res):
         '''Creates a resource at the command line.'''
+        alias = [] if res.alias is None else [res.alias]
         r = rpc('create',
                 res.parentcik,
                 '--type=' + res.type,
-                '--ridonly',
                 '-',
+                *alias,
                 stdin=json.dumps(res.desc))
-        rid = self._rid(r.stdout)
-        r = rpc('info', res.parentcik, rid)
-        info = json.loads(r.stdout.strip())
+        self.assertTrue(r.exitcode == 0, 'create succeeds')
+
+        rid = re.match('rid: ({})'.format(self.RE_RID), r.stdout).groups()[0]
+        ri = rpc('info', res.parentcik, rid)
+        info = json.loads(ri.stdout.strip())
         res.created(rid, info)
+
+        # test that description contains what we asked for
+        self.l('''Comparing keys.
+Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
+        for k, v in res.desc.iteritems():
+            if k != 'limits':
+                self.l(k)
+                self.assertTrue(
+                    res.info['description'][k] == v,
+                    'created resource matches spec')
+
+        if res.type == 'client':
+            m = re.match('^cik: ({})$'.format(self.RE_RID), r.stdout.split('\n')[1])
+            self.l(r.stdout)
+            self.assertTrue(m is not None)
+            cik = m.groups()[0]
+            self.assertTrue(res.info['key'] == cik)
+
         self.l("Created {}, rid: {}".format(res.type, res.rid))
         return res
 
@@ -114,17 +183,17 @@ class TestRPC(TestCase):
         self.log = logging.getLogger("TestRPC")
         self.portalcik = config['portalcik']
         self.client = Resource(
-                self.portalcik,
-                'client',
-                {'limits': {'dataport': 'inherit',
-                            'datarule': 'inherit',
-                            'dispatch': 'inherit',
-                            'disk': 'inherit',
-                            'io': 'inherit'},
-                'writeinterval': 'inherit',
-                "name": "testclient",
-                "visibility": "parent"})
-        self._create(self.client)
+            self.portalcik,
+            'client',
+            {'limits': {'dataport': 'inherit',
+                        'datarule': 'inherit',
+                        'dispatch': 'inherit',
+                        'disk': 'inherit',
+                        'io': 'inherit'},
+            'writeinterval': 'inherit',
+            "name": "testclient",
+            "visibility": "parent"})
+        self._createMultiple(self.portalcik, [self.client])
 
         # test details for create, read, and write tests.
         self.resources = [
@@ -145,7 +214,8 @@ class TestRPC(TestCase):
                 'dataport',
                 {'format': 'string', 'name': 'string_port'},
                 write=['test', 'a' * 300],
-                record=[[163299600, 'home brew'], [543212345, 'nonsense']]),
+                record=[[163299600, 'home brew'], [543212345, 'nonsense']],
+                alias='string_port_alias'),
             Resource(
                 self.client.cik(),
                 'dataport',
@@ -159,11 +229,7 @@ class TestRPC(TestCase):
                 {'format': 'binary', 'name': 'binary_port'})
         ]
 
-        for res in self.resources:
-            self._create(res)
-            # test that description is contains what we asked for
-            for k, v in res.desc.iteritems():
-                self.assertTrue(res.info['description'][k] == v)
+        self._createMultiple(self.client.cik(), self.resources)
 
     def tearDown(self):
         '''Clean up any test client'''
@@ -194,7 +260,7 @@ class TestRPC(TestCase):
                         'Read values did not match written values')
 
     def write_test(self):
-        '''Write to dataports'''
+        '''Write command'''
         for res in self.resources:
             if res.type == 'dataport' and res.write is not None:
                 # test writing
@@ -248,7 +314,7 @@ class TestRPC(TestCase):
 
 
     def record_test(self):
-        '''Record to dataports'''
+        '''Record command'''
         def _recordAndVerify(res, recordfn):
             if res.record is not None:
                 writetime = int(time.time())
@@ -300,6 +366,128 @@ class TestRPC(TestCase):
         self.assertTrue(r.exitcode == 0)
         # starts with cik
         self.l(r.stdout)
-        self.assertTrue(re.match("cik: {}.*".format(cik), r.stdout) is not None)
+        self.assertTrue(
+            re.match("cik: {}.*".format(cik), r.stdout) is not None)
         # has correct number of lines
         self.assertTrue(len(r.stdout.split('\n')) == len(self.resources) + 1)
+
+    def map_test(self):
+        '''Map/unmap commands'''
+        cik = self.client.cik()
+        for res in self.resources:
+            alias = 'foo'
+            r = rpc('info', cik, alias)
+            self.assertTrue(r.exitcode == 1, "info with alias should not work")
+            r = rpc('map', cik, res.rid, alias)
+            self.assertTrue(r.exitcode == 0, "map should work")
+            r = rpc('info', cik, alias)
+            self.assertTrue(r.exitcode == 0, "info with alias should work")
+            r = rpc('unmap', cik, alias)
+            self.assertTrue(r.exitcode == 0, "unmap should work")
+            r = rpc('info', cik, alias)
+            self.assertTrue(r.exitcode == 1, "info with alias should not work")
+            r = rpc('unmap', cik, alias)
+            self.assertTrue(r.exitcode == 0, "unmap with umapped alias should work")
+
+    def create_test(self):
+        '''Create command'''
+        client = Resource(
+            self.portalcik,
+            'client',
+            {'limits': {'dataport': 'inherit',
+                        'datarule': 'inherit',
+                        'dispatch': 'inherit',
+                        'disk': 'inherit',
+                        'io': 'inherit',
+                        'share': 'inherit',
+                        'client': 'inherit',
+                        'sms': 'inherit',
+                        'sms_bucket': 'inherit',
+                        'email': 'inherit',
+                        'email_bucket': 'inherit',
+                        'http': 'inherit',
+                        'http_bucket': 'inherit',
+                        'xmpp': 'inherit',
+                        'xmpp_bucket': 'inherit',
+                        },
+            "name": "test_create_client",
+            "public": False})
+        self._create(client)
+
+        # test details for create, read, and write tests.
+        resources = [
+            Resource(
+                client.cik(),
+                'dataport',
+                {'format': 'integer', 'name': 'int_port'},
+                write=['-1', '0', '100000000'],
+                record=[[665366400, '42']]),
+            Resource(
+                client.cik(),
+                'dataport',
+                {'format': 'boolean', 'name': 'boolean_port'},
+                write=['false', 'true', 'false'],
+                record=[[-100, 'true'], [-200, 'false'], [-300, 'true']]),
+            Resource(
+                client.cik(),
+                'dataport',
+                {'format': 'string', 'name': 'string_port'},
+                write=['test', 'a' * 300],
+                record=[[163299600, 'home brew'], [543212345, 'nonsense']]),
+            Resource(
+                client.cik(),
+                'dataport',
+                {'format': 'float', 'name': 'float_port'},
+                write=['-0.1234567', '0', '3.5', '100000000.1'],
+                record=[[-100, '-0.1234567'], [-200, '0'], [-300, '3.5'], [-400, '10000000.1']]),
+                # TODO: handle scientific notation from OneP '-0.00001'
+            Resource(
+                client.cik(),
+                'dataport',
+                {'format': 'binary', 'name': 'binary_port'})]
+
+        for res in resources:
+            self._create(res)
+
+    def spark_test(self):
+        '''Spark chart command'''
+        cik = self.client.cik()
+        rid = self._rid(
+            rpc('create', cik, '--type=dataport', '--format=integer', '--ridonly').stdout)
+        rpc('record', cik, rid, '--interval={}'.format(240), *['--value={}'.format(x) for x in range(1, 6)])
+        r = rpc('spark', cik, rid, '--days=1')
+        m = re.match("[^ ] {59}\n4m", r.stdout)
+        self.assertTrue(m is not None, "equally spaced points")
+        rpc('flush', cik, rid)
+        r = rpc('spark', cik, rid, '--days=1')
+        self.assertTrue(r.exitcode == 0 and r.stdout == '', "no data should output nothing")
+        r = rpc('record', cik, rid, '--value=-1,1', '--value=-62,2', '--value=-3662,3', '--value=-3723,4')
+        self.assertTrue(r.exitcode == 0, "record points")
+        r = rpc('spark', cik, rid, '--days=1')
+        self.l(u'stdout: {} ({})'.format(r.stdout, len(r.stdout)))
+        m = re.match("^[^ ] {58}[^ ]\n1m 1s +1h$", r.stdout)
+        self.assertTrue(m is not None, "three points, two intervals")
+
+    def _latest(self, cik, rid, val, msg):
+        r = rpc('read', cik, rid, '--format=raw')
+        self.l(r.stdout)
+        self.assertTrue(r.stdout == val, msg)
+
+    def script_test(self):
+        '''Script upload'''
+        waitsec = 8
+        cik = self.client.cik()
+        r = rpc('script', 'files/helloworld.lua', cik)
+        self.assertTrue(r.exitcode == 0, 'New script')
+        time.sleep(waitsec)
+        self._latest(cik, 'helloworld.lua', 'line 1: Hello world!',
+                     'debug output within {} sec'.format(waitsec))
+        self._latest(cik, 'string_port_alias', 'Hello dataport!',
+                     'dataport write from script within {} sec'.format(waitsec))
+        r = rpc('script', 'files/helloworld2.lua', cik, '--name={}'.format('helloworld.lua'))
+        self.assertTrue(r.exitcode == 0, 'Update existing script')
+        time.sleep(waitsec)
+        self._latest(cik, 'helloworld.lua', 'line 1: Hello world 2!',
+                     'debug output within {} sec'.format(waitsec))
+        self._latest(cik, 'string_port_alias', 'Hello dataport 2!',
+                     'dataport write from script within {} sec'.format(waitsec))
