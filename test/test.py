@@ -390,7 +390,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
             self.assertTrue(r.exitcode == 0, "unmap with umapped alias should work")
 
     def create_test(self):
-        '''Create command'''
+        '''Create/drop commands'''
         client = Resource(
             self.portalcik,
             'client',
@@ -448,6 +448,18 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
 
         for res in resources:
             self._create(res)
+
+        r = rpc('listing', client.cik(), '--type=dataport', '--plain')
+        self.assertTrue(len(r.stdout.split('\n')) == len(resources), 'all dataports listed')
+        r = rpc('drop', client.cik(), '--all-children')
+        self.assertTrue(r.exitcode == 0, 'drop --all-children succeeded')
+        r = rpc('listing', client.cik(), '--type=dataport', '--plain')
+        self.assertTrue(len(r.stdout) == 0), 'no dataports after drop --all-children'
+        r = rpc('drop', self.portalcik, client.rid)
+        self.assertTrue(r.exitcode == 0, 'drop client succeeded')
+        r = rpc('info', self.portalcik, client.rid)
+        self.assertTrue(r.exitcode != 0 and r.stderr.endswith('restricted'), 'client gone after drop')
+
 
     def spark_test(self):
         '''Spark chart command'''
