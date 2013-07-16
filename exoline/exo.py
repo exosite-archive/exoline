@@ -20,6 +20,7 @@ Commands:
   listing
   info
   flush
+  usage
   tree
   script
   spark
@@ -51,6 +52,7 @@ import itertools
 import math
 
 from docopt import docopt
+from dateutil import parser
 from onepv1lib import onep
 from onepv1lib import onep_exceptions
 try:
@@ -144,6 +146,16 @@ Options:
     'flush':
         '''Remove all time series data from a resource.\n\nUsage:
     exo [options] flush <cik> [<rid>]''',
+    'usage':
+        '''Display usage of One Platform resources over a time period.\n\nUsage:
+    exo [options] usage <cik> [<rid>] --start=<time> [--end=<time>]
+
+    <time> can be a unix timestamp or formatted like any of these:
+
+    2011-10-23T08:00:00-07:00 10/1/2012 "2012-10-23 14:01"
+
+    If time part is omitted, it assumes 00:00:00.
+    To report through the present time, pass --end=now or omit --end entirely.''',
     'tree':
         '''Display a resource's descendants.\n\nUsage:
     exo tree [--verbose] [--hide-keys] <cik>''',
@@ -196,6 +208,13 @@ class ExoRPC():
         if type(response) is list:
             # TODO: does this always indicate an error condition?
             raise RPCException(', '.join(['{}: {}'.format(msg, t) for msg, t in response]))
+
+    def _raise_for_deferred(self, responses):
+        r = []
+        for call, isok, response in responses:
+            self._raise_for_response(isok, response)
+            r.append(response)
+        return r
 
     def read(self,
              cik,
@@ -267,9 +286,7 @@ class ExoRPC():
             self.exo.drop(cik, rid, defer=True)
 
         if self.exo.has_deferred(cik):
-            responses = self.exo.send_deferred(cik)
-            for call, isok, response in responses:
-                self._raise_for_response(isok, response)
+            self._raise_for_deferred(self.exo.send_deferred(cik))
 
     def map(self, cik, rid, alias):
         isok, response = self.exo.map(cik, rid, alias)
@@ -300,10 +317,9 @@ class ExoRPC():
             for rid in type_list:
                 self.exo.info(cik, rid, defer=True)
 
+        responses = []
         if self.exo.has_deferred(cik):
-            responses = self.exo.send_deferred(cik)
-            for call, isok, response in responses:
-                self._raise_for_response(isok, response)
+            responses = self._raise_for_deferred(self.exo.send_deferred(cik))
 
         # From the return values make a list of dicts like this:
         # [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
@@ -332,11 +348,20 @@ class ExoRPC():
     def flush(self, cik, rids):
         for rid in rids:
             self.exo.flush(cik, rid, defer=True)
-
         if self.exo.has_deferred(cik):
-            responses = self.exo.send_deferred(cik)
-            for call, isok, response in responses:
-                self._raise_for_response(isok, response)
+            self._raise_for_deferred(self.exo.send_deferred(cik))
+
+    def usage(self, cik, rid, metrics, start, end):
+        for metric in metrics:
+            self.exo.usage(cik, rid, metric, start, end, defer=True)
+        responses = []
+        if self.exo.has_deferred(cik):
+            responses = self._raise_for_deferred(self.exo.send_deferred(cik))
+        # show report
+        maxlen = max([len(m) for m in metrics])
+        for i, r in enumerate(responses):
+            print("{}:{} {}".format(
+                  metrics[i], ' ' * (maxlen - len(metrics[i])), r))
 
     def _disp_key(self, cli_args, k):
         if cli_args['--hide-keys']:
@@ -878,9 +903,32 @@ def handle_args(cmd, args):
             pr(json.dumps(info))
     elif cmd == 'flush':
         er.flush(cik, rids)
+    elif cmd == 'usage':
+        allmetrics = ['client',
+                      'dataport',
+                      'datarule',
+                      'dispatch',
+                      'email',
+                      'http',
+                      'sms',
+                      'xmpp']
+        start = args['--start']
+        end = args['--end']
+        parse_ts = lambda(s): int(time.mktime(parser.parse(s).timetuple()))
+        is_ts = lambda(s): re.match('^[0-9]+$', s) is not None
+        if is_ts(start):
+            start = int(start)
+        else:
+            start = parse_ts(start)
+        if end is None or end == 'now':
+            end = int(time.mktime(datetime.now().timetuple()))
+        elif is_ts(end):
+            end = int(end)
+        else:
+            end = parse_ts(end)
+        er.usage(cik, rids[0], allmetrics, start, end)
     # special commands
-    elif cmd == 'tree':
-        er.tree(cik, cli_args=args)
+    elif cmd == 'tree': er.tree(cik, cli_args=args)
     elif cmd == 'script':
         # cik is a list of ciks
         er.upload(cik, args['<script-file>'], args['--name'])

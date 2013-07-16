@@ -98,12 +98,9 @@ TODO
 ----
 
 - fix install issue with pyonep 0.5
-- add sparklines output
-- add support for /provision/register to get vendor info from CIK
 - add support in read for multiple rids
 - Make the info command take multiple rids (or stdin)
-- Make the script command take multiple rids (or stdin)
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
 - find out why aliases is sometimes a list, sometimes a dict
-- make tests run faster by combining resource create commands into one
+- add copy command

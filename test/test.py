@@ -503,3 +503,37 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
                      'debug output within {} sec'.format(waitsec))
         self._latest(cik, 'string_port_alias', 'Hello dataport 2!',
                      'dataport write from script within {} sec'.format(waitsec))
+
+    def usage_test(self):
+        '''OneP resource usage'''
+        r = rpc('usage', self.client.cik(), '--start=10/1/2012', '--end=11/1/2013')
+        self.assertTrue(r.exitcode == 0, 'usage call succeeded')
+        s1 = r.stdout
+        r = rpc('usage', self.client.cik(), '--start=10/1/2012', '--end=1383282000')
+        self.assertTrue(r.exitcode == 0, 'usage call succeeded')
+        s2 = r.stdout
+        r = rpc('usage', self.client.cik(), '--start=1349067600', '--end=1383282000')
+        self.assertTrue(r.exitcode == 0, 'usage call succeeded')
+        s3 = r.stdout
+        self.l(s1)
+        self.l(s2)
+        self.l(s3)
+        self.assertTrue(s1 == s2 and s2 == s3, 'various date forms output matches')
+        def parse_metric(metric, r):
+            self.assertTrue(r.exitcode == 0, 'usage call succeeded')
+            self.l(r.stdout)
+            m = re.match(".*{}: (\d+).*".format(metric), r.stdout, re.DOTALL)
+            self.assertTrue(m is not None, 'match metric {} in results'.format(metric))
+            return int(m.groups()[0])
+        r = rpc('usage', self.client.cik(), '--start=10/1/2012T13:04:05')
+        dp1 = parse_metric('dataport', r)
+        self._create(Resource(self.client.cik(),
+                              'dataport',
+                              {'format': 'integer', 'name': 'int_port'},
+                              write=['1'],
+                              record=[[665366400, '2']]))
+        r = rpc('usage', self.client.cik(), '--start=10/1/2012T13:04:05', '--end=now')
+        dp2 = parse_metric('dataport', r)
+        self.l("dp1: {} dp2: {}".format(dp1, dp2))
+        # TODO: why does this not increase consistently?
+        self.assertTrue(dp2 > dp1, 'adding dataport added to dataport metric')
