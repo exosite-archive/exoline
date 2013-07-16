@@ -15,15 +15,19 @@ To install the latest released version of exoline:
 
 ```bash
 
+    $ pip install https://github.com/dweaver/pyonep/tarball/master#egg=onepv1lib-0.5
     $ pip install --upgrade exoline
 ```
 
-Alternatively, install straight from github:
+Alternatively, you can install from source:
 
 ```bash
 
-    $ pip install -e git://github.com/dweaver/exoline#egg=exoline
+    $ git clone git://github.com/dweaver/exoline
+    $ cd exoline
+    $ python setup.py install
 ```
+
 
 
 Environment Variables
@@ -54,7 +58,7 @@ To run the tests, install the packages in test/requirements.txt, and then type:
 Examples
 --------
 
-Here are some examples of common tasks with Exoline.
+Here are some examples of things you can do with Exoline.
 
 * Upload a Lua script
 
@@ -83,6 +87,12 @@ Here are some examples of common tasks with Exoline.
     $ exo write e469e336ff9c8ed9176bc05ed7fa40d????????? gps-raw --value=4458.755987,N,09317.538945,W
 ```
 
+* Record a bunch of data without timestamps
+
+```bash
+
+    $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40d????????? gps-raw - 
+```
 
 TODO
 ----
