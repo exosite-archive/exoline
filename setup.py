@@ -19,7 +19,7 @@ setup(
     package_dir={'exoline': 'exoline'},
     scripts=['bin/exo', 'bin/exoline', 'bin/exodata'],
     keywords=['exosite', 'onep', 'one platform', 'm2m'],
-    dependency_links=['https://github.com/dweaver/pyonep/tarball/master#egg=onepv1lib-0.5'],
+    dependency_links=['https://github.com/dweaver/pyonep/tarball/master#egg=onepv1lib-0.6'],
     install_requires=required,
     zip_safe=False,
     )
