@@ -329,7 +329,7 @@ class ExoRPC():
         for type_list in listing:
             type_response = OrderedDict()
             for rid in type_list:
-                type_response[rid] = responses[response_index][2]
+                type_response[rid] = responses[response_index]
                 response_index += 1
             listing_with_info.append(type_response)
 
