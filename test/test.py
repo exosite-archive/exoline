@@ -487,7 +487,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
 
     def script_test(self):
         '''Script upload'''
-        waitsec = 8
+        waitsec = 10
         cik = self.client.cik()
         r = rpc('script', 'files/helloworld.lua', cik)
         self.assertTrue(r.exitcode == 0, 'New script')

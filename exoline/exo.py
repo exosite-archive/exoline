@@ -54,7 +54,7 @@ import math
 from docopt import docopt
 from dateutil import parser
 from onepv1lib import onep
-from onepv1lib import onep_exceptions
+import onepv1lib
 try:
     from ..exoline import __version__
 except:
@@ -989,7 +989,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         # pyonep library call signaled an error in return values
         sys.stderr.write("One Platform error: {}\r\n".format(ex))
         return 1
-    except onep_exceptions.OnePlatformException as ex:
+    except onepv1lib.exceptions.OnePlatformException as ex:
         # pyonep library call threw an exception on purpose
         sys.stderr.write("One Platform exception: {}\r\n".format(ex))
         return 1
