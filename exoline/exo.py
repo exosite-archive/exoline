@@ -53,8 +53,8 @@ import math
 
 from docopt import docopt
 from dateutil import parser
-from onepv1lib import onep
-import onepv1lib
+from pyonep import onep
+import pyonep
 try:
     from ..exoline import __version__
 except:
@@ -184,7 +184,7 @@ class RPCException(Exception):
     pass
 
 class ExoRPC():
-    '''Wrapper for onepv1lib RPC API.
+    '''Wrapper for pyonep RPC API.
     Raises exceptions on error and provides some reasonable defaults.'''
     def __init__(self,
             host=DEFAULT_HOST,
@@ -989,7 +989,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         # pyonep library call signaled an error in return values
         sys.stderr.write("One Platform error: {}\r\n".format(ex))
         return 1
-    except onepv1lib.exceptions.OnePlatformException as ex:
+    except pyonep.exceptions.OnePlatformException as ex:
         # pyonep library call threw an exception on purpose
         sys.stderr.write("One Platform exception: {}\r\n".format(ex))
         return 1

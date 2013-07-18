@@ -15,8 +15,7 @@ To install the latest released version of exoline:
 
 ```bash
 
-    $ pip install https://github.com/dweaver/pyonep/tarball/master#egg=onepv1lib-0.6
-    $ pip install --upgrade exoline
+    $ pip install exoline
 ```
 
 Alternatively, you can install from source:
