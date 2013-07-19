@@ -135,8 +135,12 @@ Dispatch Description
     exo [options] unmap <cik> <alias>''',
     'lookup':
         '''Look up a resource's RID based on its alias or cik.\n\nUsage:
-    exo [options] lookup <cik> <alias>
-    exo [options] lookup <cik> --cik=<cik-to-find>''',
+    exo [options] lookup <cik> [<alias>]
+    exo [options] lookup <cik> --cik=<cik-to-find>
+
+    If <alias> is omitted, the rid for <cik> is returned. This is equivalent to:
+
+    exo lookup <cik> ""''',
     'drop':
         '''Drop (permanently delete) a resource.\n\nUsage:
     exo [options] drop <cik> [<rid> ...]
@@ -451,7 +455,7 @@ class ExoRPC():
             # listing(): [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']]
             # listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
             #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
-        except onep_exceptions.OnePlatformException:
+        except pyonep.exceptions.OnePlatformException:
             print(spacer + u"  └─listing for {} failed. Is info['basic']['status'] == 'expired'?".format(cik))
         else:
             # print everything
@@ -879,7 +883,10 @@ def handle_args(cmd, args):
             if rid is not None:
                 pr(rid)
         else:
-            pr(er.lookup(cik, args['<alias>']))
+            alias = args['<alias>']
+            if alias is None:
+                alias = ""
+            pr(er.lookup(cik, alias))
     elif cmd == 'drop':
         if args['--all-children']:
             er.drop_all_children(cik)
