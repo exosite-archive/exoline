@@ -96,10 +96,12 @@ Here are some examples of things you can do with Exoline.
 TODO
 ----
 
-- fix install issue with pyonep 0.5
 - add support in read for multiple rids
+- add python 2.6.6 support
+- add copy command
+- add raw command, taking full RPC json from stdin
+- add new command, key,  for making CIK shortcuts
 - Make the info command take multiple rids (or stdin)
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
 - find out why aliases is sometimes a list, sometimes a dict
-- add copy command
