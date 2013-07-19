@@ -1,6 +1,13 @@
 History
 =======
 
+0.0.32 (2013-7-19)
+-----------------
+
+- lookup command looks up RID of CIK if no alias is passed
+- fixed exception
+
+
 0.0.31 (2013-7-18)
 ------------------
 
