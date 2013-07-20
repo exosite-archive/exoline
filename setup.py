@@ -6,6 +6,11 @@ from exoline import __version__ as version
 with open('requirements.txt') as f:
     required = f.read().splitlines()
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    required.append('ordereddict==1.1')
+
 setup(
     name='exoline',
     version=version,

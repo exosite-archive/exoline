@@ -1,4 +1,4 @@
 docopt==0.6.1
 requests==1.2.3
-pyonep>=0.7.2
+pyonep>=0.7.3
 python-dateutil==2.1

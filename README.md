@@ -51,7 +51,7 @@ To run the tests, install the packages in test/requirements.txt, and then type:
 ```bash
 
     $ cd test
-    $ ./test.sh
+    $ source test.sh
 ```
 
 Examples

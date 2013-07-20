@@ -10,7 +10,7 @@ First, copy testconfig.py.template to testconfig.py and set the 'portalcik' to t
 
 ```bash
 
-    $ ./test.sh
+    $ source test.sh
 ```
 
 To run a specific test:

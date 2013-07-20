@@ -57,7 +57,7 @@ def _cmd(argv, stdin):
     stderr.seek(0)
     stderr = stderr.read().strip()
     if exitcode != 0:
-        log.debug("Exit code was {}".format(exitcode))
+        log.debug("Exit code was {0}".format(exitcode))
     return CmdResult(exitcode, stdout, stderr)
 
 
@@ -93,8 +93,8 @@ class TestRPC(TestCase):
     RE_RID = '[0-9a-f]{40}'
     def _rid(self, s):
         '''Parse rid from s, raising an exception if it doesn't validate.'''
-        m = re.match("^({}).*".format(self.RE_RID), s)
-        self.assertFalse(m is None, "rid: {}".format(s))
+        m = re.match("^({0}).*".format(self.RE_RID), s)
+        self.assertFalse(m is None, "rid: {0}".format(s))
         return str(m.groups()[0])
 
     def _createMultiple(self, cik, resList):
@@ -129,7 +129,7 @@ class TestRPC(TestCase):
                 res = resList[i]
                 if res.alias is not None:
                     pyonep.map(cik, resList[i].rid, res.alias, defer=True)
-                self.l("Created {}, rid: {}".format(res.type, res.rid))
+                self.l("Created {0}, rid: {1}".format(res.type, res.rid))
 
         # map to aliases
         if pyonep.has_deferred(cik):
@@ -150,14 +150,14 @@ class TestRPC(TestCase):
                 stdin=json.dumps(res.desc))
         self.assertTrue(r.exitcode == 0, 'create succeeds')
 
-        rid = re.match('rid: ({})'.format(self.RE_RID), r.stdout).groups()[0]
+        rid = re.match('rid: ({0})'.format(self.RE_RID), r.stdout).groups()[0]
         ri = rpc('info', res.parentcik, rid)
         info = json.loads(ri.stdout.strip())
         res.created(rid, info)
 
         # test that description contains what we asked for
         self.l('''Comparing keys.
-Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
+Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         for k, v in res.desc.iteritems():
             if k != 'limits':
                 self.l(k)
@@ -166,13 +166,13 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
                     'created resource matches spec')
 
         if res.type == 'client':
-            m = re.match('^cik: ({})$'.format(self.RE_RID), r.stdout.split('\n')[1])
+            m = re.match('^cik: ({0})$'.format(self.RE_RID), r.stdout.split('\n')[1])
             self.l(r.stdout)
             self.assertTrue(m is not None)
             cik = m.groups()[0]
             self.assertTrue(res.info['key'] == cik)
 
-        self.l("Created {}, rid: {}".format(res.type, res.rid))
+        self.l("Created {0}, rid: {1}".format(res.type, res.rid))
         return res
 
     def l(self, s):
@@ -239,7 +239,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
         r = rpc('read',
                 res.parentcik,
                 res.rid,
-                '--limit={}'.format(limit),
+                '--limit={0}'.format(limit),
                 '--timeformat=unix')
         lines = r.stdout.split('\n')
         vread = []
@@ -254,8 +254,8 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
 
     def _verifyWrite(self, wrotevalues, readvalues):
         readvalues_notime = [v[1] for v in readvalues]
-        self.l('Wrote {}'.format(wrotevalues))
-        self.l('Read  {}'.format(readvalues))
+        self.l('Wrote {0}'.format(wrotevalues))
+        self.l('Read  {0}'.format(readvalues))
         self.assertTrue(wrotevalues == readvalues_notime,
                         'Read values did not match written values')
 
@@ -297,9 +297,9 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
         wv_errors = sorted(wv_errors, key=lambda x: x[0][0])
 
         # compare arrays
-        self.l('Wrote     {}'.format(wrotevalues))
-        self.l('wv_errors {}'.format(wv_errors))
-        self.l('Read      {}'.format(readvalues))
+        self.l('Wrote     {0}'.format(wrotevalues))
+        self.l('wv_errors {0}'.format(wv_errors))
+        self.l('Read      {0}'.format(readvalues))
         if len(readvalues) != len(wrotevalues):
             return False
         for ((wt, terr), wv), (rt, rv) in zip(wv_errors, readvalues):
@@ -330,7 +330,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
                 r = rpc('record',
                         res.parentcik,
                         res.rid,
-                        '--value={},{}'.format(timestamp, value))
+                        '--value={0},{1}'.format(timestamp, value))
                 self.assertTrue(r.exitcode == 0)
                 time.sleep(1)
 
@@ -338,7 +338,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
             r = rpc('record',
                     res.parentcik,
                     res.rid,
-                    *['--value={},{}'.format(t, v) for t, v in res.record])
+                    *['--value={0},{1}'.format(t, v) for t, v in res.record])
             self.assertTrue(r.exitcode == 0)
 
         def on_stdin(res):
@@ -346,7 +346,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
                     res.parentcik,
                     res.rid,
                     '-',
-                    stdin='\n'.join(['{},{}'.format(t, v) for t, v in res.record]))
+                    stdin='\n'.join(['{0},{1}'.format(t, v) for t, v in res.record]))
             self.assertTrue(r.exitcode == 0)
 
         for r in self.resources:
@@ -367,7 +367,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
         # starts with cik
         self.l(r.stdout)
         self.assertTrue(
-            re.match("cik: {}.*".format(cik), r.stdout) is not None)
+            re.match("cik: {0}.*".format(cik), r.stdout) is not None)
         # has correct number of lines
         self.assertTrue(len(r.stdout.split('\n')) == len(self.resources) + 1)
 
@@ -466,7 +466,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
         cik = self.client.cik()
         rid = self._rid(
             rpc('create', cik, '--type=dataport', '--format=integer', '--ridonly').stdout)
-        rpc('record', cik, rid, '--interval={}'.format(240), *['--value={}'.format(x) for x in range(1, 6)])
+        rpc('record', cik, rid, '--interval={0}'.format(240), *['--value={0}'.format(x) for x in range(1, 6)])
         r = rpc('spark', cik, rid, '--days=1')
         m = re.match("[^ ] {59}\n4m", r.stdout)
         self.assertTrue(m is not None, "equally spaced points")
@@ -476,7 +476,7 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
         r = rpc('record', cik, rid, '--value=-1,1', '--value=-62,2', '--value=-3662,3', '--value=-3723,4')
         self.assertTrue(r.exitcode == 0, "record points")
         r = rpc('spark', cik, rid, '--days=1')
-        self.l(u'stdout: {} ({})'.format(r.stdout, len(r.stdout)))
+        self.l(u'stdout: {0} ({1})'.format(r.stdout, len(r.stdout)))
         m = re.match("^[^ ] {58}[^ ]\n1m 1s +1h$", r.stdout)
         self.assertTrue(m is not None, "three points, two intervals")
 
@@ -493,16 +493,16 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
         self.assertTrue(r.exitcode == 0, 'New script')
         time.sleep(waitsec)
         self._latest(cik, 'helloworld.lua', 'line 1: Hello world!',
-                     'debug output within {} sec'.format(waitsec))
+                     'debug output within {0} sec'.format(waitsec))
         self._latest(cik, 'string_port_alias', 'Hello dataport!',
-                     'dataport write from script within {} sec'.format(waitsec))
-        r = rpc('script', 'files/helloworld2.lua', cik, '--name={}'.format('helloworld.lua'))
+                     'dataport write from script within {0} sec'.format(waitsec))
+        r = rpc('script', 'files/helloworld2.lua', cik, '--name={0}'.format('helloworld.lua'))
         self.assertTrue(r.exitcode == 0, 'Update existing script')
         time.sleep(waitsec)
         self._latest(cik, 'helloworld.lua', 'line 1: Hello world 2!',
-                     'debug output within {} sec'.format(waitsec))
+                     'debug output within {0} sec'.format(waitsec))
         self._latest(cik, 'string_port_alias', 'Hello dataport 2!',
-                     'dataport write from script within {} sec'.format(waitsec))
+                     'dataport write from script within {0} sec'.format(waitsec))
 
     def usage_test(self):
         '''OneP resource usage'''
@@ -522,8 +522,8 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
         def parse_metric(metric, r):
             self.assertTrue(r.exitcode == 0, 'usage call succeeded')
             self.l(r.stdout)
-            m = re.match(".*{}: (\d+).*".format(metric), r.stdout, re.DOTALL)
-            self.assertTrue(m is not None, 'match metric {} in results'.format(metric))
+            m = re.match(".*{0}: (\d+).*".format(metric), r.stdout, re.DOTALL)
+            self.assertTrue(m is not None, 'match metric {0} in results'.format(metric))
             return int(m.groups()[0])
         r = rpc('usage', self.client.cik(), '--start=10/1/2012T13:04:05')
         dp1 = parse_metric('dataport', r)
@@ -534,6 +534,6 @@ Asked for desc: {}\ngot desc: {}'''.format(res.desc, res.info['description']))
                               record=[[665366400, '2']]))
         r = rpc('usage', self.client.cik(), '--start=10/1/2012T13:04:05', '--end=now')
         dp2 = parse_metric('dataport', r)
-        self.l("dp1: {} dp2: {}".format(dp1, dp2))
+        self.l("dp1: {0} dp2: {1}".format(dp1, dp2))
         # TODO: why does this not increase consistently?
         self.assertTrue(dp2 > dp1, 'adding dataport added to dataport metric')

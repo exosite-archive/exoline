@@ -47,7 +47,12 @@ from datetime import datetime
 from datetime import timedelta
 import time
 from pprint import pprint
-from collections import OrderedDict
+# python 2.6 support
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
 import itertools
 import math
 
@@ -211,7 +216,7 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         if type(response) is list:
             # TODO: does this always indicate an error condition?
-            raise RPCException(', '.join(['{}: {}'.format(msg, t) for msg, t in response]))
+            raise RPCException(', '.join(['{0}: {1}'.format(msg, t) for msg, t in response]))
 
     def _raise_for_deferred(self, responses):
         r = []
@@ -344,7 +349,7 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         if cikonly:
             if not 'key' in response:
-                raise ExoException('{} has no CIK'.format(rid))
+                raise ExoException('{0} has no CIK'.format(rid))
             return response['key']
         else:
             return response
@@ -364,7 +369,7 @@ class ExoRPC():
         # show report
         maxlen = max([len(m) for m in metrics])
         for i, r in enumerate(responses):
-            print("{}:{} {}".format(
+            print("{0}:{1} {2}".format(
                   metrics[i], ' ' * (maxlen - len(metrics[i])), r))
 
     def _disp_key(self, cli_args, k):
@@ -422,11 +427,11 @@ class ExoRPC():
         if 'storage' in info and 'count' in info['storage']:
             add_opt(True, 'count', info['storage']['count'])
 
-        print(u'{}{} {}'.format(
+        print(u'{0}{1} {2}'.format(
             spacer,
             id,
-            u'' if len(opt) == 0 else u'({})'.format(u', '.join(
-                [u'{}: {}'.format(k, v) for k, v in opt.iteritems()]))))
+            u'' if len(opt) == 0 else u'({0})'.format(u', '.join(
+                [u'{0}: {1}'.format(k, v) for k, v in opt.iteritems()]))))
 
     def tree(self, cik, aliases=None, cli_args={}, spacer=u''):
         '''Print a tree of entities in OneP'''
@@ -456,7 +461,7 @@ class ExoRPC():
             # listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
             #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
         except pyonep.exceptions.OnePlatformException:
-            print(spacer + u"  └─listing for {} failed. Is info['basic']['status'] == 'expired'?".format(cik))
+            print(spacer + u"  └─listing for {0} failed. Is info['basic']['status'] == 'expired'?".format(cik))
         else:
             # print everything
             for t_idx, t in enumerate(types):
@@ -521,19 +526,19 @@ class ExoRPC():
         if rid is None:
             success, rid = self.exo.create(cik, 'datarule', desc)
             if success:
-                print("New script RID: {}".format(rid))
+                print("New script RID: {0}".format(rid))
             else:
-                #print('cik: {} desc: {}'.format(cik, json.dumps(desc)))
-                raise ExoException("Error creating datarule: {}".format(rid))
+                #print('cik: {0} desc: {1}'.format(cik, json.dumps(desc)))
+                raise ExoException("Error creating datarule: {0}".format(rid))
             success, rid = self.exo.map(cik, rid, name)
             if success:
-                print("Aliased script to: {}".format(name))
+                print("Aliased script to: {0}".format(name))
             else:
                 raise ExoException("Error aliasing script")
         else:
             success = self.exo.update(cik, rid, desc)
             if success:
-                print ("Updated script RID: {}".format(rid))
+                print ("Updated script RID: {0}".format(rid))
             else:
                 raise ExoException("Error updating datarule.")
 
@@ -541,7 +546,7 @@ class ExoRPC():
         try:
             f = open(filename)
         except IOError:
-            raise ExoException('Error opening file {}.'.format(filename))
+            raise ExoException('Error opening file {0}.'.format(filename))
         else:
             with f:
                 text = f.read().strip()
@@ -593,10 +598,10 @@ def format_time(sec):
     text = ""
     for s, label in intervals:
         if sec >= s and sec / s > 0:
-            text = "{} {}{}".format(text, sec / s, label)
+            text = "{0} {1}{2}".format(text, sec / s, label)
             sec -= s * (sec / s)
     if sec > 0:
-        text += " {}s".format(sec)
+        text += " {0}s".format(sec)
     return text.strip()
 
 
@@ -812,7 +817,7 @@ def handle_args(cmd, args):
                 match = reentry.match(tv)
                 if match is None:
                     sys.stderr.write(
-                        'Line not in <timestamp>,<value> format: {}'.format(tv))
+                        'Line not in <timestamp>,<value> format: {0}'.format(tv))
                     has_errors = True
                 else:
                     g = match.groups()
@@ -851,19 +856,19 @@ def handle_args(cmd, args):
                                      args['--format'],
                                      name=args['--name'])
         else:
-            raise ExoException('No defaults for {}.'.format(args['--type']))
+            raise ExoException('No defaults for {0}.'.format(args['--type']))
         ridonly = args['--ridonly']
         if ridonly:
             pr(rid)
         else:
-            pr('rid: {}'.format(rid))
+            pr('rid: {0}'.format(rid))
         if not ridonly and  typ == 'client':
             # for convenience, look up the cik
-            print('cik: {}'.format(er.info(cik, rid, cikonly=True)))
+            print('cik: {0}'.format(er.info(cik, rid, cikonly=True)))
         if args['--alias'] is not None:
             er.map(cik, rid, args['--alias'])
             if not ridonly:
-                print("alias: {}".format(args['--alias']))
+                print("alias: {0}".format(args['--alias']))
 
     elif cmd == 'update':
         s = sys.stdin.read()
@@ -967,7 +972,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
 
     args = docopt(
         __doc__,
-        version="Exosite Command Line {}".format(__version__),
+        version="Exosite Command Line {0}".format(__version__),
         options_first=True)
 
     # get command args
@@ -976,7 +981,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if cmd in cmd_doc:
         args_cmd = docopt(cmd_doc[cmd], argv=argv)
     else:
-        print('Unknown command {}. Try "exo --help"'.format(cmd))
+        print('Unknown command {0}. Try "exo --help"'.format(cmd))
         return 1
 
     # merge command-specific arguments into general arguments
@@ -990,15 +995,15 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         handle_args(cmd, args)
     except ExoException as ex:
         # command line tool threw an exception on purpose
-        sys.stderr.write("Command line error: {}\r\n".format(ex))
+        sys.stderr.write("Command line error: {0}\r\n".format(ex))
         return 1
     except RPCException as ex:
         # pyonep library call signaled an error in return values
-        sys.stderr.write("One Platform error: {}\r\n".format(ex))
+        sys.stderr.write("One Platform error: {0}\r\n".format(ex))
         return 1
     except pyonep.exceptions.OnePlatformException as ex:
         # pyonep library call threw an exception on purpose
-        sys.stderr.write("One Platform exception: {}\r\n".format(ex))
+        sys.stderr.write("One Platform exception: {0}\r\n".format(ex))
         return 1
     except KeyboardInterrupt:
         if args['--debug']:
