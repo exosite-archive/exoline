@@ -97,7 +97,6 @@ TODO
 ----
 
 - add support in read for multiple rids
-- add python 2.6.6 support
 - add copy command
 - add raw command, taking full RPC json from stdin
 - add new command, key,  for making CIK shortcuts
