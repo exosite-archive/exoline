@@ -23,7 +23,7 @@ Commands:
   usage
   tree
   script
-  spark
+  intervals
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
@@ -47,6 +47,7 @@ from datetime import datetime
 from datetime import timedelta
 import time
 from pprint import pprint
+from operator import itemgetter
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -69,14 +70,21 @@ DEFAULT_HOST='m2.exosite.com'
 cmd_doc = {
     'read':
         '''Read data from a resource.\n\nUsage:
-    exo [options] read <cik> [<rid>]
+    exo [options] read <cik> [<rid> ...]
 
 Options:
-    --follow                 continue reading
+    --follow                 continue reading (ignores --end)
     --limit=<limit>          number of data points to read [default: 1]
+    --start=<time>           start time (see details below)
+    --end=<time>             end time
     --selection=all|autowindow|givenwindow  downsample method [default: all]
     --format=csv|raw         output format [default: csv]
-    --timeformat=unix|human  unix timestamp or human-readable? [default: human]''',
+    --timeformat=unix|human  unix timestamp or human-readable? [default: human]
+    {{ helpoption }}
+
+    If <rid> is omitted, reads all datasources and datarules under <cik>.
+
+    {{ startend }}''',
     'write':
         '''Write data at the current time.\n\nUsage:
     exo [options] write <cik> [<rid>] --value=<value>''',
@@ -98,6 +106,7 @@ Options:
     --name=<name     set a resource name (overwriting the one in stdin if present)
     --alias=<alias>  set an alias
     --ridonly        just output the RID by itself on a line
+    {{ helpoption }}
 
 Details:
     Pass - and a json description object on stdin for maximum control.
@@ -151,7 +160,8 @@ Dispatch Description
     exo [options] drop <cik> [<rid> ...]
 
 Options:
-    --all-children  drop all children of the resource.''',
+    --all-children  drop all children of the resource.
+    {{ helpoption }}''',
     'flush':
         '''Remove all time series data from a resource.\n\nUsage:
     exo [options] flush <cik> [<rid>]''',
@@ -159,12 +169,7 @@ Options:
         '''Display usage of One Platform resources over a time period.\n\nUsage:
     exo [options] usage <cik> [<rid>] --start=<time> [--end=<time>]
 
-    <time> can be a unix timestamp or formatted like any of these:
-
-    2011-10-23T08:00:00-07:00 10/1/2012 "2012-10-23 14:01"
-
-    If time part is omitted, it assumes 00:00:00.
-    To report through the present time, pass --end=now or omit --end entirely.''',
+    {{ startend }}''',
     'tree':
         '''Display a resource's descendants.\n\nUsage:
     exo tree [--verbose] [--hide-keys] <cik>''',
@@ -172,19 +177,36 @@ Options:
     exo [options] script <script-file> <cik> ...
 
 Options:
-    --name=<name>  script name, if different from script filename.''',
-    'spark': '''Show distribution of intervals between points.\n\nUsage:
-    exo [options] spark <cik> [<rid>] --days=<days>
+    --name=<name>  script name, if different from script filename.
+    {{ helpoption }}''',
+    'intervals': '''Show distribution of intervals between points.\n\nUsage:
+    exo [options] intervals <cik> [<rid>] --days=<days>
 
 Options:
-    --stddev=<num>  exclude intervals more than num standard deviations from mean'''
+    --stddev=<num>  exclude intervals more than num standard deviations from mean
+    {{ helpoption }}'''
+}
+
+# shared sections of documentation
+doc_replace = {
+    '{{ startend }}': '''<time> can be a unix timestamp or formatted like any of these:
+
+    2011-10-23T08:00:00-07:00
+    10/1/2012
+    "2012-10-23 14:01"
+
+    If time part is omitted, it assumes 00:00:00.
+    To report through the present time, omit --end or pass --end=now''',
+    '{{ helpoption }}': '''    -h --help            Show this screen.''',
 }
 
 for k in cmd_doc:
-    cmd_doc[k] += '''
+    # helpoption is appended to any commands that don't already have it
+    if '{{ helpoption }}' not in cmd_doc[k]:
+        cmd_doc[k] += '\n\nOptions:\n    {{ helpoption }}'
+    for r in doc_replace:
+        cmd_doc[k] = cmd_doc[k].replace(r, doc_replace[r])
 
-Options:
-    -h --help            Show this screen.'''
 
 class ExoException(Exception):
     pass
@@ -225,6 +247,30 @@ class ExoRPC():
             r.append(response)
         return r
 
+    def _exomult(self, cik, commands):
+        '''Takes a list of onep commands with cik omitted, e.g.:
+            [['info', {alias: ""}], ['listing']]'''
+        if len(commands) == 0:
+            return []
+        assert(not self.exo.has_deferred(cik))
+        for c in commands:
+            method = getattr(self.exo, c[0])
+            #print c
+            method(cik, *c[1:], defer=True)
+        assert(self.exo.has_deferred(cik))
+        responses = self._raise_for_deferred(self.exo.send_deferred(cik))
+        return responses
+
+    def _readoptions(self, limit, sort, starttime, endtime, selection):
+        options ={'limit': limit,
+                  'sort': sort,
+                  'selection': selection}
+        if starttime is not None:
+            options['starttime'] = int(starttime)
+        if endtime is not None:
+            options['endtime'] = int(endtime)
+        return options
+
     def read(self,
              cik,
              rid,
@@ -233,19 +279,78 @@ class ExoRPC():
              starttime=None,
              endtime=None,
              selection='all'):
-        options = {'limit': limit,
-               'sort': sort,
-               'selection': selection}
-        if starttime is not None:
-            options['starttime'] = int(starttime)
-        if endtime is not None:
-            options['endtime'] = int(endtime)
+        options = self._readoptions(limit, sort, starttime, endtime, selection)
         isok, response = self.exo.read(
             cik,
             rid,
             options)
         self._raise_for_response(isok, response)
         return response
+
+    def _combinereads(self, reads):
+        '''
+        >>> exo = ExoRPC()
+        >>> exo._combinereads([[[2, 'a'], [1, 'b']]])
+        [[2, ['a']], [1, ['b']]]
+        >>> exo._combinereads([[[3, 'a'], [2, 'b']], [[3, 77], [1, 78]]])
+        [[3, ['a', 77]], [2, ['b', None]], [1, [None, 78]]]
+        >>> exo._combinereads([[[5, 'a'], [4, 'b']], [[2, 'd'], [1, 'e']]])
+        [[5, ['a', None]], [4, ['b', None]], [2, [None, 'd']], [1, [None, 'e']]]
+        >>> exo._combinereads([])
+        []
+        '''
+        if len(reads) == 0:
+            return []
+        else:
+            combined = []
+
+            # indexes into each list indicating the next
+            # unprocessed value
+            curi = [len(l) - 1 for l in reads]
+            #print(reads)
+
+            # loop until we've processed every element
+            while curi != [-1] * len(curi):
+                # minimum timestamp from unprocessed entries
+                timestamp = min([reads[i][ci] for i, ci in enumerate(curi) if ci is not -1],
+                        key=itemgetter(0))[0]
+
+                # list of points we haven't processed in each read result
+                # (or None, if all have been processed)
+                unprocessed = [r[i] if i > -1 else None for i, r in zip(curi, reads)]
+
+                # list of values corresponding to timestamp t
+                values = [None if p is None or p[0] != timestamp else p[1]
+                        for p in unprocessed]
+
+                #print('curi {}, values {}, unprocessed: {}'.format(curi, values, unprocessed))
+
+                # add to combined results
+                combined.append([timestamp, values])
+
+                # update curi based on which values were processed
+                for i, v in enumerate(values):
+                    if v is not None:
+                        curi[i] -= 1
+
+            combined.sort(key=itemgetter(0), reverse=True)
+            return combined
+
+    def readmult(self,
+                 cik,
+                 rids,
+                 limit,
+                 sort='asc',
+                 starttime=None,
+                 endtime=None,
+                 selection='all'):
+        '''Reads multiple rids and returns combined timestamped data like this:
+               [[12314, [1, 77, 'a']], [12315, [2, 78, None]]]
+           Where 1, 77, 'a' is the order rids were passed, and None represents
+           no data in that dataport for that timestamp.'''
+        options = self._readoptions(limit, sort, starttime, endtime, selection)
+        responses = self._exomult(cik, [['read', rid, options] for rid in rids])
+        return self._combinereads(responses)
 
     def write(self, cik, rid, value):
         isok, response = self.exo.write(cik, rid, value, {})
@@ -589,6 +694,29 @@ class ExoRPC():
             timestamp -= interval_seconds
         return self.record(cik, rid, tvalues)
 
+def parse_ts(s):
+    return int(time.mktime(parser.parse(s).timetuple()))
+
+def is_ts(s):
+    return re.match('^[0-9]+$', s) is not None
+
+def get_startend(args):
+    '''Get start and end timestamps based on standard arguments'''
+    start = args.get('--start', None)
+    end = args.get('--end', None)
+    if start is None:
+        start = 1
+    elif is_ts(start):
+        start = int(start)
+    else:
+        start = parse_ts(start)
+    if end is None or end == 'now':
+        end = int(time.mktime(datetime.now().timetuple()))
+    elif is_ts(end):
+        end = int(end)
+    else:
+        end = parse_ts(end)
+    return start, end
 
 def format_time(sec):
     '''Formats a time interval for human consumption'''
@@ -612,7 +740,20 @@ def spark(numbers, empty_val=None):
     When value is empty_val, show no bar.
 
     https://github.com/1stvamp/py-sparkblocks
-
+        start = args['--start']
+        end = args['--end']
+        parse_ts = lambda(s): int(time.mktime(parser.parse(s).timetuple()))
+        is_ts = lambda(s): re.match('^[0-9]+$', s) is not None
+        if is_ts(start):
+            start = int(start)
+        else:
+            start = parse_ts(start)
+        if end is None or end == 'now':
+            end = int(time.mktime(datetime.now().timetuple()))
+        elif is_ts(end):
+            end = int(end)
+        else:
+            end = parse_ts(end)
     Based on:
       https://github.com/holman/spark
     and:
@@ -714,12 +855,14 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
     sys.stdout.write(max_label + '\n')
 
 def read_cmd(er, cik, rids, args):
-    rid = rids[0]
     limit = args['--limit']
     limit = 1 if limit is None else int(limit)
 
+    # time range
+    start, end = get_startend(args)
+
     timeformat = args['--timeformat']
-    dw = csv.DictWriter(sys.stdout, ['timestamp', 'value'])
+    dw = csv.DictWriter(sys.stdout, ['timestamp'] + [str(r) for r in rids])
     fmt = args['--format']
 
     def printline(timestamp, val):
@@ -730,27 +873,32 @@ def read_cmd(er, cik, rids, args):
                 dt = timestamp
             else:
                 dt = datetime.fromtimestamp(timestamp)
-            dw.writerow({'timestamp': str(dt), 'value': val})
+            row = {'timestamp': str(dt)}
+            values = dict([(str(rids[i]), val[i]) for i in range(len(rids))])
+            row.update(values)
+            dw.writerow(row)
 
     sleep_seconds = 2
     if args['--follow']:
         results = []
         while len(results) == 0:
-            results = er.read(cik,
-                                rid,
-                                limit=1,
-                                sort='desc')
+            results = er.readmult(cik,
+                                  rids,
+                                  limit=1,
+                                  sort='desc')
             if len(results) > 0:
-                last_t, last_v = results[0]
+                last_t, last_v = results[-1]
                 printline(last_t, last_v)
             else:
                 time.sleep(sleep_seconds)
 
         while True:
-            results = er.read(cik,
-                                rid,
-                                limit=10000,
-                                starttime=last_t + 1)
+            results = er.readmult(cik,
+                                  rids,
+                                  # Read all points that arrived since last
+                                  # read time. Could also be now - last_t?
+                                  limit=sleep_seconds * 3,
+                                  starttime=last_t + 1)
 
             for t, v in results:
                 printline(t, v)
@@ -760,10 +908,12 @@ def read_cmd(er, cik, rids, args):
 
             time.sleep(sleep_seconds)
     else:
-        for t, v in er.read(cik,
-                            rid,
-                            sort='desc',
-                            limit=limit):
+        for t, v in er.readmult(cik,
+                                rids,
+                                sort='desc',
+                                starttime=start,
+                                endtime=end,
+                                limit=limit):
             printline(t, v)
 
 def plain_print(arg):
@@ -816,9 +966,14 @@ def handle_args(cmd, args):
             for tv in tvalues:
                 match = reentry.match(tv)
                 if match is None:
-                    sys.stderr.write(
-                        'Line not in <timestamp>,<value> format: {0}'.format(tv))
-                    has_errors = True
+                    try:
+                        t, v = tv.split(',')
+                        t = parse_ts(t)
+                        entries.append([t, v])
+                    except Exception:
+                        sys.stderr.write(
+                            'Line not in <timestamp>,<value> format: {0}'.format(tv))
+                        has_errors = True
                 else:
                     g = match.groups()
                     entries.append([int(g[0]), g[1]])
@@ -827,7 +982,6 @@ def handle_args(cmd, args):
             else:
                 er.record(cik, rids[0], entries)
         else:
-            # split timestamp, value
             if args['-']:
                 values = [v.strip() for v in sys.stdin.readlines()]
             else:
@@ -924,27 +1078,16 @@ def handle_args(cmd, args):
                       'http',
                       'sms',
                       'xmpp']
-        start = args['--start']
-        end = args['--end']
-        parse_ts = lambda(s): int(time.mktime(parser.parse(s).timetuple()))
-        is_ts = lambda(s): re.match('^[0-9]+$', s) is not None
-        if is_ts(start):
-            start = int(start)
-        else:
-            start = parse_ts(start)
-        if end is None or end == 'now':
-            end = int(time.mktime(datetime.now().timetuple()))
-        elif is_ts(end):
-            end = int(end)
-        else:
-            end = parse_ts(end)
+
+        start, end = get_startend(args)
         er.usage(cik, rids[0], allmetrics, start, end)
     # special commands
-    elif cmd == 'tree': er.tree(cik, cli_args=args)
+    elif cmd == 'tree':
+        er.tree(cik, cli_args=args)
     elif cmd == 'script':
         # cik is a list of ciks
         er.upload(cik, args['<script-file>'], args['--name'])
-    elif cmd == 'spark':
+    elif cmd == 'intervals':
         days = int(args['--days'])
         end = time.mktime(datetime.now().timetuple())
         start = time.mktime((datetime.now() - timedelta(days=days)).timetuple())
@@ -953,7 +1096,6 @@ def handle_args(cmd, args):
         show_intervals(er, cik, rids[0], start, end, limit=1000000, numstd=numstd)
     else:
         raise ExoException("Command not handled")
-
 
 
 def cmd(argv=None, stdin=None, stdout=None, stderr=None):

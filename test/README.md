@@ -19,3 +19,10 @@ To run a specific test:
 
     $ nosetests test.py:TestRPC.record_test
 ```
+
+To run full tests against multiple python distributions:
+
+```bash
+
+    $ source test.sh full
+```

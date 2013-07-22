@@ -96,10 +96,10 @@ Here are some examples of things you can do with Exoline.
 TODO
 ----
 
-- add support in read for multiple rids
 - add copy command
+- add diff command (to test copy command)
 - add raw command, taking full RPC json from stdin
-- add new command, key,  for making CIK shortcuts
+- add key command for making local CIK aliases shortcuts
 - Make the info command take multiple rids (or stdin)
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
