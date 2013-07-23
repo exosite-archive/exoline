@@ -24,6 +24,8 @@ Commands:
   tree
   script
   intervals
+  copy
+  diff
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
@@ -184,7 +186,17 @@ Options:
 
 Options:
     --stddev=<num>  exclude intervals more than num standard deviations from mean
-    {{ helpoption }}'''
+    {{ helpoption }}''',
+    'copy': '''Make a copy of a client.\n\nUsage:
+    exo [options] copy <cik> <destination-cik>
+
+    Copies <cik> and all its non-client children to <destination-cik>.
+    Returns CIK of the copy. NOTE: copy excludes all data in dataports.''',
+    'diff': '''Show differences between two clients.\n\nUsage:
+    exo [options] diff <cik> <cik2>
+
+    Displays differences between <cik> and <cik2>, including all non-client
+    children.'''
 }
 
 # shared sections of documentation
@@ -228,9 +240,13 @@ class ExoRPC():
                                httptimeout=httptimeout,
                                https=https)
 
-    def _raise_for_response(self, isok, response):
+    def _raise_for_response(self, isok, response, call=None):
         if not isok:
-            raise RPCException(response)
+            if call is None:
+                msg = str(response)
+            else:
+                msg = '{0} ({1})'.format(str(response), str(call))
+            raise RPCException(msg)
 
     def _raise_for_response_record(self, isok, response):
         '''Undocumented RPC behavior-- if record timestamps are invalid, isok is True
@@ -243,7 +259,7 @@ class ExoRPC():
     def _raise_for_deferred(self, responses):
         r = []
         for call, isok, response in responses:
-            self._raise_for_response(isok, response)
+            self._raise_for_response(isok, response, call=call)
             r.append(response)
         return r
 
@@ -385,11 +401,21 @@ class ExoRPC():
     def create_client(self, cik, name=None, desc=None):
         if desc is None:
             # default description
-            desc = {'limits': {'dataport': 'inherit',
-                               'datarule': 'inherit',
-                               'dispatch': 'inherit',
-                               'disk': 'inherit',
-                               'io': 'inherit'},
+            desc = {'limits': {
+                              'client': 'inherit',
+                              'dataport': 'inherit',
+                              'datarule': 'inherit',
+                              'disk': 'inherit',
+                              'dispatch': 'inherit',
+                              'email': 'inherit',
+                              'email_bucket': 'inherit',
+                              'http': 'inherit',
+                              'http_bucket': 'inherit',
+                              'share': 'inherit',
+                              'sms': 'inherit',
+                              'sms_bucket': 'inherit',
+                              'xmpp': 'inherit',
+                              'xmpp_bucket': 'inherit'},
                     'writeinterval': 'inherit'}
         if name is not None:
             desc['name'] = name
@@ -422,18 +448,22 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def listing_with_info(self, cik, types):
-        listing = self.listing(cik, types)
+    def _listing_with_info(self, cik, types):
+        '''Return a list of dicts for each type containing mappings between rids and
+        info for that RID. E.g.:
+        [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]'''
+
+        assert(len(types) > 0)
+
+        listing = self._exomult(cik,
+                                [['listing', types]])[0]
+
         # listing is a list of lists per type, like: [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']]
 
-        # build up a deferred request per element in each sublist
-        for type_list in listing:
-            for rid in type_list:
-                self.exo.info(cik, rid, defer=True)
-
-        responses = []
-        if self.exo.has_deferred(cik):
-            responses = self._raise_for_deferred(self.exo.send_deferred(cik))
+        # request info for each rid
+        # (rids is a flattened version of listing)
+        rids = list(itertools.chain(*listing))
+        responses = self._exomult(cik, [['info', rid] for rid in rids])
 
         # From the return values make a list of dicts like this:
         # [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
@@ -449,7 +479,7 @@ class ExoRPC():
 
         return listing_with_info
 
-    def info(self, cik, rid, options={}, cikonly=False):
+    def info(self, cik, rid={'alias': ''}, options={}, cikonly=False):
         isok, response = self.exo.info(cik, rid, options)
         self._raise_for_response(isok, response)
         if cikonly:
@@ -543,10 +573,10 @@ class ExoRPC():
         # print root node
         isroot = len(spacer) == 0
         if isroot:
-            # todo: combine these (maybe also the listing_with_info function
+            # todo: combine these (maybe also the _listing_with_info function
             # below?)
             rid = self.lookup(cik, "")
-            info = self.info(cik, {"alias": ""})
+            info = self.info(cik)
             # info doesn't contain key
             info['key'] = cik
             aliases = info['aliases']
@@ -561,9 +591,9 @@ class ExoRPC():
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
         try:
-            listing = self.listing_with_info(cik, types=types)
+            listing = self._listing_with_info(cik, types=types)
             # listing(): [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']]
-            # listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
+            # _listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
             #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
         except pyonep.exceptions.OnePlatformException:
             print(spacer + u"  └─listing for {0} failed. Is info['basic']['status'] == 'expired'?".format(cik))
@@ -604,7 +634,7 @@ class ExoRPC():
         Note that if multiple scripts have the same name, the first one
         in the listing is returned.'''
         found_rid = None
-        listing = self.listing_with_info(cik, types)
+        listing = self._listing_with_info(cik, types)
         for type_listing in listing:
             for rid in type_listing:
                 if type_listing[rid]['description']['name'] == name:
@@ -693,6 +723,120 @@ class ExoRPC():
             tvalues.append([timestamp, v])
             timestamp -= interval_seconds
         return self.record(cik, rid, tvalues)
+
+    def _uberlookup(self, cik, types):
+        '''Lookup info for a device and its children.
+        Returns rid, info, child_list_with_info'''
+
+        # TODO: combine lookup and info with listing command in
+        # _listing_with_info. This would save an HTTP request.
+        rid, info = self._exomult(cik,
+                                  [['lookup', 'aliased', ''],
+                                   ['info', {'alias': ''}]])
+
+        list_with_info = self._listing_with_info(cik, types=types)
+        return rid, info, list_with_info
+
+    def _create_from_info(self, parentcik, type, info):
+        # TODO: create child of parentcik matching info
+        rid = self.create(parentcik, type, info['description'])
+
+        if type == 'client':
+            # look up CIK
+            return rid, self.info(parentcik, rid)['key']
+        else:
+            return rid, None
+
+    def copy(self, cik, destcik):
+        '''Make a copy of cik and its non-client children to destcik and
+        return the cik of the copy.'''
+        types = ['client', 'dataport', 'datarule', 'dispatch']
+        rid, info, list_with_info = self._uberlookup(cik, types=types)
+
+        # create the base device
+        cprid, cpcik = self._create_from_info(destcik, 'client', info)
+
+        aliases = info['aliases']
+        cpaliases = {}
+        for i, typedict in enumerate(list_with_info):
+            typ = types[i]
+            for rid in typedict:
+                if typ == 'client':
+                    ciktocopy = typedict[rid]['key']
+                    childcprid, _ = self.copy(ciktocopy, cpcik)
+                else:
+                    childcprid, _ = self._create_from_info(cpcik, typ, typedict[rid])
+                if rid in aliases:
+                    cpaliases[childcprid] = aliases[rid]
+
+        # add aliases
+        self._exomult(
+            cpcik,
+            list(itertools.chain(*[[['map', r, alias]
+                                 for alias in cpaliases[r]]
+                                 for r in cpaliases])))
+
+        return cprid, cpcik
+
+    def _remove(self, dct, keypaths):
+        '''Remove keypaths from dictionary.
+        >>> ex = ExoRPC()
+        >>> ex._remove({'a': {'b': {'c': 1}}}, [['a', 'b', 'c']])
+        {'a': {'b': {}}}
+        >>> ex._remove({'a': {'b': {'q': 1}}}, [['a', 'b', 'c']])
+        {'a': {'b': {'q': 1}}}
+        >>> ex._remove({}, [['a'], ['b'], ['c']])
+        {}
+        >>> ex._remove({'q': 'a'}, [['a'], ['b']])
+        {'q': 'a'}
+        '''
+        for kp in keypaths:
+            x = dct
+            for i, k in enumerate(kp):
+                if k in x:
+                    if i == len(kp) - 1:
+                        del x[k]
+                    else:
+                        x = x[k]
+                else:
+                    break
+        return dct
+
+    def _differences(self, dict1, dict2):
+        import difflib
+        differ = difflib.Differ()
+
+        s1 = json.dumps(dict1, indent=4, sort_keys=True).splitlines(1)
+        s2 = json.dumps(dict2, indent=4, sort_keys=True).splitlines(1)
+
+        return list(differ.compare(s1, s2))
+
+    def diff(self, cik1, cik2):
+        '''Show differences between two ciks.'''
+
+        # list of keypaths to not include in comparison
+        ignore = [['usage'],
+                  ['counts', 'disk'],
+                  ['counts', 'email'],
+                  ['counts', 'http'],
+                  ['counts', 'share'],
+                  ['counts', 'sms'],
+                  ['counts', 'xmpp'],
+                  ['basic', 'status'],
+                  ['basic', 'modified'],
+                  ['data'],
+                  ['storage']]
+
+        info1 = self.info(cik1)
+        info1 = self._remove(info1, ignore)
+        info2 = self.info(cik2)
+        info2 = self._remove(info2, ignore)
+
+        if info1 == info2:
+            return None
+        else:
+            differences = self._differences(info1, info2)
+            return ''.join(differences)
 
 def parse_ts(s):
     return int(time.mktime(parser.parse(s).timetuple()))
@@ -1050,6 +1194,8 @@ def handle_args(cmd, args):
         if args['--all-children']:
             er.drop_all_children(cik)
         else:
+            if len(rids) == 0:
+                raise ExoException("<rid> is required")
             er.drop(cik, rids)
     elif cmd == 'listing':
         types = args['--type']
@@ -1094,6 +1240,15 @@ def handle_args(cmd, args):
         numstd = args['--stddev']
         numstd = int(numstd) if numstd is not None else None
         show_intervals(er, cik, rids[0], start, end, limit=1000000, numstd=numstd)
+    elif cmd == 'copy':
+        destcik = args['<destination-cik>']
+        newrid, newcik = er.copy(cik, destcik)
+        pr('cik: ' + newcik)
+    elif cmd == 'diff':
+        cik2 = args['<cik2>']
+        diffs = er.diff(cik, cik2)
+        if diffs is not None:
+            print(diffs)
     else:
         raise ExoException("Command not handled")
 
