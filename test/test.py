@@ -30,6 +30,7 @@ class CmdResult():
 logging.basicConfig(stream=sys.stderr)
 logging.getLogger("TestRPC").setLevel(logging.DEBUG)
 logging.getLogger("_cmd").setLevel(logging.DEBUG)
+logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
 log = logging.getLogger("_cmd")
 
 
@@ -37,7 +38,7 @@ def _cmd(argv, stdin):
     '''Runs an exoline command, translating stdin from
     string and stdout to string. Returns a CmdResult.'''
     if True:
-        log.debug(' '.join(argv))
+        log.debug(' '.join([str(a) for a in argv]))
         if stdin is not None:
             log.debug('    stdin: ' + stdin)
     if type(stdin) is str:
@@ -209,6 +210,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             record=[[-100, 'true'], [-200, 'false'], [-300, 'true']])
         self.dataports['string'] = Resource(
             cik, 'dataport', {'format': 'string', 'name': 'string_port'},
+            alias='string_port_alias',
             write=['test', 'a' * 300],
             record=[[163299600, 'home brew'], [543212345, 'nonsense']])
         self.dataports['float'] = Resource(
@@ -456,12 +458,13 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def _latest(self, cik, rid, val, msg):
         r = rpc('read', cik, rid, '--format=raw')
-        self.l(r.stdout)
-        self.assertTrue(r.stdout == val, msg)
+        self.assertEqual(r.exitcode, 0, 'read succeeded')
+        self.l("{0} vs {1}".format(r.stdout, val))
+        self.assertEqual(r.stdout, val, msg)
 
     def script_test(self):
         '''Script upload'''
-        waitsec = 240
+        waitsec = 12
         cik = self.client.cik()
         r = rpc('script', 'files/helloworld.lua', cik)
         self.assertTrue(r.exitcode == 0, 'New script')
@@ -474,9 +477,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertTrue(r.exitcode == 0, 'Update existing script')
         time.sleep(waitsec)
         self._latest(cik, 'helloworld.lua', 'line 1: Hello world 2!',
-                     'debug output within {0} sec'.format(waitsec))
+                     'debug output from updated script within {0} sec'.format(waitsec))
         self._latest(cik, 'string_port_alias', 'Hello dataport 2!',
-                     'dataport write from script within {0} sec'.format(waitsec))
+                     'dataport write from updated script within {0} sec'.format(waitsec))
 
     def usage_test(self):
         '''OneP resource usage'''
@@ -511,7 +514,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertTrue(dp2 > dp1, 'adding dataport added to dataport metric')
 
     def readmultiple_test(self):
-        '''read multiple RIDs'''
+        '''Read multiple RIDs'''
         dataports = []
         strings =  [('2013-07-20T02:40:07', 'a'),
                     ('2013-07-20T02:50:07', 'b'),
@@ -552,15 +555,53 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', cik, *rids)
         self.assertTrue(r.stdout == '2013-07-20 03:00:08,0.3,3,', 'rid order reversed')
 
+    def ok(self, response, msg=None):
+        self.assertEqual(response.exitcode, 0, msg)
 
+    def notok(self, response, msg=None):
+        self.assertNotEqual(response.exitcode, 1, msg)
 
+    def copy_test(self):
+        '''Test copy and diff commands'''
 
+        cik = self.client.cik()
 
+        r = rpc('diff', cik, self.client.cik())
+        self.assertEqual(r.exitcode, 0, 'diff with itself')
+        self.assertTrue(len(r.stdout) == 0, 'diff with itself')
 
+        r = rpc('copy', cik, self.portalcik, '--cikonly')
+        self.assertEqual(r.exitcode, 0, 'copy test client')
+        copycik = r.stdout
 
+        r = rpc('diff', cik, copycik, '--no-children')
+        self.assertEqual(r.exitcode, 0, 'diff no children call succeeds')
+        self.assertTrue(len(r.stdout) == 0, 'diff client copy, no children no differences')
 
+        #r = rpc('diff', copycik, self.client.cik(), '--no-children')
+        #self.assertEqual(r.exitcode, 0, 'reverse cik order')
+        #self.assertTrue(len(r.stdout) == 0, 'reverse cik order')
 
+        r = rpc('diff', copycik, cik)
+        self.l(r.stdout)
+        self.assertEqual(r.exitcode, 0, 'diff with children call succeeds')
+        self.assertTrue(len(r.stdout) == 0, 'diff with children matches')
 
+        # add an alias
+        r = rpc('map', cik, self.dataports['string'].rid, 'foo')
+        self.ok(r, 'add alias')
+        r = rpc('diff', copycik, cik)
+        self.ok(r, 'diff with new alias')
+        self.l(r.stdout)
+        self.assertTrue(len(r.stdout) > 0, 'single alias difference')
 
-
+        r = rpc('lookup', copycik, 'string_port_alias')
+        self.ok(r, 'lookup copy dataport')
+        copyrid = r.stdout
+        r = rpc('map', copycik, copyrid, 'foo')
+        self.ok(r, 'add same alias to copy')
+        r = rpc('diff', cik, copycik)
+        self.ok(r, 'diff with same alias')
+        self.l(r.stdout)
+        self.assertTrue(len(r.stdout) == 0, 'aliases match now')
 

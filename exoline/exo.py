@@ -197,7 +197,10 @@ Options:
     exo [options] copy <cik> <destination-cik>
 
     Copies <cik> and all its non-client children to <destination-cik>.
-    Returns CIK of the copy. NOTE: copy excludes all data in dataports.''',
+    Returns CIK of the copy. NOTE: copy excludes all data in dataports.
+
+Options:
+    --cikonly  show unlabeled CIK by itself''',
     'diff': '''Show differences between two clients.\n\nUsage:
     exo [options] diff <cik> <cik2>
 
@@ -874,10 +877,28 @@ class ExoRPC():
 
         return {myid : info}
 
+    def _difffilter(self, difflines):
+        d = difflines
+
+        # replace differing rid children lines with a single <<rid>>
+        ridline = '^[+-](.*").*\.[a-f0-9]{40}(".*)\n'
+        d = re.sub(ridline * 2, r' \1<<RID>>\2\n', d, flags=re.MULTILINE)
+
+        # replace differing rid alias lines with a single <<rid>> placeholder
+        a = '(.*")[a-f0-9]{40}("\: \[)\n'
+        plusa = '^\+' + a
+        minusa = '^\-' + a
+        d = re.sub(plusa + minusa, r' \1<<RID>>\2\n', d, flags=re.MULTILINE)
+        d = re.sub(minusa + plusa, r' \1<<RID>>\2\n', d, flags=re.MULTILINE)
+        return d
+
     def diff(self, cik1, cik2, full=False, nochildren=False):
         '''Show differences between two ciks.'''
 
-        # list of keypaths to not include in comparison
+        # list of info "keypaths" to not include in comparison
+        # only the last item in the list is removed. E.g. for a
+        # keypath of ['counts', 'disk'], only the 'disk' key is
+        # ignored.
         ignore = [['usage'],
                   ['counts', 'disk'],
                   ['counts', 'email'],
@@ -910,7 +931,18 @@ class ExoRPC():
             return None
         else:
             differences = self._differences(info1, info2)
-            return ''.join(differences)
+            differences = ''.join(differences)
+
+            if not full:
+                # pass through a filter that removes
+                # differences that we don't care about
+                # (e.g. different RIDs)
+                differences = self._difffilter(differences)
+
+                if all([line[0] == ' ' for line in differences.split('\n')]):
+                    return None
+
+            return differences
 
 def parse_ts(s):
     return int(time.mktime(parser.parse(s).timetuple()))
@@ -1085,7 +1117,7 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            print(val)
+            print(val[0])
         else:
             if timeformat == 'unix':
                 dt = timestamp
@@ -1322,7 +1354,10 @@ def handle_args(cmd, args):
     elif cmd == 'copy':
         destcik = args['<destination-cik>']
         newrid, newcik = er.copy(cik, destcik)
-        pr('cik: ' + newcik)
+        if args['--cikonly']:
+            pr(newcik)
+        else:
+            pr('cik: ' + newcik)
     elif cmd == 'diff':
         diffs = er.diff(cik,
                         args['<cik2>'],
