@@ -107,7 +107,8 @@ Options:
 Options:
     --name=<name     set a resource name (overwriting the one in stdin if present)
     --alias=<alias>  set an alias
-    --ridonly        just output the RID by itself on a line
+    --ridonly        output the RID by itself on a line
+    --cikonly        output the CIK by itself on a line (--type=client only)
     {{ helpoption }}
 
 Details:
@@ -121,7 +122,12 @@ Details:
     exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ... [--plain] [--pretty]''',
     'info':
         '''Get info for a resource in json format.\n\nUsage:
-    exo [options] info <cik> [<rid>] [--cikonly] [--pretty]''',
+    exo [options] info <cik> [<rid>]
+
+Options:
+    --cikonly    print CIK by itself
+    --pretty     pretty print output
+    --recursive  embed info for any children recursively''',
     'update':
         '''Update a resource from a json description passed on stdin.\n\nUsage:
     exo [options] update <cik> [<rid>] -
@@ -196,7 +202,12 @@ Options:
     exo [options] diff <cik> <cik2>
 
     Displays differences between <cik> and <cik2>, including all non-client
-    children.'''
+    children. If clients are identical, nothing is output. For best results,
+    all children should have unique names.
+
+Options:
+    --full         compare all info, even usage, data counts, etc.
+    --no-children  don't compare children'''
 }
 
 # shared sections of documentation
@@ -479,9 +490,13 @@ class ExoRPC():
 
         return listing_with_info
 
-    def info(self, cik, rid={'alias': ''}, options={}, cikonly=False):
-        isok, response = self.exo.info(cik, rid, options)
-        self._raise_for_response(isok, response)
+    def info(self, cik, rid={'alias': ''}, options={}, cikonly=False, recursive=False):
+        if recursive:
+            rid = None if type(rid) is dict else rid
+            response = self._infotree(cik, rid=rid)
+        else:
+            isok, response = self.exo.info(cik, rid, options)
+            self._raise_for_response(isok, response)
         if cikonly:
             if not 'key' in response:
                 raise ExoException('{0} has no CIK'.format(rid))
@@ -806,12 +821,60 @@ class ExoRPC():
         import difflib
         differ = difflib.Differ()
 
-        s1 = json.dumps(dict1, indent=4, sort_keys=True).splitlines(1)
-        s2 = json.dumps(dict2, indent=4, sort_keys=True).splitlines(1)
+        s1 = json.dumps(dict1, indent=2, sort_keys=True).splitlines(1)
+        s2 = json.dumps(dict2, indent=2, sort_keys=True).splitlines(1)
 
         return list(differ.compare(s1, s2))
 
-    def diff(self, cik1, cik2):
+    def _infotree(self, cik, rid=None, typ='unknown', nodefn=lambda rid, info: rid):
+        '''Get all info for a cik and its children in a nested dict.
+           The basic unit is 'rid: xyz': <info-with-children>, where <info-with-children>
+           is just the info object for that node with the addition of 'children' key,
+           which is a dict containing more nodes. Here's an example return value:
+
+           {'<rid 0>': {'description': ...,
+                        'basic': ....,
+                        ...
+                        'children: {'<rid 1>': {'description': ...,
+                                                'basic': ...
+                                                'children': {'<rid 2>': {'description': ...,
+                                                                         'basic': ...,
+                                                                         'children: {} } } },
+                                    '<rid 3>': {'description': ...,
+                                                'basic': ...
+                                                'children': {} } } } }
+
+           As it's building this nested dict, it calls nodefn with the rid and info
+           (w/o children) for each node.
+        '''
+        types = ['client', 'dataport', 'datarule', 'dispatch']
+        #print(cik, rid)
+        # TODO: make exactly one HTTP request per node
+        listing = []
+        norid = rid is None
+        if norid:
+            rid = self._exomult(cik, [['lookup', 'aliased', '']])[0]
+
+        info = self._exomult(cik, [['info', rid]])[0]
+
+        if norid or info['basic']['type'] == 'client':
+            if not norid:
+                # key is only available to owner (not the resource itself)
+                cik = info['key']
+            listing = self._exomult(cik,
+                                    [['listing', types]])[0]
+
+        myid = nodefn(rid, info)
+
+        info['children'] = {}
+        for typ, ridlist in zip(types, listing):
+            for childrid in ridlist:
+                tr = self._infotree(cik, childrid, typ=typ, nodefn=nodefn)
+                info['children'].update(tr)
+
+        return {myid : info}
+
+    def diff(self, cik1, cik2, full=False, nochildren=False):
         '''Show differences between two ciks.'''
 
         # list of keypaths to not include in comparison
@@ -824,13 +887,24 @@ class ExoRPC():
                   ['counts', 'xmpp'],
                   ['basic', 'status'],
                   ['basic', 'modified'],
+                  ['basic', 'activity'],
                   ['data'],
                   ['storage']]
 
-        info1 = self.info(cik1)
-        info1 = self._remove(info1, ignore)
-        info2 = self.info(cik2)
-        info2 = self._remove(info2, ignore)
+        if nochildren:
+            info1 = self.info(cik1)
+            info1 = self._remove(info1, ignore)
+            info2 = self.info(cik2)
+            info2 = self._remove(info2, ignore)
+        else:
+            def name_prepend(rid, info):
+                if not full:
+                    self._remove(info, ignore)
+                # prepend the name so that node names tend to sort (and so
+                # compare well)
+                return info['description']['name'] + '.' + rid
+            info1 = self._infotree(cik1, nodefn=name_prepend)
+            info2 = self._infotree(cik2, nodefn=name_prepend)
 
         if info1 == info2:
             return None
@@ -1136,6 +1210,10 @@ def handle_args(cmd, args):
             er.record_backdate(cik, rids[0], interval, values)
     elif cmd == 'create':
         typ = args['--type']
+        ridonly = args['--ridonly']
+        cikonly = args['--cikonly']
+        if ridonly and cikonly:
+            raise ExoException('--ridonly and --cikonly are mutually exclusive')
         if args['-']:
             s = sys.stdin.read()
             try:
@@ -1155,14 +1233,15 @@ def handle_args(cmd, args):
                                      name=args['--name'])
         else:
             raise ExoException('No defaults for {0}.'.format(args['--type']))
-        ridonly = args['--ridonly']
         if ridonly:
             pr(rid)
+        elif cikonly:
+            print(er.info(cik, rid, cikonly=True))
         else:
             pr('rid: {0}'.format(rid))
-        if not ridonly and  typ == 'client':
-            # for convenience, look up the cik
-            print('cik: {0}'.format(er.info(cik, rid, cikonly=True)))
+            if typ == 'client':
+                # for convenience, look up the cik
+                print('cik: {0}'.format(er.info(cik, rid, cikonly=True)))
         if args['--alias'] is not None:
             er.map(cik, rid, args['--alias'])
             if not ridonly:
@@ -1207,7 +1286,7 @@ def handle_args(cmd, args):
         else:
             pr(listing)
     elif cmd == 'info':
-        info = er.info(cik, rids[0], cikonly=args['--cikonly'])
+        info = er.info(cik, rids[0], cikonly=args['--cikonly'], recursive=args['--recursive'])
         if args['--pretty']:
             pr(info)
         else:
@@ -1245,8 +1324,10 @@ def handle_args(cmd, args):
         newrid, newcik = er.copy(cik, destcik)
         pr('cik: ' + newcik)
     elif cmd == 'diff':
-        cik2 = args['<cik2>']
-        diffs = er.diff(cik, cik2)
+        diffs = er.diff(cik,
+                        args['<cik2>'],
+                        full=args['--full'],
+                        nochildren=args['--no-children'])
         if diffs is not None:
             print(diffs)
     else:
