@@ -1,6 +1,14 @@
 History
 =======
 
+0.1.0 (2013-7-24)
+-----------------
+
+- read from multiple data sources
+- copy command (make a copy of a client)
+- diff command (compare clients)
+- --recursive option for info
+
 0.0.33 (2013-7-19)
 ------------------
 

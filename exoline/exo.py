@@ -742,32 +742,68 @@ class ExoRPC():
             timestamp -= interval_seconds
         return self.record(cik, rid, tvalues)
 
-    def _uberlookup(self, cik, types):
-        '''Lookup info for a device and its children.
-        Returns rid, info, child_list_with_info'''
 
-        # TODO: combine lookup and info with listing command in
-        # _listing_with_info. This would save an HTTP request.
-        rid, info = self._exomult(cik,
-                                  [['lookup', 'aliased', ''],
-                                   ['info', {'alias': ''}]])
+    def _create_from_infotree(self, parentcik, infotree):
+        if 'basic' not in infotree:
+            # we're initially passed infotree with a single key
+            infotree = infotree[infotree.keys()[0]]
+        typ = infotree['basic']['type']
+        rid = self.create(parentcik, typ, infotree['description'])
+        if typ == 'client':
+            # look up new CIK
+            cik = self.info(parentcik, rid)['key']
+            children = infotree['children']
+            aliases_to_create = {}
+            for childrid in children:
+                childinfotree = children[childrid]
+                newrid, _ = self._create_from_infotree(cik, childinfotree)
+                if childrid in infotree['aliases']:
+                    aliases_to_create[newrid] = infotree['aliases'][childrid]
 
-        list_with_info = self._listing_with_info(cik, types=types)
-        return rid, info, list_with_info
-
-    def _create_from_info(self, parentcik, type, info):
-        # TODO: create child of parentcik matching info
-        rid = self.create(parentcik, type, info['description'])
-
-        if type == 'client':
-            # look up CIK
-            return rid, self.info(parentcik, rid)['key']
+            # add aliases in one request
+            self._exomult(
+                cik,
+                list(itertools.chain(*[[['map', r, alias]
+                                     for alias in aliases_to_create[r]]
+                                     for r in aliases_to_create])))
+            return rid, cik
         else:
             return rid, None
 
-    def copy(self, cik, destcik):
+        '''
+        aliases = info['aliases']
+        cpaliases = {}
+        for i, typedict in enumerate(list_with_info):
+            typ = types[i]
+            for rid in typedict:
+                if typ == 'client':
+                    ciktocopy = typedict[rid]['key']
+                    childcprid, _ = self.copy(ciktocopy, cpcik)
+                else:
+                    childcprid, _ = self._create_from_info(cpcik, typ, typedict[rid])
+                if rid in aliases:
+                    cpaliases[childcprid] = aliases[rid]
+
+        # add aliases
+        self._exomult(
+            cpcik,
+            list(itertools.chain(*[[['map', r, alias]
+                                 for alias in cpaliases[r]]
+                                 for r in cpaliases])))
+
+'''
+    def copy(self, cik, destcik, infotree=None):
         '''Make a copy of cik and its non-client children to destcik and
         return the cik of the copy.'''
+
+        # read in the whole client to copy at once
+        if infotree is None:
+            infotree = self._infotree(cik)
+
+        cprid, cpcik = self._create_from_infotree(destcik, infotree)
+
+        return cprid, cpcik
+        '''
         types = ['client', 'dataport', 'datarule', 'dispatch']
         rid, info, list_with_info = self._uberlookup(cik, types=types)
 
@@ -795,6 +831,7 @@ class ExoRPC():
                                  for r in cpaliases])))
 
         return cprid, cpcik
+        '''
 
     def _remove(self, dct, keypaths):
         '''Remove keypaths from dictionary.
@@ -829,7 +866,7 @@ class ExoRPC():
 
         return list(differ.compare(s1, s2))
 
-    def _infotree(self, cik, rid=None, typ='unknown', nodefn=lambda rid, info: rid):
+    def _infotree(self, cik, rid=None, nodefn=lambda rid, info: rid):
         '''Get all info for a cik and its children in a nested dict.
            The basic unit is 'rid: xyz': <info-with-children>, where <info-with-children>
            is just the info object for that node with the addition of 'children' key,
@@ -872,7 +909,7 @@ class ExoRPC():
         info['children'] = {}
         for typ, ridlist in zip(types, listing):
             for childrid in ridlist:
-                tr = self._infotree(cik, childrid, typ=typ, nodefn=nodefn)
+                tr = self._infotree(cik, childrid, nodefn=nodefn)
                 info['children'].update(tr)
 
         return {myid : info}
@@ -890,6 +927,14 @@ class ExoRPC():
         minusa = '^\-' + a
         d = re.sub(plusa + minusa, r' \1<<RID>>\2\n', d, flags=re.MULTILINE)
         d = re.sub(minusa + plusa, r' \1<<RID>>\2\n', d, flags=re.MULTILINE)
+
+        # replace differing cik lines with a single <<cik>> placeholder
+        a = '(.*"key"\: ")[a-f0-9]{40}(",.*)\n'
+        plusa = '^\+' + a
+        minusa = '^\-' + a
+        d = re.sub(plusa + minusa, r' \1<<CIK>>\2\n', d, flags=re.MULTILINE)
+        d = re.sub(minusa + plusa, r' \1<<CIK>>\2\n', d, flags=re.MULTILINE)
+
         return d
 
     def diff(self, cik1, cik2, full=False, nochildren=False):

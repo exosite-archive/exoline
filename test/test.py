@@ -555,11 +555,31 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', cik, *rids)
         self.assertTrue(r.stdout == '2013-07-20 03:00:08,0.3,3,', 'rid order reversed')
 
-    def ok(self, response, msg=None):
-        self.assertEqual(response.exitcode, 0, msg)
 
-    def notok(self, response, msg=None):
-        self.assertNotEqual(response.exitcode, 1, msg)
+    def _logall(self, r):
+        self.l('stdout: {0}\nstderr: {1}'.format(r.stdout, r.stderr))
+
+    def _stdre(self, r, msg, search, match, stderr=False):
+        std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
+        if search is not None:
+            self.assertTrue(re.search(search, std, flags=re.MULTILINE) is not None,
+                msg + ' - search\n' + label + ':' + std + '\nsearch re: ' + search)
+        if match is not None:
+            self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
+                msg + ' - match\n' + label + ':' + std + '\nmatch re: ' + match)
+
+    def notok(self, response, msg='', search=None, match=None):
+        if response.exitcode == 0:
+            self._logall(response)
+        self.assertNotEqual(response.exitcode, 0, msg + ' (exit code should not be 0)')
+        self._stdre(response, msg, search=search, match=match, stderr=True)
+
+    def ok(self, response, msg='', search=None, match=None):
+        if response.exitcode != 0:
+            self._logall(response)
+        self.assertEqual(response.exitcode, 0, msg + ' (exit code should be 0)')
+        self._stdre(response, msg, search=search, match=match, stderr=False)
+
 
     def copy_test(self):
         '''Test copy and diff commands'''
@@ -567,41 +587,46 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         cik = self.client.cik()
 
         r = rpc('diff', cik, self.client.cik())
-        self.assertEqual(r.exitcode, 0, 'diff with itself')
-        self.assertTrue(len(r.stdout) == 0, 'diff with itself')
+        self.ok(r, 'diff with itself, no differences', match='')
 
         r = rpc('copy', cik, self.portalcik, '--cikonly')
-        self.assertEqual(r.exitcode, 0, 'copy test client')
+        self.ok(r, 'copy test client', match=self.RE_RID)
         copycik = r.stdout
 
         r = rpc('diff', cik, copycik, '--no-children')
-        self.assertEqual(r.exitcode, 0, 'diff no children call succeeds')
-        self.assertTrue(len(r.stdout) == 0, 'diff client copy, no children no differences')
+        self.ok(r, '--no-children, no differences', match='')
 
-        #r = rpc('diff', copycik, self.client.cik(), '--no-children')
-        #self.assertEqual(r.exitcode, 0, 'reverse cik order')
-        #self.assertTrue(len(r.stdout) == 0, 'reverse cik order')
+        r = rpc('diff', copycik, self.client.cik(), '--no-children')
+        self.ok(r, 'reverse cik, still no differences', match='')
 
         r = rpc('diff', copycik, cik)
-        self.l(r.stdout)
-        self.assertEqual(r.exitcode, 0, 'diff with children call succeeds')
-        self.assertTrue(len(r.stdout) == 0, 'diff with children matches')
+        self.ok(r, 'diff with children should match', match='')
 
-        # add an alias
-        r = rpc('map', cik, self.dataports['string'].rid, 'foo')
-        self.ok(r, 'add alias')
+        newalias = 'newalias'
+        r = rpc('map', cik, self.dataports['string'].rid, newalias)
+        self.ok(r, 'add an alias')
         r = rpc('diff', copycik, cik)
-        self.ok(r, 'diff with new alias')
-        self.l(r.stdout)
-        self.assertTrue(len(r.stdout) > 0, 'single alias difference')
+        self.ok(r, 'diff notices new alias', search=r'^\+.*' + newalias)
+        r = rpc('diff', cik, copycik)
+        self.ok(r, 'diff notices new alias (reversed)', search=r'^\-.*' + newalias)
 
         r = rpc('lookup', copycik, 'string_port_alias')
         self.ok(r, 'lookup copy dataport')
         copyrid = r.stdout
-        r = rpc('map', copycik, copyrid, 'foo')
+        r = rpc('map', copycik, copyrid, newalias)
         self.ok(r, 'add same alias to copy')
         r = rpc('diff', cik, copycik)
-        self.ok(r, 'diff with same alias')
-        self.l(r.stdout)
-        self.assertTrue(len(r.stdout) == 0, 'aliases match now')
+        self.ok(r, 'aliases match now', match='')
+        '''
+        r = rpc('copy', cik, cik, '--cikonly')
+        self.ok(r, 'copy client into itself', match=self.RE_RID)
+        innercik = r.stdout
 
+        r = rpc('copy', copycik, copycik, '--cikonly')
+        self.ok(r, 'copy client copy into itself', match=self.RE_RID)
+        innercopycik = r.stdout
+
+        r = rpc('lookup', innercopycik, 'string_port_alias')
+        self.ok(r, 'lookup dataport on inner cik copy', match=self.RE_RID)
+        innercopydataportrid = r.stdout
+        '''
