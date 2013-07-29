@@ -29,7 +29,7 @@ Commands:
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
-  --httptimeout=<sec>  HTTP timeout
+  --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS
   --debug              Show info like stack traces
   -h --help            Show this screen
@@ -1215,7 +1215,7 @@ def plain_print(arg):
     print(arg)
 
 def handle_args(cmd, args):
-    er = ExoRPC(host=args['--host'], https=args['--https'])
+    er = ExoRPC(host=args['--host'], https=args['--https'], httptimeout=args["--httptimeout"])
     cik = args['<cik>']
 
     def rid_or_alias(rid):
