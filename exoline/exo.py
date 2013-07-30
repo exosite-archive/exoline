@@ -565,6 +565,18 @@ class ExoRPC():
         if 'format' in info['description']:
             add_opt(True, 'format', info['description']['format'])
 
+        try:
+            # show portals metadata if present
+            # http://developers.exosite.com/display/POR/Developing+for+Portals
+            meta = json.loads(info['description']['meta'])
+            device = meta['device']
+            if device['type'] == 'vendor':
+                add_opt(True, 'vendor', device['vendor'])
+                add_opt(True, 'model', device['model'])
+                add_opt(True, 'sn', device['sn'])
+        except:
+            pass
+
         has_alias = aliases is not None and len(aliases) > 0
         if has_alias:
             add_opt(True, 'aliases', str(aliases))
@@ -770,29 +782,7 @@ class ExoRPC():
         else:
             return rid, None
 
-        '''
-        aliases = info['aliases']
-        cpaliases = {}
-        for i, typedict in enumerate(list_with_info):
-            typ = types[i]
-            for rid in typedict:
-                if typ == 'client':
-                    ciktocopy = typedict[rid]['key']
-                    childcprid, _ = self.copy(ciktocopy, cpcik)
-                else:
-                    childcprid, _ = self._create_from_info(cpcik, typ, typedict[rid])
-                if rid in aliases:
-                    cpaliases[childcprid] = aliases[rid]
-
-        # add aliases
-        self._exomult(
-            cpcik,
-            list(itertools.chain(*[[['map', r, alias]
-                                 for alias in cpaliases[r]]
-                                 for r in cpaliases])))
-
-'''
-    def copy(self, cik, destcik, infotree=None):
+       def copy(self, cik, destcik, infotree=None):
         '''Make a copy of cik and its non-client children to destcik and
         return the cik of the copy.'''
 
@@ -803,35 +793,6 @@ class ExoRPC():
         cprid, cpcik = self._create_from_infotree(destcik, infotree)
 
         return cprid, cpcik
-        '''
-        types = ['client', 'dataport', 'datarule', 'dispatch']
-        rid, info, list_with_info = self._uberlookup(cik, types=types)
-
-        # create the base device
-        cprid, cpcik = self._create_from_info(destcik, 'client', info)
-
-        aliases = info['aliases']
-        cpaliases = {}
-        for i, typedict in enumerate(list_with_info):
-            typ = types[i]
-            for rid in typedict:
-                if typ == 'client':
-                    ciktocopy = typedict[rid]['key']
-                    childcprid, _ = self.copy(ciktocopy, cpcik)
-                else:
-                    childcprid, _ = self._create_from_info(cpcik, typ, typedict[rid])
-                if rid in aliases:
-                    cpaliases[childcprid] = aliases[rid]
-
-        # add aliases
-        self._exomult(
-            cpcik,
-            list(itertools.chain(*[[['map', r, alias]
-                                 for alias in cpaliases[r]]
-                                 for r in cpaliases])))
-
-        return cprid, cpcik
-        '''
 
     def _remove(self, dct, keypaths):
         '''Remove keypaths from dictionary.
