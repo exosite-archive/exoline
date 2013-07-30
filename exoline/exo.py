@@ -528,8 +528,8 @@ class ExoRPC():
     def _disp_key(self, cli_args, k):
         if cli_args['--hide-keys']:
             # number of digits to show
-            num = 10
-            return k[:num] + '?' * len(k[num:])
+            num = 20
+            return k[:num] + '0' * len(k[num:])
         else:
             return k
 
@@ -782,7 +782,7 @@ class ExoRPC():
         else:
             return rid, None
 
-       def copy(self, cik, destcik, infotree=None):
+    def copy(self, cik, destcik, infotree=None):
         '''Make a copy of cik and its non-client children to destcik and
         return the cik of the copy.'''
 
