@@ -1,4 +1,13 @@
-Exoline: Command Line for Exosite ================================= Exoline is a set of commands for accessing the Exosite [One Platform](http://exosite.com/products/onep) from the command line.  - **exo** - command for the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API) - **exodata** - command for the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API) Installation ------------
+Exoline: Command Line for Exosite 
+================================= 
+
+Exoline is a set of commands for accessing the Exosite [One Platform](http://exosite.com/products/onep) from the command line.  
+
+- **exo** - command for the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API) 
+- **exodata** - command for the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API) 
+
+Installation 
+------------
 
 To install the latest released version of exoline:
 
