@@ -1,6 +1,12 @@
 History
 =======
 
+0.1.1 (2013-7-30)
+-----------------
+
+- fixed --httptimeout
+- show model and serial number from metadata in tree output
+
 0.1.0 (2013-7-24)
 -----------------
 
