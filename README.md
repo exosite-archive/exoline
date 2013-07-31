@@ -9,7 +9,7 @@ Exoline is a set of commands for accessing the Exosite [One Platform](http://exo
 Installation 
 ------------
 
-To install the latest released version of exoline:
+To install the latest released version of exoline from PyPI:
 
 ```bash
 
@@ -24,6 +24,8 @@ Alternatively, you can install from source:
     $ cd exoline
     $ python setup.py install
 ```
+
+Depending on your python environment, you may need to run the above install commands as sudo. [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to keep your python environment clean, and has the side-effect that you don't need to use sudo when installing python packages.
 
 Examples
 --------
