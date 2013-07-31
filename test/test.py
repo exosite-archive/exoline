@@ -40,7 +40,10 @@ def _cmd(argv, stdin):
     if True:
         log.debug(' '.join([str(a) for a in argv]))
         if stdin is not None:
-            log.debug('    stdin: ' + stdin)
+            display = stdin
+            if len(display) > 2000:
+                display = display[:1000] + '\n...\n' + display[-1000:]
+            log.debug('    stdin: ' + display)
     if type(stdin) is str:
         sio = StringIO.StringIO()
         sio.write(stdin)
@@ -226,7 +229,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def tearDown(self):
         '''Clean up any test client'''
-        rpc('drop', self.portalcik, self.client.rid)
+        #rpc('drop', self.portalcik, self.client.rid)
 
     def _readBack(self, res, limit):
         r = rpc('read',
@@ -563,10 +566,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
         if search is not None:
             self.assertTrue(re.search(search, std, flags=re.MULTILINE) is not None,
-                msg + ' - search\n' + label + ':' + std + '\nsearch re: ' + search)
+                msg + ' - failed to find {0}\n'.format(search) + label + ':' + std + '\nsearch expression: ' + search)
         if match is not None:
             self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
-                msg + ' - match\n' + label + ':' + std + '\nmatch re: ' + match)
+                msg + ' - failed to match {0}\n'.format(match) + label + ':' + std + '\nmatch expression: ' + match)
 
     def notok(self, response, msg='', search=None, match=None):
         if response.exitcode == 0:
@@ -630,3 +633,40 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'lookup dataport on inner cik copy', match=self.RE_RID)
         innercopydataportrid = r.stdout
         '''
+
+    def connection_test(self):
+        '''Test connection settings'''
+        cik = self.client.cik()
+
+        r = rpc('--port=80', '--host=m2.exosite.com', 'info', cik)
+        self.ok(r, 'valid port and host at command line')
+
+        r = rpc('--https', 'info', cik)
+        self.ok(r, 'https connection')
+
+        r = rpc('--port=443', '--host=m2.exosite.com', '--https', 'info', cik)
+        self.ok(r, 'invalid port')
+
+        r = rpc('--port=88', 'info', cik)
+        self.notok(r, 'invalid port', match='JSON RPC Request Exception.*')
+
+        # TODO: test httptimeout
+        #rid = self._rid(
+        #    rpc('create', cik, '--type=dataport', '--format=string', '--ridonly').stdout)
+
+        #timeoutreadsize = 2000
+        #limit = '--limit={0}'.format(timeoutreadsize)
+        #timeout = '--httptimeout=120'
+        #smalltimeout = '--httptimeout=1'
+
+        #r = rpc(timeout, 'record', cik, rid, '--interval={0}'.format(60), '-', stdin='0123456789\n' * timeoutreadsize)
+        #self.ok(r, 'large record')
+
+        #r = rpc('read', cik, limit)
+        #self.ok(r, 'large read with standard timeout', match=r"(.*\n){" + str(timeoutreadsize) + "}")
+
+        #r = rpc(timeout, 'read', cik, limit)
+        #self.ok(r, 'large read with large timeout')
+
+        #r = rpc(smalltimeout, 'read', cik, limit)
+        #self.notok(r, 'large read with small timeout')

@@ -29,6 +29,7 @@ Commands:
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
+  --port=<port>        OneP port. Default is $EXO_HOST or 80
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS
   --debug              Show info like stack traces
@@ -68,7 +69,10 @@ try:
 except:
     from exoline import __version__
 
-DEFAULT_HOST='m2.exosite.com'
+DEFAULT_HOST = 'm2.exosite.com'
+DEFAULT_PORT = '80'
+DEFAULT_PORT_HTTPS = '443'
+
 cmd_doc = {
     'read':
         '''Read data from a resource.\n\nUsage:
@@ -245,10 +249,13 @@ class ExoRPC():
     Raises exceptions on error and provides some reasonable defaults.'''
     def __init__(self,
             host=DEFAULT_HOST,
+            port=None,
             httptimeout=60,
             https=False,
             verbose=True):
-        port = '443' if https else '80'
+
+        if port is None:
+            port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
         self.exo = onep.OnepV1(host=host,
                                port=port,
                                httptimeout=httptimeout,
@@ -1176,7 +1183,7 @@ def plain_print(arg):
     print(arg)
 
 def handle_args(cmd, args):
-    er = ExoRPC(host=args['--host'], https=args['--https'], httptimeout=args["--httptimeout"])
+    er = ExoRPC(host=args['--host'], port=args['--port'], https=args['--https'], httptimeout=args["--httptimeout"])
     cik = args['<cik>']
 
     def rid_or_alias(rid):
@@ -1409,6 +1416,8 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     # substitute environment variables
     if args['--host'] is None:
         args['--host'] = os.environ.get('EXO_HOST', DEFAULT_HOST)
+    if args['--port'] is None:
+        args['--port'] = os.environ.get('EXO_PORT', None)
 
     try:
         handle_args(cmd, args)
@@ -1423,6 +1432,12 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     except pyonep.exceptions.OnePlatformException as ex:
         # pyonep library call threw an exception on purpose
         sys.stderr.write("One Platform exception: {0}\r\n".format(ex))
+        return 1
+    except pyonep.exceptions.JsonRPCRequestException as ex:
+        sys.stderr.write("JSON RPC Request Exception: {0}\r\n".format(ex))
+        return 1
+    except pyonep.exceptions.JsonRPCResponseException as ex:
+        sys.stderr.write("JSON RPC Response Exception: {0}\r\n".format(ex))
         return 1
     except KeyboardInterrupt:
         if args['--debug']:
