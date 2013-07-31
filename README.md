@@ -219,6 +219,8 @@ Environment Variables
 For convenience, several command line options may be replaced by environment variables.
 
 * EXO\_HOST: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
+* EXO\_PORT: port, e.g. 80. Currently this only applies to exo, not exodata.
+
 
 
 Help 
