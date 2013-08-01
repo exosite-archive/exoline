@@ -229,7 +229,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def tearDown(self):
         '''Clean up any test client'''
-        #rpc('drop', self.portalcik, self.client.rid)
+        rpc('drop', self.portalcik, self.client.rid)
 
     def _readBack(self, res, limit):
         r = rpc('read',
@@ -431,13 +431,13 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.l("{0} {1}".format(lines, rids))
         self.assertTrue(lines == rids, 'listing after create')
         r = rpc('drop', client.cik(), '--all-children')
-        self.assertEqual(r.exitcode, 0, 'drop --all-children succeeded')
+        self.ok(r, 'drop --all-children succeeded')
         r = rpc('listing', client.cik(), '--type=dataport', '--plain')
-        self.assertTrue(len(r.stdout) == 0), 'no dataports after drop --all-children'
+        self.ok(r, 'no dataports after drop --all-children', match='')
         r = rpc('drop', self.portalcik, client.rid)
-        self.assertEqual(r.exitcode, 0, 'drop client succeeded')
+        self.ok(r, 'drop client succeeded')
         r = rpc('info', self.portalcik, client.rid)
-        self.assertTrue(r.exitcode != 0 and r.stderr.endswith('restricted'), 'client gone after drop')
+        self.notok(r, 'client gone after drop', match='.*restricted')
 
 
     def spark_test(self):
@@ -447,17 +447,14 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             rpc('create', cik, '--type=dataport', '--format=integer', '--ridonly').stdout)
         rpc('record', cik, rid, '--interval={0}'.format(240), *['--value={0}'.format(x) for x in range(1, 6)])
         r = rpc('intervals', cik, rid, '--days=1')
-        m = re.match("[^ ] {59}\n4m", r.stdout)
-        self.assertTrue(m is not None, "equally spaced points")
+        self.ok(r, "equally spaced points", match="[^ ] {59}\n4m")
         rpc('flush', cik, rid)
         r = rpc('intervals', cik, rid, '--days=1')
-        self.assertTrue(r.exitcode == 0 and r.stdout == '', "no data should output nothing")
+        self.ok(r, "no data should output nothing", match="")
         r = rpc('record', cik, rid, '--value=-1,1', '--value=-62,2', '--value=-3662,3', '--value=-3723,4')
-        self.assertTrue(r.exitcode == 0, "record points")
+        self.ok(r, "record points")
         r = rpc('intervals', cik, rid, '--days=1')
-        self.l(u'stdout: {0} ({1})'.format(r.stdout, len(r.stdout)))
-        m = re.match("^[^ ] {58}[^ ]\n1m 1s +1h$", r.stdout)
-        self.assertTrue(m is not None, "three points, two intervals")
+        self.ok(r, "three points, two intervals", match="^[^ ] {58}[^ ]\n1m 1s +1h$")
 
     def _latest(self, cik, rid, val, msg):
         r = rpc('read', cik, rid, '--format=raw')
@@ -514,6 +511,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         dp2 = parse_metric('dataport', r)
         self.l("dp1: {0} dp2: {1}".format(dp1, dp2))
         # TODO: why does this not increase consistently?
+        # note that this measures seconds that the dataport existed, so time
+        # must pass for the value to go up.
+        time.sleep(5)
         self.assertTrue(dp2 > dp1, 'adding dataport added to dataport metric')
 
     def readmultiple_test(self):
@@ -551,11 +551,11 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertEqual(lines[2], '2013-07-20 02:40:07,a,,', 'three timestamps')
 
         r = rpc('read', '--start=2013-07-20T3:00:09', cik, *rids)
-        self.assertEqual(r.exitcode, 0, 'no data read succeeds')
-        self.assertTrue(r.stdout == '', 'no data')
+        self.ok(r, "no data read succeeds", match='')
 
         rids.reverse()
         r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', cik, *rids)
+        self.ok(r, 'rid order reversed')
         self.assertTrue(r.stdout == '2013-07-20 03:00:08,0.3,3,', 'rid order reversed')
 
 
@@ -585,7 +585,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
 
     def copy_test(self):
-        '''Test copy and diff commands'''
+        '''Copy and diff commands'''
 
         cik = self.client.cik()
 
@@ -635,7 +635,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''
 
     def connection_test(self):
-        '''Test connection settings'''
+        '''Connection settings'''
         cik = self.client.cik()
 
         r = rpc('--port=80', '--host=m2.exosite.com', 'info', cik)

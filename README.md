@@ -90,6 +90,20 @@ cik: 5de0cfcf7baaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: Dev, aliases: (see p
     $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
 ```
 
+* Dump data from multiple dataports to CSV
+
+```bash
+
+    $ time ./exo.py read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --start=5/1/2013 --end=8/1/2013 --chunkhours=24 > alldata.csv
+
+    real    1m58.377s
+    user    0m10.981s
+    sys     0m0.506s
+
+    $ wc -l alldata.csv
+      316705 alldata.csv
+```
+
 * Make a copy of a device
 
 ```bash
@@ -253,7 +267,7 @@ TODO
 - clarify what the first and second parameter to copy need to be. Maybe require explicit --device= and --portal= They could be anything, but 95% of the time the first param will be a device CIK, the second a portal CIK.
 - copy comments field
 - add raw command, taking full RPC json from stdin
-- add key command for making local CIK aliases shortcuts
+- add key command for making local CIK aliases/shortcuts
 - Make the info command take multiple rids (or stdin)
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
