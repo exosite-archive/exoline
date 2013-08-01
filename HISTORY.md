@@ -1,6 +1,12 @@
 History
 =======
 
+0.1.2 (2013-7-31)
+-----------------
+
+- added --port option
+- added --chunkhours option to break up large reads
+
 0.1.1 (2013-7-30)
 -----------------
 
