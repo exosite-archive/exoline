@@ -127,15 +127,26 @@ Details:
     If - is not present, creates a resource with common defaults.''',
     'listing':
         '''List a client's children based on their type.\n\nUsage:
-    exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ... [--plain] [--pretty]''',
+    exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ...
+
+Options:
+    --plain   show only the child RIDs
+    --pretty  pretty print output''',
     'info':
         '''Get info for a resource in json format.\n\nUsage:
     exo [options] info <cik> [<rid>]
 
 Options:
-    --cikonly    print CIK by itself
-    --pretty     pretty print output
-    --recursive  embed info for any children recursively''',
+    --cikonly      print CIK by itself
+    --pretty       pretty print output
+    --recursive    embed info for any children recursively
+    --start=<time> start time for time-specific information
+    --end=<time> end time for time-specific information
+    --include=<key list>
+                   comma separated list of info keys to include. Available
+                   keys are aliases, basic, counts, description, key, shares,
+                   storage, subscribers, tags, usage. If omitted, all
+                   available keys are returned.''',
     'update':
         '''Update a resource from a json description passed on stdin.\n\nUsage:
     exo [options] update <cik> [<rid>] -
@@ -231,13 +242,13 @@ doc_replace = {
 
     If time part is omitted, it assumes 00:00:00.
     To report through the present time, omit --end or pass --end=now''',
-    '{{ helpoption }}': '''    -h --help            Show this screen.''',
+    '{{ helpoption }}': '''-h --help  Show this screen.''',
 }
 
 for k in cmd_doc:
     # helpoption is appended to any commands that don't already have it
     if '{{ helpoption }}' not in cmd_doc[k]:
-        cmd_doc[k] += '\n\nOptions:\n    {{ helpoption }}'
+        cmd_doc[k] += '\n\nOptions:\n{{ helpoption }}'
     for r in doc_replace:
         cmd_doc[k] = cmd_doc[k].replace(r, doc_replace[r])
 
@@ -1244,8 +1255,14 @@ def read_cmd(er, cik, rids, args):
                                 chunkhours=chunkhours):
             printline(t, v)
 
+
 def plain_print(arg):
     print(arg)
+
+
+def pretty_print(arg):
+    print(json.dumps(arg, sort_keys=True, indent=4, separators=(',', ': ')))
+
 
 def handle_args(cmd, args):
     er = ExoRPC(host=args['--host'], port=args['--port'], https=args['--https'], httptimeout=args["--httptimeout"])
@@ -1271,7 +1288,7 @@ def handle_args(cmd, args):
                 rids.append(rid_or_alias(args['<rid>']))
 
     if args.get('--pretty', False):
-        pr = pprint
+        pr = pretty_print
     else:
         pr = plain_print
 
@@ -1396,7 +1413,22 @@ def handle_args(cmd, args):
         else:
             pr(listing)
     elif cmd == 'info':
-        info = er.info(cik, rids[0], cikonly=args['--cikonly'], recursive=args['--recursive'])
+        options = {}
+        include = args['--include']
+        if include is None:
+            include = []
+        else:
+            include = [key.strip() for key in include.split(',')]
+        for key in include:
+            options[key.strip()] = True
+
+        #start, end = get_startend(args)
+        #if start is not None:
+        #    options['starttime'] = start
+        #if end is not None:
+        #    options['endtime'] = end
+
+        info = er.info(cik, rids[0], options=options, cikonly=args['--cikonly'], recursive=args['--recursive'])
         if args['--pretty']:
             pr(info)
         else:
