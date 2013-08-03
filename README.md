@@ -261,6 +261,7 @@ TODO
 ----
 
 - copy command should check limits before copying
+- copy command should support taking input from stdin (which would be the ouput of info --recursive)
 - investigate copying resources with public: True to destination with public: False (One Platform error: restricted)
 - --name parameter to copy command so names don't conflict
 - --desconly parameter for info command, to show info as json so it can be piped to create
@@ -271,5 +272,4 @@ TODO
 - Make the info command take multiple rids (or stdin)
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
-- find out why aliases is sometimes a list, sometimes a dict
-- add a test for --httptimeout
+- delete serial number when dropping device

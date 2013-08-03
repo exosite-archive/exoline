@@ -51,6 +51,7 @@ from datetime import timedelta
 import time
 from pprint import pprint
 from operator import itemgetter
+import logging
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -69,6 +70,9 @@ try:
 except:
     from exoline import __version__
 
+logging.basicConfig(stream=sys.stderr)
+logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
+
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
@@ -81,8 +85,8 @@ cmd_doc = {
 Options:
     --follow                 continue reading (ignores --end)
     --limit=<limit>          number of data points to read [default: 1]
-    --start=<time>           start time (see details below)
-    --end=<time>             end time
+    --start=<time>
+    --end=<time>             start and end times (see details below)
     --selection=all|autowindow|givenwindow  downsample method [default: all]
     --format=csv|raw         output format [default: csv]
     --timeformat=unix|human  unix timestamp or human-readable? [default: human]
@@ -140,13 +144,12 @@ Options:
     --cikonly      print CIK by itself
     --pretty       pretty print output
     --recursive    embed info for any children recursively
-    --start=<time> start time for time-specific information
-    --end=<time> end time for time-specific information
     --include=<key list>
-                   comma separated list of info keys to include. Available
-                   keys are aliases, basic, counts, description, key, shares,
-                   storage, subscribers, tags, usage. If omitted, all
-                   available keys are returned.''',
+    --exclude=<key list>
+                   comma separated list of info keys to include and exclude.
+                   Available keys are aliases, basic, counts, description,
+                   key, shares, storage, subscribers, tags, usage. If omitted,
+                   all available keys are returned.''',
     'update':
         '''Update a resource from a json description passed on stdin.\n\nUsage:
     exo [options] update <cik> [<rid>] -
@@ -571,7 +574,13 @@ class ExoRPC():
 
         return listing_with_info
 
-    def info(self, cik, rid={'alias': ''}, options={}, cikonly=False, recursive=False):
+    def info(self,
+             cik,
+             rid={'alias': ''},
+             #options={"usage": False, "counts": False},
+             options={},
+             cikonly=False,
+             recursive=False):
         if recursive:
             rid = None if type(rid) is dict else rid
             response = self._infotree(cik, rid=rid)
@@ -1188,7 +1197,9 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
     sys.stdout.write(' ' * (num_bins - len(min_label) - len(max_label)))
     sys.stdout.write(max_label + '\n')
 
+
 def read_cmd(er, cik, rids, args):
+    '''Read command'''
     limit = args['--limit']
     limit = 1 if limit is None else int(limit)
 
@@ -1415,20 +1426,42 @@ def handle_args(cmd, args):
     elif cmd == 'info':
         options = {}
         include = args['--include']
-        if include is None:
-            include = []
+        include = [] if include is None else [key.strip()
+                                              for key in include.split(',')]
+        exclude = args['--exclude']
+        exclude = [] if exclude is None else [key.strip()
+                                              for key in exclude.split(',')]
+
+        # TODO: this is a workaround. The RPC API returns empty list if any
+        # keys are set to false. So, the workaround is to include all keys
+        # except for the excluded ones. This has the undesirable
+        # side-effect of producing "<key>": null in the results, so it would be
+        # better for this to be done in the API.
+        #
+        #for key in exclude:
+        #    options[key] = False
+
+        if len(exclude) > 0:
+            options.update(dict([(k, True) for k in ['aliases',
+                                                     'basic',
+                                                     'counts',
+                                                     'description',
+                                                     'key',
+                                                     'shares',
+                                                     'storage',
+                                                     'subscribers',
+                                                     'tags',
+                                                     'usage']
+                                 if k not in exclude]))
         else:
-            include = [key.strip() for key in include.split(',')]
-        for key in include:
-            options[key.strip()] = True
+            for key in include:
+                options[key] = True
 
-        #start, end = get_startend(args)
-        #if start is not None:
-        #    options['starttime'] = start
-        #if end is not None:
-        #    options['endtime'] = end
-
-        info = er.info(cik, rids[0], options=options, cikonly=args['--cikonly'], recursive=args['--recursive'])
+        info = er.info(cik,
+                       rids[0],
+                       options=options,
+                       cikonly=args['--cikonly'],
+                       recursive=args['--recursive'])
         if args['--pretty']:
             pr(info)
         else:

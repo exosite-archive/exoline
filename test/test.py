@@ -8,6 +8,7 @@ import sys
 import json
 import re
 import time
+from datetime import datetime
 import StringIO
 import logging
 from unittest import TestCase
@@ -41,8 +42,8 @@ def _cmd(argv, stdin):
         log.debug(' '.join([str(a) for a in argv]))
         if stdin is not None:
             display = stdin
-            if len(display) > 2000:
-                display = display[:1000] + '\n...\n' + display[-1000:]
+            if len(display) > 1000:
+                display = display[:500] + '\n...\n' + display[-500:]
             log.debug('    stdin: ' + display)
     if type(stdin) is str:
         sio = StringIO.StringIO()
@@ -85,6 +86,12 @@ class Resource():
                                       "duration": "infinity"}
             self.desc['public'] = False
 
+    def __str__(self):
+        return 'Resource (parent {0}, type {1}, desc {2})'.format(self.parentcik, self.type, self.desc)
+
+    def __repr__(self):
+        return str(self)
+
     def created(self, rid, info):
         self.rid = rid
         self.info = info
@@ -95,6 +102,31 @@ class Resource():
 
 class TestRPC(TestCase):
     RE_RID = '[0-9a-f]{40}'
+
+    def _logall(self, r):
+        self.l('stdout: {0}\nstderr: {1}'.format(r.stdout, r.stderr))
+
+    def _stdre(self, r, msg, search, match, stderr=False):
+        std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
+        if search is not None:
+            self.assertTrue(re.search(search, std, flags=re.MULTILINE) is not None,
+                msg + ' - failed to find {0}\n'.format(search) + label + ':' + std + '\nsearch expression: ' + search)
+        if match is not None:
+            self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
+                msg + ' - failed to match {0}\n'.format(match) + label + ':' + std + '\nmatch expression: ' + match)
+
+    def notok(self, response, msg='', search=None, match=None):
+        if response.exitcode == 0:
+            self._logall(response)
+        self.assertNotEqual(response.exitcode, 0, msg + ' (exit code should not be 0)')
+        self._stdre(response, msg, search=search, match=match, stderr=True)
+
+    def ok(self, response, msg='', search=None, match=None):
+        if response.exitcode != 0:
+            self._logall(response)
+        self.assertEqual(response.exitcode, 0, msg + ' (exit code should be 0)')
+        self._stdre(response, msg, search=search, match=match, stderr=False)
+
     def _rid(self, s):
         '''Parse rid from s, raising an exception if it doesn't validate.'''
         m = re.match("^({0}).*".format(self.RE_RID), s)
@@ -109,31 +141,29 @@ class TestRPC(TestCase):
 
         rids = []
         # create resources
-        if pyonep.has_deferred(cik):
-            responses = pyonep.send_deferred(cik)
-            for i, trio in enumerate(responses):
-                call, isok, response = trio
-                if not isok:
-                    raise Exception("_createMultiple failed create()")
-                # response is an rid
-                rid = response
-                rids.append(rid)
-                pyonep.info(cik, rid, defer=True)
+        responses = pyonep.send_deferred(cik)
+        for i, trio in enumerate(responses):
+            call, isok, response = trio
+            self.l('{0}'.format(resList))
+            self.assertTrue(isok, "create should succeed")
+            # response is an rid
+            rid = response
+            rids.append(rid)
+            pyonep.info(cik, rid, defer=True)
 
         # get info
-        if pyonep.has_deferred(cik):
-            responses = pyonep.send_deferred(cik)
-            for i, trio in enumerate(responses):
-                call, isok, response = trio
-                if not isok:
-                    raise Exception("_createMultiple failed info()")
-                # response is info
-                info = response
-                resList[i].created(rids[i], info)
-                res = resList[i]
-                if res.alias is not None:
-                    pyonep.map(cik, resList[i].rid, res.alias, defer=True)
-                self.l("Created {0}, rid: {1}".format(res.type, res.rid))
+        responses = pyonep.send_deferred(cik)
+        for i, trio in enumerate(responses):
+            call, isok, response = trio
+            if not isok:
+                raise Exception("_createMultiple failed info()")
+            # response is info
+            info = response
+            resList[i].created(rids[i], info)
+            res = resList[i]
+            if res.alias is not None:
+                pyonep.map(cik, resList[i].rid, res.alias, defer=True)
+            self.l("Created {0}, rid: {1}".format(res.type, res.rid))
 
         # map to aliases
         if pyonep.has_deferred(cik):
@@ -142,6 +172,8 @@ class TestRPC(TestCase):
                 call, isok, response = trio
                 if not isok:
                     raise Exception("_createMultiple failed map()")
+
+        return rids
 
     def _create(self, res):
         '''Creates a resource at the command line.'''
@@ -183,9 +215,38 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def l(self, s):
         self.log.debug(s)
 
+    def _createDataports(self):
+        # test one of each type of dataport
+        cik = self.client.cik()
+        stdports = {}
+        stdports['integer'] = Resource(
+            cik, 'dataport', {'format': 'integer', 'name': 'int_port'},
+            write=['-1', '0', '100000000'],
+            record=[[665366400, '42']])
+        stdports['boolean'] = Resource(
+            cik, 'dataport', {'format': 'boolean', 'name': 'boolean_port'},
+            write=['false', 'true', 'false'],
+            record=[[-100, 'true'], [-200, 'false'], [-300, 'true']])
+        stdports['string'] = Resource(
+            cik, 'dataport', {'format': 'string', 'name': 'string_port'},
+            alias='string_port_alias',
+            write=['test', 'a' * 300],
+            record=[[163299600, 'home brew'], [543212345, 'nonsense']])
+        stdports['float'] = Resource(
+            cik, 'dataport', {'format': 'float', 'name': 'float_port'},
+            write=['-0.1234567', '0', '3.5', '100000000.1'],
+            record=[[-100, '-0.1234567'], [-200, '0'], [-300, '3.5'], [-400, '10000000.1']])
+            # TODO: handle scientific notation from OneP '-0.00001'
+        # TODO: handle binary dataport
+
+        self._createMultiple(cik, stdports.values())
+
+        return stdports
+
+
     def setUp(self):
         '''Create some devices in the portal to test'''
-        self.log = logging.getLogger("TestRPC")
+        self.log = logging.getLogger('TestRPC')
         self.portalcik = config['portalcik']
         self.client = Resource(
             self.portalcik,
@@ -196,36 +257,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                         'disk': 'inherit',
                         'io': 'inherit'},
             'writeinterval': 'inherit',
-            "name": "testclient",
-            "visibility": "parent"})
+            'name': 'testclient',
+            'visibility': 'parent'})
         self._createMultiple(self.portalcik, [self.client])
-
-        # test details for create, read, and write tests.
-        cik = self.client.cik()
-        self.dataports = {}
-        self.dataports['integer'] = Resource(
-            cik, 'dataport', {'format': 'integer', 'name': 'int_port'},
-            write=['-1', '0', '100000000'],
-            record=[[665366400, '42']])
-        self.dataports['boolean'] = Resource(
-            cik, 'dataport', {'format': 'boolean', 'name': 'boolean_port'},
-            write=['false', 'true', 'false'],
-            record=[[-100, 'true'], [-200, 'false'], [-300, 'true']])
-        self.dataports['string'] = Resource(
-            cik, 'dataport', {'format': 'string', 'name': 'string_port'},
-            alias='string_port_alias',
-            write=['test', 'a' * 300],
-            record=[[163299600, 'home brew'], [543212345, 'nonsense']])
-        self.dataports['float'] = Resource(
-            cik, 'dataport', {'format': 'float', 'name': 'float_port'},
-            write=['-0.1234567', '0', '3.5', '100000000.1'],
-            record=[[-100, '-0.1234567'], [-200, '0'], [-300, '3.5'], [-400, '10000000.1']])
-            # TODO: handle scientific notation from OneP '-0.00001'
-        # TODO: handle binary dataport
-
-        self.resources = self.dataports.values()
-
-        self._createMultiple(cik, self.resources)
 
     def tearDown(self):
         '''Clean up any test client'''
@@ -257,7 +291,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def write_test(self):
         '''Write command'''
-        for res in self.resources:
+        stdports = self._createDataports()
+        for res in stdports.values():
             if res.type == 'dataport' and res.write is not None:
                 # test writing
                 if res.write is not None:
@@ -311,6 +346,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def record_test(self):
         '''Record command'''
+        stdports = self._createDataports()
         def _recordAndVerify(res, recordfn):
             if res.record is not None:
                 writetime = int(time.time())
@@ -345,7 +381,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                     stdin='\n'.join(['{0},{1}'.format(t, v) for t, v in res.record]))
             self.assertTrue(r.exitcode == 0)
 
-        for r in self.resources:
+        for r in stdports.values():
             if r.type == 'dataport':
                 _recordAndVerify(r, one_by_one)
                 _flush(r)
@@ -356,6 +392,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def tree_test(self):
         '''Tree command'''
+        stdports = self._createDataports()
         cik = self.client.cik()
         r = rpc('tree', cik)
         # call did not fail
@@ -365,12 +402,13 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertTrue(
             re.match("cik: {0}.*".format(cik), r.stdout) is not None)
         # has correct number of lines
-        self.assertTrue(len(r.stdout.split('\n')) == len(self.resources) + 1)
+        self.assertTrue(len(r.stdout.split('\n')) == len(stdports) + 1)
 
     def map_test(self):
         '''Map/unmap commands'''
+        stdports = self._createDataports()
         cik = self.client.cik()
-        for res in self.resources:
+        for res in stdports.values():
             alias = 'foo'
             r = rpc('info', cik, alias)
             self.assertTrue(r.exitcode == 1, "info with alias should not work")
@@ -483,19 +521,21 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def usage_test(self):
         '''OneP resource usage'''
-        r = rpc('usage', self.client.cik(), '--start=10/1/2012', '--end=11/1/2013')
-        self.assertTrue(r.exitcode == 0, 'usage call succeeded')
-        s1 = r.stdout
-        r = rpc('usage', self.client.cik(), '--start=10/1/2012', '--end=1383282000')
-        self.assertTrue(r.exitcode == 0, 'usage call succeeded')
-        s2 = r.stdout
-        r = rpc('usage', self.client.cik(), '--start=1349067600', '--end=1383282000')
-        self.assertTrue(r.exitcode == 0, 'usage call succeeded')
-        s3 = r.stdout
-        self.l(s1)
-        self.l(s2)
-        self.l(s3)
-        self.assertTrue(s1 == s2 and s2 == s3, 'various date forms output matches')
+        # This test passes inconsistently due to time passing between calls to
+        # usage. Mainly all it was testing was date parsing, though.
+        #r = rpc('usage', self.client.cik(), '--start=10/1/2012', '--end=11/1/2013')
+        #self.assertTrue(r.exitcode == 0, 'usage call succeeded')
+        #s1 = r.stdout
+        #r = rpc('usage', self.client.cik(), '--start=10/1/2012', '--end=1383282000')
+        #self.assertTrue(r.exitcode == 0, 'usage call succeeded')
+        #s2 = r.stdout
+        #r = rpc('usage', self.client.cik(), '--start=1349067600', '--end=1383282000')
+        #self.assertTrue(r.exitcode == 0, 'usage call succeeded')
+        #s3 = r.stdout
+        #self.l(s1)
+        #self.l(s2)
+        #self.l(s3)
+        #self.assertTrue(s1 == s2 and s2 == s3, 'various date forms output matches')
         def parse_metric(metric, r):
             self.assertTrue(r.exitcode == 0, 'usage call succeeded')
             self.l(r.stdout)
@@ -507,17 +547,17 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self._create(Resource(self.client.cik(),
                               'dataport',
                               {'format': 'integer', 'name': 'int_port'}))
+        # note that this measures seconds that the dataport existed, so time
+        # must pass for the value to go up.
+        time.sleep(1)
         r = rpc('usage', self.client.cik(), '--start=10/1/2012T13:04:05', '--end=now')
         dp2 = parse_metric('dataport', r)
         self.l("dp1: {0} dp2: {1}".format(dp1, dp2))
-        # TODO: why does this not increase consistently?
-        # note that this measures seconds that the dataport existed, so time
-        # must pass for the value to go up.
-        time.sleep(5)
         self.assertTrue(dp2 > dp1, 'adding dataport added to dataport metric')
 
     def readmultiple_test(self):
         '''Read multiple RIDs'''
+        stdports = self._createDataports()
         dataports = []
         strings =  [('2013-07-20T02:40:07', 'a'),
                     ('2013-07-20T02:50:07', 'b'),
@@ -530,7 +570,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                     ('2013-07-20T03:00:08', 0.3)]
         cik = self.client.cik()
         def rec(fmt, data):
-            r = rpc('record', cik, self.dataports[fmt].rid,
+            r = rpc('record', cik, stdports[fmt].rid,
                 *['--value={0},{1}'.format(t, v) for t, v in data])
             self.assertTrue(r.exitcode == 0)
 
@@ -538,7 +578,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         rec('integer', integers)
         rec('float', floats)
 
-        rids = [self.dataports[fmt].rid for fmt in ['string', 'integer', 'float']]
+        rids = [stdports[fmt].rid for fmt in ['string', 'integer', 'float']]
         r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', cik, *rids)
         self.assertEqual(r.exitcode, 0, 'read with multiple rids')
         self.assertTrue(r.stdout == '2013-07-20 03:00:08,,3,0.3', 'two readings on one timestamp')
@@ -559,34 +599,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertTrue(r.stdout == '2013-07-20 03:00:08,0.3,3,', 'rid order reversed')
 
 
-    def _logall(self, r):
-        self.l('stdout: {0}\nstderr: {1}'.format(r.stdout, r.stderr))
-
-    def _stdre(self, r, msg, search, match, stderr=False):
-        std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
-        if search is not None:
-            self.assertTrue(re.search(search, std, flags=re.MULTILINE) is not None,
-                msg + ' - failed to find {0}\n'.format(search) + label + ':' + std + '\nsearch expression: ' + search)
-        if match is not None:
-            self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
-                msg + ' - failed to match {0}\n'.format(match) + label + ':' + std + '\nmatch expression: ' + match)
-
-    def notok(self, response, msg='', search=None, match=None):
-        if response.exitcode == 0:
-            self._logall(response)
-        self.assertNotEqual(response.exitcode, 0, msg + ' (exit code should not be 0)')
-        self._stdre(response, msg, search=search, match=match, stderr=True)
-
-    def ok(self, response, msg='', search=None, match=None):
-        if response.exitcode != 0:
-            self._logall(response)
-        self.assertEqual(response.exitcode, 0, msg + ' (exit code should be 0)')
-        self._stdre(response, msg, search=search, match=match, stderr=False)
-
-
     def copy_test(self):
         '''Copy and diff commands'''
-
+        stdports = self._createDataports()
         cik = self.client.cik()
 
         r = rpc('diff', cik, self.client.cik())
@@ -606,7 +621,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'diff with children should match', match='')
 
         newalias = 'newalias'
-        r = rpc('map', cik, self.dataports['string'].rid, newalias)
+        r = rpc('map', cik, stdports['string'].rid, newalias)
         self.ok(r, 'add an alias')
         r = rpc('diff', copycik, cik)
         self.ok(r, 'diff notices new alias', search=r'^\+.*' + newalias)
@@ -650,23 +665,62 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('--port=88', 'info', cik)
         self.notok(r, 'invalid port', match='JSON RPC Request Exception.*')
 
-        # TODO: test httptimeout
-        #rid = self._rid(
-        #    rpc('create', cik, '--type=dataport', '--format=string', '--ridonly').stdout)
+    def info_test(self):
+        '''Info command'''
+        allkeys = ['aliases', 'basic', 'counts', 'description', 'key',
+                   'shares', 'storage', 'subscribers', 'tags', 'usage']
+        cik = self.client.parentcik
+        rid = self.client.rid
 
-        #timeoutreadsize = 2000
-        #limit = '--limit={0}'.format(timeoutreadsize)
-        #timeout = '--httptimeout=120'
-        #smalltimeout = '--httptimeout=1'
+        # all keys at once
+        r = rpc('info', cik, rid)
+        self.ok(r, 'info on all keys')
+        info = json.loads(r.stdout)
+        for k in allkeys:
+            self.assertTrue(k in info.keys(), 'found key {0} when options is empty'.format(k))
 
-        #r = rpc(timeout, 'record', cik, rid, '--interval={0}'.format(60), '-', stdin='0123456789\n' * timeoutreadsize)
-        #self.ok(r, 'large record')
+        for k in allkeys:
+            # include each key
+            r = rpc('info', cik, rid, '--include={0}'.format(k))
+            self.ok(r, 'info --include={0}'.format(k))
+            info = json.loads(r.stdout)
+            self.assertTrue(info.keys() == [k], 'only requested key was returned')
 
-        #r = rpc('read', cik, limit)
-        #self.ok(r, 'large read with standard timeout', match=r"(.*\n){" + str(timeoutreadsize) + "}")
+            # exclude each key
+            r = rpc('info', cik, rid, '--exclude={0}'.format(k))
+            self.ok(r, 'info --exclude={0}'.format(k))
+            info = json.loads(r.stdout)
+            keys = info.keys()
+            self.assertTrue(len(keys) == len(allkeys) - 1 and k not in keys)
 
-        #r = rpc(timeout, 'read', cik, limit)
-        #self.ok(r, 'large read with large timeout')
 
-        #r = rpc(smalltimeout, 'read', cik, limit)
-        #self.notok(r, 'large read with small timeout')
+    def read_test(self):
+        '''Read command'''
+        # record a large amount of data to a float datasource
+        cik = self.client.cik()
+        rid1, rid2 = self._createMultiple(cik, [
+            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port'}),
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'})])
+
+        numpts = 10000
+        intervalsec = 60
+        r = rpc('--httptimeout=480', 'record', cik, rid1,
+                '--interval={0}'.format(intervalsec),
+                '-', stdin='0.987654321\n' * numpts)
+        self.ok(r, "create data")
+
+        end = int(time.mktime(datetime.now().timetuple()))
+        start = int(end - (numpts * intervalsec))
+        self.l("{0},{1}".format(start, end))
+        readcmd = ['--httptimeout=1', 'read', cik, rid1,
+                   '--limit={0}'.format(numpts),
+                   '--start={0}'.format(start),
+                   '--end={0}'.format(end)]
+        r = rpc(*readcmd)
+        self.notok(r, "read a lot of data with a single big read")
+
+        readcmdchunks = readcmd + ['--chunkhours=24']
+        r = rpc(*readcmdchunks)
+        self.ok(r, "read a lot of data with multiple reads")
+
+        # TODO: test --follow
