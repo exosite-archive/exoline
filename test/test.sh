@@ -1,18 +1,18 @@
 #!/bin/bash
 
-function test {
+function test() {
     nosetests --verbose --with-coverage --cover-erase --cover-package=exoline
     #pushd ../exoline
     # python -m doctest -v exo.py
     #popd
 }
 
-fn_exists {
+function fn_exists() {
   # appended double quote is an ugly trick to make sure we do get a string -- if $1 is not a known command, type does not output anything
   [ `type -t $1`"" == 'function' ]
 }
 
-mydeactivate {
+function mydeactivate() {
     if fn_exists deactivate; then
         deactivate
     fi

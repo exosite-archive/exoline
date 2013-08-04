@@ -12,6 +12,7 @@ from datetime import datetime
 import StringIO
 import logging
 from unittest import TestCase
+import subprocess
 
 from ..exoline import exo
 
@@ -693,7 +694,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             keys = info.keys()
             self.assertTrue(len(keys) == len(allkeys) - 1 and k not in keys)
 
-
     def read_test(self):
         '''Read command'''
         # record a large amount of data to a float datasource
@@ -723,4 +723,22 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc(*readcmdchunks)
         self.ok(r, "read a lot of data with multiple reads")
 
-        # TODO: test --follow
+        process = subprocess.Popen(['../exoline/exo.py', 'read', cik, rid1, rid2], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        line = process.stdout.readline()
+        self.l(line)
+
+        r = rpc('write', cik, rid1, '--value=2.71828182845')
+        self.ok(r, 'write to float dataport')
+
+        time.sleep(5)
+        line = process.stdout.readline()
+        self.l(line)
+
+        r = rpc('write', cik, rid2, '--value=Greetings!')
+        self.ok(r, 'write to string dataport')
+
+        time.sleep(5)
+        line = process.stdout.readline()
+        self.l(line)
+        self.assertEqual(True, False)
