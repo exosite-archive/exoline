@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function test() {
-    nosetests --verbose --with-coverage --cover-erase --cover-package=exoline
+    nosetests --with-xunit --verbose --with-coverage --cover-erase --cover-package=exoline
     #pushd ../exoline
     # python -m doctest -v exo.py
     #popd
