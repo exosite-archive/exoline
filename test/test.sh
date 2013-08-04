@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function test() {
-    nosetests --with-xunit --verbose --with-coverage --cover-erase --cover-package=exoline
+    nosetests --with-xunit --xunit-file=$1 --verbose --with-coverage --cover-erase --cover-package=exoline
     #pushd ../exoline
     # python -m doctest -v exo.py
     #popd
@@ -36,7 +36,7 @@ then
         pip install --quiet -r requirements.txt 
         echo  
         echo Starting tests in $i environment
-        test
+        test nosetests-$i.xml
     done
     mydeactivate
 else
