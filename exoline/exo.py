@@ -1506,6 +1506,9 @@ def handle_args(cmd, args):
         else:
             pr('cik: ' + newcik)
     elif cmd == 'diff':
+        if sys.version_info < (2, 7):
+            raise ExoException('diff command requires Python 2.7 or above')
+
         diffs = er.diff(cik,
                         args['<cik2>'],
                         full=args['--full'],

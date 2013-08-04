@@ -596,34 +596,53 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'rid order reversed')
         self.assertTrue(r.stdout == '2013-07-20 03:00:08,0.3,3,', 'rid order reversed')
 
-    def copy_test(self):
+    def copy_diff_test(self):
         '''Copy and diff commands'''
         stdports = self._createDataports()
         cik = self.client.cik()
 
         r = rpc('diff', cik, self.client.cik())
-        self.ok(r, 'diff with itself, no differences', match='')
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff with itself, no differences', match='')
 
         r = rpc('copy', cik, self.portalcik, '--cikonly')
         self.ok(r, 'copy test client', match=self.RE_RID)
         copycik = r.stdout
 
         r = rpc('diff', cik, copycik, '--no-children')
-        self.ok(r, '--no-children, no differences', match='')
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, '--no-children, no differences', match='')
+
 
         r = rpc('diff', copycik, self.client.cik(), '--no-children')
-        self.ok(r, 'reverse cik, still no differences', match='')
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'reverse cik, still no differences', match='')
 
         r = rpc('diff', copycik, cik)
-        self.ok(r, 'diff with children should match', match='')
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff with children should match', match='')
 
         newalias = 'newalias'
         r = rpc('map', cik, stdports['string'].rid, newalias)
         self.ok(r, 'add an alias')
         r = rpc('diff', copycik, cik)
-        self.ok(r, 'diff notices new alias', search=r'^\+.*' + newalias)
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff notices new alias', search=r'^\+.*' + newalias)
         r = rpc('diff', cik, copycik)
-        self.ok(r, 'diff notices new alias (reversed)', search=r'^\-.*' + newalias)
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff notices new alias (reversed)', search=r'^\-.*' + newalias)
 
         r = rpc('lookup', copycik, 'string_port_alias')
         self.ok(r, 'lookup copy dataport')
@@ -631,7 +650,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('map', copycik, copyrid, newalias)
         self.ok(r, 'add same alias to copy')
         r = rpc('diff', cik, copycik)
-        self.ok(r, 'aliases match now', match='')
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'aliases match now', match='')
         '''
         r = rpc('copy', cik, cik, '--cikonly')
         self.ok(r, 'copy client into itself', match=self.RE_RID)
