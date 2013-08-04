@@ -12,7 +12,6 @@ from datetime import datetime
 import StringIO
 import logging
 from unittest import TestCase
-import subprocess
 
 from ..exoline import exo
 
@@ -35,17 +34,18 @@ logging.getLogger("_cmd").setLevel(logging.DEBUG)
 logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
 log = logging.getLogger("_cmd")
 
+def abbrev(s, length=1000):
+    if len(s) > length:
+        s = s[:length/2] + '\n...\n' + s[-length/2:]
+    return s
 
-def _cmd(argv, stdin):
+def _cmd(argv, stdin, block=True):
     '''Runs an exoline command, translating stdin from
     string and stdout to string. Returns a CmdResult.'''
     if True:
         log.debug(' '.join([str(a) for a in argv]))
         if stdin is not None:
-            display = stdin
-            if len(display) > 1000:
-                display = display[:500] + '\n...\n' + display[-500:]
-            log.debug('    stdin: ' + display)
+            log.debug('    stdin: ' + abbrev(stdin))
     if type(stdin) is str:
         sio = StringIO.StringIO()
         sio.write(stdin)
@@ -57,13 +57,10 @@ def _cmd(argv, stdin):
     # unicode causes problems in docopt
     argv = [str(a) for a in argv]
     exitcode = exo.cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
-
     stdout.seek(0)
     stdout = stdout.read().strip()  # strip to get rid of leading newline
     stderr.seek(0)
     stderr = stderr.read().strip()
-    if exitcode != 0:
-        log.debug("Exit code was {0}".format(exitcode))
     return CmdResult(exitcode, stdout, stderr)
 
 
@@ -105,7 +102,7 @@ class TestRPC(TestCase):
     RE_RID = '[0-9a-f]{40}'
 
     def _logall(self, r):
-        self.l('stdout: {0}\nstderr: {1}'.format(r.stdout, r.stderr))
+        self.l('stdout: {0}\nstderr: {1}'.format(abbrev(r.stdout), abbrev(r.stderr)))
 
     def _stdre(self, r, msg, search, match, stderr=False):
         std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
@@ -599,7 +596,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'rid order reversed')
         self.assertTrue(r.stdout == '2013-07-20 03:00:08,0.3,3,', 'rid order reversed')
 
-
     def copy_test(self):
         '''Copy and diff commands'''
         stdports = self._createDataports()
@@ -686,7 +682,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             self.ok(r, 'info --include={0}'.format(k))
             info = json.loads(r.stdout)
             self.assertTrue(info.keys() == [k], 'only requested key was returned')
-
             # exclude each key
             r = rpc('info', cik, rid, '--exclude={0}'.format(k))
             self.ok(r, 'info --exclude={0}'.format(k))
@@ -702,7 +697,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port'}),
             Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'})])
 
-        numpts = 10000
+        numpts = 20000
         intervalsec = 60
         r = rpc('--httptimeout=480', 'record', cik, rid1,
                 '--interval={0}'.format(intervalsec),
@@ -719,26 +714,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc(*readcmd)
         self.notok(r, "read a lot of data with a single big read")
 
-        readcmdchunks = readcmd + ['--chunkhours=24']
+        readcmdchunks = readcmd + ['--chunkhours=6']
         r = rpc(*readcmdchunks)
         self.ok(r, "read a lot of data with multiple reads")
-
-        process = subprocess.Popen(['../exoline/exo.py', 'read', cik, rid1, rid2], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-        line = process.stdout.readline()
-        self.l(line)
-
-        r = rpc('write', cik, rid1, '--value=2.71828182845')
-        self.ok(r, 'write to float dataport')
-
-        time.sleep(5)
-        line = process.stdout.readline()
-        self.l(line)
-
-        r = rpc('write', cik, rid2, '--value=Greetings!')
-        self.ok(r, 'write to string dataport')
-
-        time.sleep(5)
-        line = process.stdout.readline()
-        self.l(line)
-        self.assertEqual(True, False)

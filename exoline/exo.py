@@ -1225,18 +1225,21 @@ def read_cmd(er, cik, rids, args):
 
     sleep_seconds = 2
     if args['--follow']:
+        if len(rids) > 1:
+            raise ExoException('--follow does not support reading from multiple rids')
         results = []
         while len(results) == 0:
             results = er.readmult(cik,
                                   rids,
                                   limit=1,
                                   sort='desc')
+            # --follow doesn't want the result to be an iterator
+            results = list(results)
             if len(results) > 0:
-                last_t, last_v = results[-1]
-                printline(last_t, last_v)
+                for last_t, last_v in results:
+                    printline(last_t, last_v)
             else:
                 time.sleep(sleep_seconds)
-
         while True:
             results = er.readmult(cik,
                                   rids,
@@ -1244,6 +1247,7 @@ def read_cmd(er, cik, rids, args):
                                   # read time. Could also be now - last_t?
                                   limit=sleep_seconds * 3,
                                   starttime=last_t + 1)
+            results = list(results)
 
             for t, v in results:
                 printline(t, v)
