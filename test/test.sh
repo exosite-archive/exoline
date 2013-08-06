@@ -2,6 +2,8 @@
 
 function test() {
     nosetests --with-xunit --xunit-file=$1 --verbose --with-coverage --cover-erase --cover-package=exoline
+    python -m coverage xml --include=exoline*
+    cp coverage.xml coverage$1.xml
     #pushd ../exoline
     # python -m doctest -v exo.py
     #popd
