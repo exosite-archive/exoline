@@ -1,6 +1,15 @@
 History
 =======
 
+0.1.3 (2013-8-9)
+----------------
+
+- set up for automated testing in jenkins
+- --include and --exclude flags for info 
+- info and listing commands output json when using --pretty
+- --recursive flag for script command
+- fixed regression in read --follow
+
 0.1.2 (2013-7-31)
 -----------------
 
