@@ -1,17 +1,18 @@
 #!/bin/bash
 
 function test() {
-    nosetests --with-xunit --xunit-file=$1 --verbose --with-coverage --cover-erase --cover-package=exoline
-    python -m coverage xml
-    cp coverage.xml coverage$1.xml
+    nosetests --verbose --with-coverage --cover-erase --cover-package=exoline
+    #nosetests --with-xunit --xunit-file=$1 --verbose --with-coverage --cover-erase --cover-package=exoline
+    #python -m coverage xml
+    #cp coverage.xml coverage$1.xml
     #pushd ../exoline
     # python -m doctest -v exo.py
     #popd
 }
 
 function fn_exists() {
-  # appended double quote is an ugly trick to make sure we do get a string -- if $1 is not a known command, type does not output anything
-  [ `type -t $1`"" == 'function' ]
+    # appended double quote is an ugly trick to make sure we do get a string -- if $1 is not a known command, type does not output anything
+    [ `type -t $1`"" == 'function' ]
 }
 
 function mydeactivate() {

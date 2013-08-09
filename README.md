@@ -1,5 +1,5 @@
-Exoline: Command Line for Exosite 
-================================= 
+Exoline: Exosite Command Line
+=============================
 
 Exoline is a set of commands for accessing the Exosite [One Platform](http://exosite.com/products/onep) from the command line.  
 
@@ -273,3 +273,5 @@ TODO
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
 - delete serial number when dropping device
+- add --recursive option to script command to update scripts on a whole portal
+- add a --verbose option that logs complete requests and response bodies

@@ -124,7 +124,7 @@ Options:
     {{ helpoption }}
 
 Details:
-    Pass - and a json description object on stdin for maximum control.
+    Pass - and a json description object on stdin, or leave it off to use defaults.
     Description is documented here:
     http://developers.exosite.com/display/OP/Remote+Procedure+Call+API#RemoteProcedureCallAPI-create
 
@@ -137,7 +137,7 @@ Options:
     --plain   show only the child RIDs
     --pretty  pretty print output''',
     'info':
-        '''Get info for a resource in json format.\n\nUsage:
+        '''Get metadata for a resource in json format.\n\nUsage:
     exo [options] info <cik> [<rid>]
 
 Options:
@@ -203,12 +203,14 @@ Options:
     'tree':
         '''Display a resource's descendants.\n\nUsage:
     exo tree [--verbose] [--hide-keys] <cik>''',
-    'script': '''Upload a Lua script\n\nUsage:
+    'script': '''Update a client's Lua script\n\nUsage:
     exo [options] script <script-file> <cik> ...
 
 Options:
-    --name=<name>  script name, if different from script filename.
-    {{ helpoption }}''',
+    --name=<name>  script name, if different from script filename. The name
+                   is used to identify the script, too.
+    --recursive    operate on client and any children
+    --create       create the script if it doesn't already exist''',
     'intervals': '''Show distribution of intervals between points.\n\nUsage:
     exo [options] intervals <cik> [<rid>] --days=<days>
 
@@ -288,8 +290,9 @@ class ExoRPC():
             raise RPCException(msg)
 
     def _raise_for_response_record(self, isok, response):
-        '''Undocumented RPC behavior-- if record timestamps are invalid, isok is True
-           but response is an array of timestamps and error messages.'''
+        '''Undocumented RPC behavior-- if record timestamps are invalid, isok
+           is True but response is an array of timestamps and error
+           messages.'''
         self._raise_for_response(isok, response)
         if type(response) is list:
             # TODO: does this always indicate an error condition?
@@ -543,7 +546,7 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def _listing_with_info(self, cik, types):
+    def _listing_with_info(self, cik, types, options={}):
         '''Return a list of dicts for each type containing mappings between rids and
         info for that RID. E.g.:
         [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]'''
@@ -558,7 +561,7 @@ class ExoRPC():
         # request info for each rid
         # (rids is a flattened version of listing)
         rids = list(itertools.chain(*listing))
-        responses = self._exomult(cik, [['info', rid] for rid in rids])
+        responses = self._exomult(cik, [['info', rid, options] for rid in rids])
 
         # From the return values make a list of dicts like this:
         # [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
@@ -794,7 +797,22 @@ class ExoRPC():
             else:
                 raise ExoException("Error updating datarule.")
 
-    def upload(self, ciks, filename, name=None):
+    def cik_recursive(self, cik, fn):
+        '''Run fn on cik and all its client children'''
+        fn(cik)
+        lwi = self._listing_with_info(cik,
+                                      ['client'],
+                                      {'key': True})
+        # [{'<rid0>':<info0>, '<rid1>':<info1>}]
+        for rid in lwi[0]:
+            self.cik_recursive(lwi[0][rid]['key'], fn)
+
+    def upload_script(self,
+                      ciks,
+                      filename,
+                      name=None,
+                      recursive=False,
+                      create=False):
         try:
             f = open(filename)
         except IOError:
@@ -806,8 +824,18 @@ class ExoRPC():
                     # if no name is specified, use the file name as a name
                     name = os.path.basename(filename)
                 for cik in ciks:
-                    rid = self._lookup_rid_by_name(cik, name)
-                    self._upload_script(cik, name, text, rid)
+                    def up(cik):
+                        rid = self._lookup_rid_by_name(cik, name)
+                        print("create: {0}".format(create))
+                        if rid is not None or create:
+                            self._upload_script(cik, name, text, rid=rid)
+                        else:
+                            print("Skipping CIK: {0} -- script named {1} not found".format(cik, name))
+
+                    if recursive:
+                        self.cik_recursive(cik, up)
+                    else:
+                        up(cik)
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'])
@@ -1423,8 +1451,8 @@ def handle_args(cmd, args):
         listing = er.listing(cik, types)
         if args['--plain']:
             for l in listing:
-                for cik in listing[0]:
-                    print(cik)
+                for rid in listing[0]:
+                    print(rid)
         else:
             pr(listing)
     elif cmd == 'info':
@@ -1490,7 +1518,10 @@ def handle_args(cmd, args):
         er.tree(cik, cli_args=args)
     elif cmd == 'script':
         # cik is a list of ciks
-        er.upload(cik, args['<script-file>'], args['--name'])
+        er.upload_script(cik, args['<script-file>'],
+                         name=args['--name'],
+                         recursive=args['--recursive'],
+                         create=args['--create'])
     elif cmd == 'intervals':
         days = int(args['--days'])
         end = time.mktime(datetime.now().timetuple())

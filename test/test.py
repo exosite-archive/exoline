@@ -21,7 +21,6 @@ except:
     sys.stderr.write(
         "Copy testconfig.py.template to testconfig.py and set portalcik.")
 
-
 class CmdResult():
     def __init__(self, exitcode, stdout, stderr):
         self.exitcode = exitcode
@@ -131,6 +130,15 @@ class TestRPC(TestCase):
         self.assertFalse(m is None, "rid: {0}".format(s))
         return str(m.groups()[0])
 
+    def _ridcik(self, s):
+        '''Parse rid and cik from output of create command, and raise
+        exception if it doesn't validate.'''
+        m = re.match("^rid: ({0})\ncik: ({0})$".format(self.RE_RID),
+                     s,
+                     re.MULTILINE)
+        self.l(s)
+        return [str(g) for g in m.groups()]
+
     def _createMultiple(self, cik, resList):
         # use pyonep directly
         pyonep = exo.ExoRPC().exo
@@ -186,7 +194,7 @@ class TestRPC(TestCase):
         self.assertEqual(r.exitcode, 0, 'create succeeds')
 
         rid = re.match('rid: ({0})'.format(self.RE_RID), r.stdout).groups()[0]
-        ri = rpc('info', res.parentcik, rid)
+        ri = rpc('info', res.parentcik, rid, '--exclude=count,usage')
         info = json.loads(ri.stdout.strip())
         res.created(rid, info)
 
@@ -249,7 +257,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.client = Resource(
             self.portalcik,
             'client',
-            {'limits': {'dataport': 'inherit',
+            {'limits': {'client': 30,
+                        'dataport': 'inherit',
                         'datarule': 'inherit',
                         'dispatch': 'inherit',
                         'disk': 'inherit',
@@ -302,7 +311,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
                     readvalues = self._readBack(res, len(res.write))
                     self._verifyWrite(res.write, readvalues)
-
 
     def _verifyRecord(self, writetime, wrotevalues, readvalues):
         '''Checks readvalues against wrotevalues and returns True if they match
@@ -502,20 +510,80 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Script upload'''
         waitsec = 12
         cik = self.client.cik()
-        r = rpc('script', 'files/helloworld.lua', cik)
-        self.assertTrue(r.exitcode == 0, 'New script')
-        time.sleep(waitsec)
-        self._latest(cik, 'helloworld.lua', 'line 1: Hello world!',
-                     'debug output within {0} sec'.format(waitsec))
-        self._latest(cik, 'string_port_alias', 'Hello dataport!',
-                     'dataport write from script within {0} sec'.format(waitsec))
-        r = rpc('script', 'files/helloworld2.lua', cik, '--name={0}'.format('helloworld.lua'))
-        self.assertTrue(r.exitcode == 0, 'Update existing script')
-        time.sleep(waitsec)
-        self._latest(cik, 'helloworld.lua', 'line 1: Hello world 2!',
-                     'debug output from updated script within {0} sec'.format(waitsec))
-        self._latest(cik, 'string_port_alias', 'Hello dataport 2!',
-                     'dataport write from updated script within {0} sec'.format(waitsec))
+        desc = json.dumps({'limits': {'client': 1,
+                                      'dataport': 'inherit',
+                                      'datarule': 'inherit',
+                                      'dispatch': 'inherit',
+                                      'disk': 'inherit',
+                                      'io': 'inherit'},
+            'writeinterval': 'inherit',
+            'name': 'testclient',
+            'visibility': 'parent'})
+        r = rpc('create', cik, '--type=client', '--name=firstChild', '-', stdin=desc)
+        self.ok(r, 'create child 1')
+        childrid1, childcik1 = self._ridcik(r.stdout)
+        r = rpc('create', cik, '--type=client', '--name=secondChild', '-', stdin=desc)
+        self.ok(r, 'create child 2')
+        childrid2, childcik2 = self._ridcik(r.stdout)
+        r = rpc('create', childcik2, '--type=client', '--name=grandChild')
+        self.ok(r, 'create grandchild')
+        childrid3, childcik3 = self._ridcik(r.stdout)
+
+        lua1 = {'name': 'helloworld.lua',
+                'path': 'files/helloworld.lua',
+                'out': 'line 1: Hello world!',
+                'portoutput': 'Hello dataport!'}
+        lua1['content'] = open(lua1['path']).read().strip()
+        lua2 = {'name': 'helloworld2.lua',
+                'path': 'files/helloworld2.lua',
+                'out': 'line 1: Hello world!',
+                'portoutput': 'Hello dataport 2!'}
+        lua2['content'] = open(lua2['path']).read().strip()
+
+        def readscript(cik, alias):
+            r = rpc('info', cik, alias, '--include=description')
+            self.l(r.exitcode)
+            self.l(r.stdout)
+            self.l(r.stderr)
+            info = json.loads(r.stdout)
+            return info['description']['rule']['script'].strip()
+
+        r = rpc('script', lua1['path'], cik)
+        r = rpc('read', cik, lua1['name'])
+        self.notok(r, "Don't create script unless --create passed")
+        r = rpc('script', lua1['path'], '--create', cik)
+        self.ok(r, 'New script')
+        self.assertEqual(readscript(cik, lua1['name']), lua1['content'])
+        #self._latest(cik, lua1['name'], lua1['out'],
+        #             'debug output within {0} sec'.format(waitsec))
+        #self._latest(cik, 'string_port_alias', lua1['portoutput'],
+        #             'dataport write from script within {0} sec'.format(waitsec))
+        r = rpc('script', lua2['path'], cik, '--name=' + lua1['name'])
+        self.ok(r, 'Update existing script')
+        self.assertEqual(readscript(cik, lua1['name']), lua2['content'])
+        #self._latest(cik, lua1['name'], lua2['out'],
+        #             'debug output from updated script within {0} sec'.format(waitsec))
+        #self._latest(cik, 'string_port_alias', lua2['portoutput'],
+        #             'dataport write from updated script within {0} sec'.format(waitsec))
+
+        # test --recursive
+        r = rpc('read', childcik1, lua1['name'])
+        self.notok(r, 'not recursive when --recursive is not passed')
+        r = rpc('script', lua1['path'], '--create', childcik2)
+        self.ok(r, 'create script in one child')
+        r = rpc('script', lua1['path'], '--recursive', cik)
+        self.ok(r, 'recursively write a script')
+        self.assertEqual(readscript(cik, lua1['name']), lua1['content'])
+        self.assertEqual(readscript(childcik2, lua1['name']), lua1['content'])
+        r = rpc('read', childcik1, lua1['name'])
+        self.notok(r, 'script should not be created when --create is not passed')
+        r = rpc('script', lua2['path'], cik, '--name=' + lua1['name'], '--recursive', '--create')
+        self.ok(r, 'recursive script update to helloworld2')
+        self.assertEqual(readscript(cik, lua1['name']), lua2['content'])
+        self.assertEqual(readscript(childcik1, lua1['name']), lua2['content'], "child1 updated")
+        self.assertEqual(readscript(childcik2, lua1['name']), lua2['content'], "child2 updated")
+        self.assertEqual(readscript(childcik3, lua1['name']), lua2['content'], "grandchild updated")
+
 
     def usage_test(self):
         '''OneP resource usage'''
