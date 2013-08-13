@@ -1,6 +1,14 @@
 History
 =======
 
+0.2.0 (2013-8-13)
+-----------------
+
+- tree is faster, esp for large portals
+- --level option for tree
+- copy checks limits when possible (when not set to 'inherit')
+- improve json format for info --recursive
+
 0.1.3 (2013-8-9)
 ----------------
 
