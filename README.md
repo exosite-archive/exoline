@@ -260,7 +260,6 @@ To run the tests, install the packages in test/requirements.txt, and then type:
 TODO
 ----
 
-- copy command should check limits before copying
 - copy command should support taking input from stdin (which would be the ouput of info --recursive)
 - investigate copying resources with public: True to destination with public: False (One Platform error: restricted)
 - copy comments field
@@ -268,9 +267,11 @@ TODO
 - --name parameter to copy command so names don't conflict
 - --desconly parameter for info command, to show info as json so it can be piped to create
 - add raw command, taking full RPC json from stdin
-- add key command for making local CIK aliases/shortcuts
+- --desconly parameter for info command, to show info as json so it can be piped to create
+- add key command for making local CIK aliases/shortcuts (with tab completion for shortcuts?)
 - Make the info command take multiple rids (or stdin)
 - Add --watch flag to script upload so script loads automatically
 - Support binary datasource format
 - delete serial number when dropping device
 - add a --verbose option that logs complete requests and response bodies
+- add --howmany option to create command

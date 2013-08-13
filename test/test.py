@@ -221,9 +221,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def l(self, s):
         self.log.debug(s)
 
-    def _createDataports(self):
+    def _createDataports(self, cik=None):
         # test one of each type of dataport
-        cik = self.client.cik()
+        if cik is None:
+            cik = self.client.cik()
         stdports = {}
         stdports['integer'] = Resource(
             cik, 'dataport', {'format': 'integer', 'name': 'int_port'},
@@ -257,7 +258,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.client = Resource(
             self.portalcik,
             'client',
-            {'limits': {'client': 30,
+            {'limits': {'client': 'inherit',
                         'dataport': 'inherit',
                         'datarule': 'inherit',
                         'dispatch': 'inherit',
@@ -398,17 +399,37 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def tree_test(self):
         '''Tree command'''
-        stdports = self._createDataports()
         cik = self.client.cik()
+
+        r = rpc('create', cik, '--type=client', '--cikonly')
+        self.ok(r, 'create child')
+        childcik = r.stdout
+
+        stdports = self._createDataports(childcik)
+
         r = rpc('tree', cik)
         # call did not fail
-        self.assertTrue(r.exitcode == 0)
+        self.ok(r, 'tree shouldn\'t fail')
         # starts with cik
         self.l(r.stdout)
         self.assertTrue(
             re.match("cik: {0}.*".format(cik), r.stdout) is not None)
+
         # has correct number of lines
-        self.assertTrue(len(r.stdout.split('\n')) == len(stdports) + 1)
+        self.assertTrue(len(r.stdout.split('\n')) == len(stdports) + 1 + 1)
+
+        r = rpc('tree', cik, '--level=0')
+        self.ok(r, 'tree with --level=0 shouldn\'t fail')
+        self.ok(r)
+        self.assertTrue(len(r.stdout.split('\n')) == 1)
+
+        r = rpc('tree', cik, '--level=1')
+        self.ok(r, 'tree with --level=1 shouldn\'t fail')
+        self.assertTrue(len(r.stdout.split('\n')) == 2)
+
+        r = rpc('tree', cik, '--level=2')
+        self.ok(r, 'tree with --level=2 shouldn\'t fail')
+        self.assertTrue(len(r.stdout.split('\n')) == len(stdports) + 1 + 1)
 
     def map_test(self):
         '''Map/unmap commands'''

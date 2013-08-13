@@ -52,6 +52,7 @@ import time
 from pprint import pprint
 from operator import itemgetter
 import logging
+from collections import defaultdict
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -202,8 +203,11 @@ Options:
     {{ startend }}''',
     'tree':
         '''Display a resource's descendants.\n\nUsage:
-    exo tree [--verbose] [--hide-keys] <cik>''',
-    'script': '''Update a client's Lua script\n\nUsage:
+    exo [options] tree [--verbose] [--hide-keys] <cik>
+
+    --counts       show item counts (from info.storage.counts)
+    --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]''',
+    'script': '''Upload a client's a Lua script\n\nUsage:
     exo [options] script <script-file> <cik> ...
 
 Options:
@@ -586,7 +590,7 @@ class ExoRPC():
              recursive=False):
         if recursive:
             rid = None if type(rid) is dict else rid
-            response = self._infotree(cik, rid=rid)
+            response = self._infotree(cik, rid=rid, options=options)
         else:
             isok, response = self.exo.info(cik, rid, options)
             self._raise_for_response(isok, response)
@@ -688,15 +692,22 @@ class ExoRPC():
             u'' if len(opt) == 0 else u'({0})'.format(u', '.join(
                 [u'{0}: {1}'.format(k, v) for k, v in opt.iteritems()]))))
 
-    def tree(self, cik, aliases=None, cli_args={}, spacer=u''):
+    def tree(self, cik, aliases=None, cli_args={}, spacer=u'', level=0, info_options={}):
         '''Print a tree of entities in OneP'''
+        max_level = int(cli_args['--level'])
         # print root node
         isroot = len(spacer) == 0
         if isroot:
+            # usage and counts are slow, so omit them if we don't need them
+            exclude = ['usage']
+            if not cli_args['--counts']:
+                exclude.append('counts')
+                exclude.append('storage')
+            info_options = self.make_info_options(exclude=exclude)
             # todo: combine these (maybe also the _listing_with_info function
             # below?)
             rid = self.lookup(cik, "")
-            info = self.info(cik)
+            info = self.info(cik, options=info_options)
             # info doesn't contain key
             info['key'] = cik
             aliases = info['aliases']
@@ -708,10 +719,13 @@ class ExoRPC():
                              cli_args,
                              spacer,
                              islast=True)
+            if max_level == 0:
+                return
+            level += 1
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
         try:
-            listing = self._listing_with_info(cik, types=types)
+            listing = self._listing_with_info(cik, types=types, options=info_options)
             # listing(): [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']]
             # _listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
             #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
@@ -736,7 +750,8 @@ class ExoRPC():
                     if t == 'client':
                         next_cik = info['key']
                         self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
-                        self.tree(next_cik, info['aliases'], cli_args, child_spacer)
+                        if max_level == -1 or level < max_level:
+                            self.tree(next_cik, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
                     else:
                         self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
 
@@ -842,7 +857,7 @@ class ExoRPC():
         self._raise_for_response(isok, listing)
 
         for rid in listing[0]:
-            self.exo.info(cik, rid, defer=True)
+            self.exo.info(cik, rid, {'key': True}, defer=True)
 
         if self.exo.has_deferred(cik):
             responses = self.exo.send_deferred(cik)
@@ -871,21 +886,18 @@ class ExoRPC():
 
 
     def _create_from_infotree(self, parentcik, infotree):
-        if 'basic' not in infotree:
-            # we're initially passed infotree with a single key
-            infotree = infotree[infotree.keys()[0]]
-        typ = infotree['basic']['type']
-        rid = self.create(parentcik, typ, infotree['description'])
+        '''Create a copy of infotree under parentcik'''
+        typ = infotree['info']['basic']['type']
+        rid = self.create(parentcik, typ, infotree['info']['description'])
         if typ == 'client':
             # look up new CIK
             cik = self.info(parentcik, rid)['key']
-            children = infotree['children']
+            children = infotree['info']['children']
             aliases_to_create = {}
-            for childrid in children:
-                childinfotree = children[childrid]
-                newrid, _ = self._create_from_infotree(cik, childinfotree)
-                if childrid in infotree['aliases']:
-                    aliases_to_create[newrid] = infotree['aliases'][childrid]
+            for child in children:
+                newrid, _ = self._create_from_infotree(cik, child)
+                if child['rid'] in infotree['info']['aliases']:
+                    aliases_to_create[newrid] = infotree['info']['aliases'][child['rid']]
 
             # add aliases in one request
             self._exomult(
@@ -897,13 +909,40 @@ class ExoRPC():
         else:
             return rid, None
 
+    def _counttypes(self, infotree, counts=defaultdict(int)):
+        '''Return a dictionary with the count of each type of resource in the
+        tree. For example, {'client': 2, 'dataport': 1, 'dispatch':1}'''
+        info = infotree['info']
+        counts[info['basic']['type']] += 1
+        if 'children' in info:
+            for child in info['children']:
+                counts = self._counttypes(child, counts=counts)
+        return counts
+
     def copy(self, cik, destcik, infotree=None):
         '''Make a copy of cik and its non-client children to destcik and
         return the cik of the copy.'''
 
         # read in the whole client to copy at once
         if infotree is None:
-            infotree = self._infotree(cik)
+            infotree = self._infotree(cik, options={})
+
+        # check counts
+        counts = self._counttypes(infotree)
+        destinfo = self.info(destcik)
+
+        noroom = ''
+        for typ in counts:
+            destlimit = destinfo['description']['limits'][typ]
+            destcount = destinfo['counts'][typ]
+            needs = counts[typ]
+            # TODO: need a way to check if limit is set to 'inherit'
+            if type(destlimit) is int and destlimit - destcount < needs:
+                noroom = noroom + 'Thing to copy has {0} {1}{4}, parent has limit of {3} (and is using {2}).\n'.format(
+                    needs, typ, destcount, destlimit, 's' if needs > 1 else '')
+
+        if len(noroom) > 0:
+            raise ExoException('Copy would violate parent limits:\n{0}'.format(noroom))
 
         cprid, cpcik = self._create_from_infotree(destcik, infotree)
 
@@ -942,25 +981,26 @@ class ExoRPC():
 
         return list(differ.compare(s1, s2))
 
-    def _infotree(self, cik, rid=None, nodefn=lambda rid, info: rid):
+    def _infotree(self, cik, rid=None, nodeidfn=lambda rid, info: rid, options={}):
         '''Get all info for a cik and its children in a nested dict.
-           The basic unit is 'rid: xyz': <info-with-children>, where <info-with-children>
-           is just the info object for that node with the addition of 'children' key,
-           which is a dict containing more nodes. Here's an example return value:
+        The basic unit is {'rid': '<rid>', 'info': <info-with-children>},
+        where <info-with-children> is just the info object for that node
+        with the addition of 'children' key, which is a dict containing
+        more nodes. Here's an example return value:
 
-           {'<rid 0>': {'description': ...,
+           {'rid': '<rid 0>', 'info': {'description': ...,
                         'basic': ....,
                         ...
-                        'children: {'<rid 1>': {'description': ...,
+                        'children: [{'rid': '<rid 1>', 'info': {'description': ...,
                                                 'basic': ...
-                                                'children': {'<rid 2>': {'description': ...,
+                                                'children': [{'rid': '<rid 2>', 'info': {'description': ...,
                                                                          'basic': ...,
-                                                                         'children: {} } } },
-                                    '<rid 3>': {'description': ...,
+                                                                         'children: [] } } },
+                                    {'rid': '<rid 3>', 'info': {'description': ...,
                                                 'basic': ...
-                                                'children': {} } } } }
+                                                'children': {} } }] } }
 
-           As it's building this nested dict, it calls nodefn with the rid and info
+           As it's building this nested dict, it calls nodeidfn with the rid and info
            (w/o children) for each node.
         '''
         types = ['client', 'dataport', 'datarule', 'dispatch']
@@ -971,7 +1011,7 @@ class ExoRPC():
         if norid:
             rid = self._exomult(cik, [['lookup', 'aliased', '']])[0]
 
-        info = self._exomult(cik, [['info', rid]])[0]
+        info = self._exomult(cik, [['info', rid, options]])[0]
 
         if norid or info['basic']['type'] == 'client':
             if not norid:
@@ -980,18 +1020,21 @@ class ExoRPC():
             listing = self._exomult(cik,
                                     [['listing', types]])[0]
 
-        myid = nodefn(rid, info)
+        myid = nodeidfn(rid, info)
 
-        info['children'] = {}
+        info['children'] = []
         for typ, ridlist in zip(types, listing):
             for childrid in ridlist:
-                tr = self._infotree(cik, childrid, nodefn=nodefn)
-                info['children'].update(tr)
+                tr = self._infotree(cik, childrid, nodeidfn=nodeidfn, options=options)
+                info['children'].append(tr)
+        info['children'].sort(key=itemgetter('rid'))
 
-        return {myid : info}
+        return {'rid': myid, 'info': info}
 
     def _difffilter(self, difflines):
         d = difflines
+
+        # TODO: fix this for new infotree format
 
         # replace differing rid children lines with a single <<rid>>
         ridline = '^[+-](.*").*\.[a-f0-9]{40}(".*)\n'
@@ -1045,8 +1088,8 @@ class ExoRPC():
                 # prepend the name so that node names tend to sort (and so
                 # compare well)
                 return info['description']['name'] + '.' + rid
-            info1 = self._infotree(cik1, nodefn=name_prepend)
-            info2 = self._infotree(cik2, nodefn=name_prepend)
+            info1 = self._infotree(cik1, nodeidfn=name_prepend, options={})
+            info2 = self._infotree(cik2, nodeidfn=name_prepend, options={})
 
         if info1 == info2:
             return None
@@ -1064,6 +1107,38 @@ class ExoRPC():
                     return None
 
             return differences
+
+    def make_info_options(self, include=[], exclude=[]):
+        '''Create options for the info command based on included
+        and excluded keys.'''
+        options = {}
+        # TODO: this is a workaround. The RPC API returns empty list if any
+        # keys are set to false. So, the workaround is to include all keys
+        # except for the excluded ones. This has the undesirable
+        # side-effect of producing "<key>": null in the results, so it would be
+        # better for this to be done in the API.
+        #
+        #for key in exclude:
+        #    options[key] = False
+
+        if len(exclude) > 0:
+            options.update(dict([(k, True) for k in ['aliases',
+                                                        'basic',
+                                                        'counts',
+                                                        'description',
+                                                        'key',
+                                                        'shares',
+                                                        'storage',
+                                                        'subscribers',
+                                                        'tags',
+                                                        'usage']
+                                    if k not in exclude]))
+        else:
+            for key in include:
+                options[key] = True
+
+        return options
+
 
 def parse_ts(s):
     return int(time.mktime(parser.parse(s).timetuple()))
@@ -1456,7 +1531,6 @@ def handle_args(cmd, args):
         else:
             pr(listing)
     elif cmd == 'info':
-        options = {}
         include = args['--include']
         include = [] if include is None else [key.strip()
                                               for key in include.split(',')]
@@ -1464,31 +1538,7 @@ def handle_args(cmd, args):
         exclude = [] if exclude is None else [key.strip()
                                               for key in exclude.split(',')]
 
-        # TODO: this is a workaround. The RPC API returns empty list if any
-        # keys are set to false. So, the workaround is to include all keys
-        # except for the excluded ones. This has the undesirable
-        # side-effect of producing "<key>": null in the results, so it would be
-        # better for this to be done in the API.
-        #
-        #for key in exclude:
-        #    options[key] = False
-
-        if len(exclude) > 0:
-            options.update(dict([(k, True) for k in ['aliases',
-                                                     'basic',
-                                                     'counts',
-                                                     'description',
-                                                     'key',
-                                                     'shares',
-                                                     'storage',
-                                                     'subscribers',
-                                                     'tags',
-                                                     'usage']
-                                 if k not in exclude]))
-        else:
-            for key in include:
-                options[key] = True
-
+        options = er.make_info_options(include, exclude)
         info = er.info(cik,
                        rids[0],
                        options=options,
