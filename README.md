@@ -266,9 +266,8 @@ TODO
 - --name parameter to copy command so names don't conflict
 - --desconly parameter for info command, to show info as json so it can be piped to create
 - add raw command, taking full RPC json from stdin
-- add key command for making local CIK aliases/shortcuts (with tab completion for shortcuts?)
 - Make the info command take multiple rids (or stdin)
 - delete serial number when dropping device
 - add a --verbose option that logs complete requests and response bodies
 - add --howmany option to create command
-- tab completion for commands
+- tab completion for commands and shortcuts

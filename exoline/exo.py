@@ -92,6 +92,7 @@ Options:
     --format=csv|raw         output format [default: csv]
     --timeformat=unix|human|iso8601
                              unix timestamp or human-readable? [default: human]
+    --header=name|rid        include a header row
     --chunkhours=<hours>     break read into multiple requests of length
                              <hours>, printing data as it is received and
                              ignoring --limit. Note that this requires start
@@ -1324,7 +1325,20 @@ def read_cmd(er, cik, rids, args):
     start, end = get_startend(args)
 
     timeformat = args['--timeformat']
-    dw = csv.DictWriter(sys.stdout, ['timestamp'] + [str(r) for r in rids])
+    headertype = args['--header']
+    if headertype == 'name':
+        # look up names of rids
+        infos = er._exomult(cik,
+                            [['info', r, {'description': True}] for r in rids])
+        headers = ['timestamp'] + [i['description']['name'] for i in infos]
+    else:
+        headers = ['timestamp'] + [str(r) for r in args['<rid>']]
+
+    dw = csv.DictWriter(sys.stdout, headers)
+    if headertype is not None:
+        # write headers
+        dw.writerow(dict([(h, h) for h in headers]))
+
     fmt = args['--format']
 
     def printline(timestamp, val):
@@ -1339,9 +1353,10 @@ def read_cmd(er, cik, rids, args):
                 dt = datetime.fromtimestamp(timestamp)
 
             row = {'timestamp': str(dt)}
-            values = dict([(str(rids[i]), val[i]) for i in range(len(rids))])
+            values = dict([(str(headers[i + 1]), val[i]) for i in range(len(rids))])
             row.update(values)
             dw.writerow(row)
+
 
     sleep_seconds = 2
     if args['--follow']:
