@@ -852,11 +852,10 @@ class ExoRPC():
                 for cik in ciks:
                     def up(cik):
                         rid = self._lookup_rid_by_name(cik, name)
-                        print("create: {0}".format(create))
                         if rid is not None or create:
                             self._upload_script(cik, name, text, rid=rid)
                         else:
-                            print("Skipping CIK: {0} -- script named {1} not found".format(cik, name))
+                            print("Skipping CIK: {0} -- {1} not found (--create will create it)".format(cik, name))
 
                     if recursive:
                         self.cik_recursive(cik, up)
@@ -1405,25 +1404,40 @@ def handle_args(cmd, args):
 
     regex_rid = re.compile("[0-9a-zA-Z]{40}")
     cik = args['<cik>']
-    if regex_rid.match(cik) is None:
-        # if cik doesn't look like a cik, maybe it's a shortcut
-        configfile = os.path.join(os.environ['HOME'], '.exoline')
-        try:
-            import yaml
-            with open(configfile) as f:
-                config = yaml.safe_load(f)
-                if 'keys' in config:
-                    if cik in config['keys']:
-                        cik = config['keys'][cik].strip()
+
+    def cik_or_shortcut(cik):
+        '''Look up what was passed for <cik> in config
+           if it doesn't look like a CIK.'''
+        if regex_rid.match(cik) is None:
+            # if cik doesn't look like a cik, maybe it's a shortcut
+            configfile = os.path.join(os.environ['HOME'], '.exoline')
+            try:
+                import yaml
+                with open(configfile) as f:
+                    config = yaml.safe_load(f)
+                    if 'keys' in config:
+                        if cik in config['keys']:
+                            return config['keys'][cik].strip()
+                        else:
+                            raise ExoException('No CIK shortcut {0}\n{1}'.format(
+                                cik,
+                                '\n'.join(config['keys'])))
                     else:
-                        raise ExoException('No CIK shortcut {0}\n{1}'.format(
+                        raise ExoException('Tried a CIK shortcut {0}, but found no keys in {1}'.format(
                             cik,
-                            '\n'.join(config['keys'])))
-        except IOError as ex:
-            raise ExoException(
-                'Tried a CIK shortcut {0}, but couldn\'t open {1}'.format(
-                cik,
-                configfile))
+                            configfile))
+            except IOError as ex:
+                raise ExoException(
+                    'Tried a CIK shortcut {0}, but couldn\'t open {1}'.format(
+                    cik,
+                    configfile))
+        else:
+            return cik
+
+    if type(cik) is list:
+        cik = [cik_or_shortcut(c) for c in cik]
+    else:
+        cik = cik_or_shortcut(cik)
 
     def rid_or_alias(rid):
         '''Translate what was passed for <rid> to an alias object if

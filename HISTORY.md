@@ -1,10 +1,17 @@
 History
 =======
 
+0.2.1 (2013-8-15)
+-----------------
+
+- cik lookup in ~/.exoline 
+- support ISO8601 dates for read
+- copy comments
+
 0.2.0 (2013-8-13)
 -----------------
 
-- tree is faster, esp for large portals
+- tree is faster for large portals
 - --level option for tree
 - copy checks limits when possible (when not set to 'inherit')
 - improve json format for info --recursive
