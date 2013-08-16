@@ -268,10 +268,7 @@ TODO
 - add raw command, taking full RPC json from stdin
 - add key command for making local CIK aliases/shortcuts (with tab completion for shortcuts?)
 - Make the info command take multiple rids (or stdin)
-- Add --watch flag to script upload so script loads automatically
-- Support binary datasource format
 - delete serial number when dropping device
 - add a --verbose option that logs complete requests and response bodies
 - add --howmany option to create command
-- use ISO8601 date format for read
-
+- tab completion for commands

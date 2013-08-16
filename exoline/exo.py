@@ -90,7 +90,8 @@ Options:
     --end=<time>             start and end times (see details below)
     --selection=all|autowindow|givenwindow  downsample method [default: all]
     --format=csv|raw         output format [default: csv]
-    --timeformat=unix|human  unix timestamp or human-readable? [default: human]
+    --timeformat=unix|human|iso8601
+                             unix timestamp or human-readable? [default: human]
     --chunkhours=<hours>     break read into multiple requests of length
                              <hours>, printing data as it is received and
                              ignoring --limit. Note that this requires start
@@ -1333,8 +1334,11 @@ def read_cmd(er, cik, rids, args):
         else:
             if timeformat == 'unix':
                 dt = timestamp
+            elif timeformat == 'iso8601':
+                dt = datetime.isoformat(datetime.fromtimestamp(timestamp))
             else:
                 dt = datetime.fromtimestamp(timestamp)
+
             row = {'timestamp': str(dt)}
             values = dict([(str(rids[i]), val[i]) for i in range(len(rids))])
             row.update(values)
