@@ -262,7 +262,6 @@ TODO
 
 - copy command should support taking input from stdin (which would be the ouput of info --recursive)
 - investigate copying resources with public: True to destination with public: False (One Platform error: restricted)
-- copy comments field
 - clarify what the first and second parameter to copy need to be. Maybe require explicit --device= and --portal= They could be anything, but 95% of the time the first param will be a device CIK, the second a portal CIK.
 - --name parameter to copy command so names don't conflict
 - --desconly parameter for info command, to show info as json so it can be piped to create
@@ -274,3 +273,5 @@ TODO
 - delete serial number when dropping device
 - add a --verbose option that logs complete requests and response bodies
 - add --howmany option to create command
+- use ISO8601 date format for read
+

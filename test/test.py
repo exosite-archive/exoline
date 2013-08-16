@@ -14,6 +14,8 @@ import logging
 from unittest import TestCase
 
 from ..exoline import exo
+from ..exoline.exo import ExolineOnepV1
+
 
 try:
     from testconfig import config
@@ -504,21 +506,20 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('info', self.portalcik, client.rid)
         self.notok(r, 'client gone after drop', match='.*restricted')
 
-
     def spark_test(self):
-        '''Intervals command'''
+        '''Spark command'''
         cik = self.client.cik()
         rid = self._rid(
             rpc('create', cik, '--type=dataport', '--format=integer', '--ridonly').stdout)
         rpc('record', cik, rid, '--interval={0}'.format(240), *['--value={0}'.format(x) for x in range(1, 6)])
-        r = rpc('intervals', cik, rid, '--days=1')
+        r = rpc('spark', cik, rid, '--days=1')
         self.ok(r, "equally spaced points", match="[^ ] {59}\n4m")
         rpc('flush', cik, rid)
-        r = rpc('intervals', cik, rid, '--days=1')
+        r = rpc('spark', cik, rid, '--days=1')
         self.ok(r, "no data should output nothing", match="")
         r = rpc('record', cik, rid, '--value=-1,1', '--value=-62,2', '--value=-3662,3', '--value=-3723,4')
         self.ok(r, "record points")
-        r = rpc('intervals', cik, rid, '--days=1')
+        r = rpc('spark', cik, rid, '--days=1')
         self.ok(r, "three points, two intervals", match="^[^ ] {58}[^ ]\n1m 1s +1h$")
 
     def _latest(self, cik, rid, val, msg):
@@ -706,7 +707,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         else:
             self.ok(r, '--no-children, no differences', match='')
 
-
         r = rpc('diff', copycik, self.client.cik(), '--no-children')
         if sys.version_info < (2, 7):
             self.notok(r, 'diff not supported with Python <2.7')
@@ -743,6 +743,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             self.notok(r, 'diff not supported with Python <2.7')
         else:
             self.ok(r, 'aliases match now', match='')
+
         '''
         r = rpc('copy', cik, cik, '--cikonly')
         self.ok(r, 'copy client into itself', match=self.RE_RID)
@@ -756,6 +757,64 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'lookup dataport on inner cik copy', match=self.RE_RID)
         innercopydataportrid = r.stdout
         '''
+
+    def _stddesc(self, name):
+        return {'limits': {'client': 'inherit',
+                        'dataport': 'inherit',
+                        'datarule': 'inherit',
+                        'dispatch': 'inherit',
+                        'disk': 'inherit',
+                        'io': 'inherit'},
+            'writeinterval': 'inherit',
+            'name': name,
+            'visibility': 'parent'}
+
+    def copy_comment_test(self):
+        '''Copy comments'''
+        cik = self.client.cik()
+
+        desc = json.dumps({'limits': {'client': 1,
+                                      'dataport': 'inherit',
+                                      'datarule': 'inherit',
+                                      'dispatch': 'inherit',
+                                      'disk': 'inherit',
+                                      'io': 'inherit'},
+            'writeinterval': 'inherit',
+            'name': 'testclient',
+            'visibility': 'parent'})
+        r = rpc('create', cik, '--type=client', '--name=child', '-', stdin=desc)
+        self.ok(r, 'create child client')
+        childrid, childcik = self._ridcik(r.stdout)
+
+        ridFloat, ridString = self._createMultiple(childcik, [
+            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port'}),
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'})])
+
+        r = rpc('copy', childcik, cik, '--cikonly')
+        self.ok(r, 'make copy without comments')
+        copy_without_comments = r.stdout
+
+        r = rpc('diff', childcik, copy_without_comments)
+        self.ok(r, 'no differences', match='')
+
+        # add comments
+        exo = ExolineOnepV1()
+        exo.comment(childcik, ridFloat, 'public', 'Hello')
+        exo.comment(childcik, ridFloat, 'public', 'World')
+
+        r = rpc('diff', childcik, copy_without_comments)
+        self.ok(r, 'diff notices comment differences', search=r'^\+.+')
+
+        r = rpc('copy', childcik, cik, '--cikonly')
+        self.ok(r, 'make copy without comments')
+        copy_with_comments = r.stdout
+
+        r = rpc('diff', childcik, copy_with_comments)
+        self.ok(r, 'no differences -- comment was copied', match='')
+
+    def copy_limit_test(self):
+        '''Check limits with copy command'''
+        pass
 
     def connection_test(self):
         '''Connection settings'''

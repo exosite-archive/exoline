@@ -23,7 +23,7 @@ Commands:
   usage
   tree
   script
-  intervals
+  spark
   copy
   diff
 
@@ -215,8 +215,8 @@ Options:
                    is used to identify the script, too.
     --recursive    operate on client and any children
     --create       create the script if it doesn't already exist''',
-    'intervals': '''Show distribution of intervals between points.\n\nUsage:
-    exo [options] intervals <cik> [<rid>] --days=<days>
+    'spark': '''Show distribution of intervals between points.\n\nUsage:
+    exo [options] spark <cik> [<rid>] --days=<days>
 
 Options:
     --stddev=<num>  exclude intervals more than num standard deviations from mean
@@ -265,8 +265,16 @@ for k in cmd_doc:
 class ExoException(Exception):
     pass
 
+
 class RPCException(Exception):
     pass
+
+
+class ExolineOnepV1(onep.OnepV1):
+    '''Subclass that re-adds deprecated commands used by Portals'''
+    def comment(self, cik, rid, visibility, comment, defer=False):
+        return self._call('comment', cik, [rid, visibility, comment], defer)
+
 
 class ExoRPC():
     '''Wrapper for pyonep RPC API.
@@ -280,7 +288,7 @@ class ExoRPC():
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
-        self.exo = onep.OnepV1(host=host,
+        self.exo = ExolineOnepV1(host=host,
                                port=port,
                                httptimeout=httptimeout,
                                https=https)
@@ -316,6 +324,8 @@ class ExoRPC():
             return []
         assert(not self.exo.has_deferred(cik))
         for c in commands:
+            if type(c) is not list:
+                raise Exception("_exomult: found invalid command")
             method = getattr(self.exo, c[0])
             #print c
             method(cik, *c[1:], defer=True)
@@ -887,8 +897,12 @@ class ExoRPC():
 
     def _create_from_infotree(self, parentcik, infotree):
         '''Create a copy of infotree under parentcik'''
-        typ = infotree['info']['basic']['type']
-        rid = self.create(parentcik, typ, infotree['info']['description'])
+        info_to_copy = infotree['info']
+        typ = info_to_copy['basic']['type']
+        rid = self.create(parentcik, typ, info_to_copy['description'])
+        if 'comments' in info_to_copy and len(info_to_copy['comments']) > 0:
+            commands = [['comment', rid, c[0], c[1]] for c in info_to_copy['comments']]
+            self._exomult(parentcik, commands)
         if typ == 'client':
             # look up new CIK
             cik = self.info(parentcik, rid)['key']
@@ -1572,7 +1586,7 @@ def handle_args(cmd, args):
                          name=args['--name'],
                          recursive=args['--recursive'],
                          create=args['--create'])
-    elif cmd == 'intervals':
+    elif cmd == 'spark':
         days = int(args['--days'])
         end = time.mktime(datetime.now().timetuple())
         start = time.mktime((datetime.now() - timedelta(days=days)).timetuple())
