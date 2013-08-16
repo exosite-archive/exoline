@@ -1402,12 +1402,33 @@ def pretty_print(arg):
 
 def handle_args(cmd, args):
     er = ExoRPC(host=args['--host'], port=args['--port'], https=args['--https'], httptimeout=args["--httptimeout"])
+
+    regex_rid = re.compile("[0-9a-zA-Z]{40}")
     cik = args['<cik>']
+    if regex_rid.match(cik) is None:
+        # if cik doesn't look like a cik, maybe it's a shortcut
+        configfile = os.path.join(os.environ['HOME'], '.exoline')
+        try:
+            import yaml
+            with open(configfile) as f:
+                config = yaml.safe_load(f)
+                if 'keys' in config:
+                    if cik in config['keys']:
+                        cik = config['keys'][cik].strip()
+                    else:
+                        raise ExoException('No CIK shortcut {0}\n{1}'.format(
+                            cik,
+                            '\n'.join(config['keys'])))
+        except IOError as ex:
+            raise ExoException(
+                'Tried a CIK shortcut {0}, but couldn\'t open {1}'.format(
+                cik,
+                configfile))
 
     def rid_or_alias(rid):
         '''Translate what was passed for <rid> to an alias object if
            it doesn't look like a RID.'''
-        if re.match("[0-9a-zA-Z]{40}", rid) is None:
+        if regex_rid.match(rid) is None:
             return {"alias": rid}
         else:
             return rid
