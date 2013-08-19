@@ -9,13 +9,11 @@ import json
 import re
 import time
 from datetime import datetime
-import StringIO
 import logging
 from unittest import TestCase
 
 from ..exoline import exo
 from ..exoline.exo import ExolineOnepV1
-
 
 try:
     from testconfig import config
@@ -23,51 +21,28 @@ except:
     sys.stderr.write(
         "Copy testconfig.py.template to testconfig.py and set portalcik.")
 
-class CmdResult():
-    def __init__(self, exitcode, stdout, stderr):
-        self.exitcode = exitcode
-        self.stdout = stdout
-        self.stderr = stderr
 
 logging.basicConfig(stream=sys.stderr)
 logging.getLogger("TestRPC").setLevel(logging.DEBUG)
-logging.getLogger("_cmd").setLevel(logging.DEBUG)
+logging.getLogger("run").setLevel(logging.DEBUG)
 logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
-log = logging.getLogger("_cmd")
+log = logging.getLogger("run")
+
 
 def abbrev(s, length=1000):
     if len(s) > length:
-        s = s[:length/2] + '\n...\n' + s[-length/2:]
+        s = s[:length / 2] + '\n...\n' + s[-length / 2:]
     return s
-
-def _cmd(argv, stdin, block=True):
-    '''Runs an exoline command, translating stdin from
-    string and stdout to string. Returns a CmdResult.'''
-    if True:
-        log.debug(' '.join([str(a) for a in argv]))
-        if stdin is not None:
-            log.debug('    stdin: ' + abbrev(stdin))
-    if type(stdin) is str:
-        sio = StringIO.StringIO()
-        sio.write(stdin)
-        sio.seek(0)
-        stdin = sio
-    stdout = StringIO.StringIO()
-    stderr = StringIO.StringIO()
-
-    # unicode causes problems in docopt
-    argv = [str(a) for a in argv]
-    exitcode = exo.cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
-    stdout.seek(0)
-    stdout = stdout.read().strip()  # strip to get rid of leading newline
-    stderr.seek(0)
-    stderr = stderr.read().strip()
-    return CmdResult(exitcode, stdout, stderr)
 
 
 def rpc(*args, **kwargs):
     stdin = kwargs.get('stdin', None)
-    return _cmd(['exo'] + list(args), stdin=stdin)
+    if True:
+        argv = ['exo'] + list(args)
+        log.debug(' '.join([str(a) for a in argv]))
+        if stdin is not None:
+            log.debug('    stdin: ' + abbrev(stdin))
+    return exo.run(argv, stdin=stdin)
 
 
 class Resource():

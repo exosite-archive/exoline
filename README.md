@@ -3,8 +3,8 @@ Exoline: Exosite Command Line
 
 Exoline is a set of commands for accessing the Exosite [One Platform](http://exosite.com/products/onep) from the command line.  
 
-- **exo** - command for the [RPC API](http://developers.exosite.com/display/OP/Remote+Procedure+Call+API) 
-- **exodata** - command for the [HTTP Data Interface API](http://developers.exosite.com/display/OP/HTTP+Data+Interface+API) 
+- **exo** - command for the [RPC API](http://developers.exosite.com/display/DEV/Remote+Procedure+Call+API) 
+- **exodata** - command for the [HTTP Data Interface API](http://developers.exosite.com/display/DEV/HTTP+Data+Interface+API) 
 
 Installation 
 ------------
@@ -238,12 +238,51 @@ For convenience, several command line options may be replaced by environment var
 * EXO\_PORT: port, e.g. 80. Currently this only applies to exo, not exodata.
 
 
-
 Help 
 ----
 
 For help, run each command with -h from the command line.
 
+
+Usage as a Library
+------------------
+
+Exoline can be directly imported and used in Python as a library. There are two patterns 
+for doing this. First, you can call `exo.run` with whatever arguments you would have 
+passed on the command line, plus an optional string stdin parameter.
+
+```python
+
+from exoline import exo
+
+result = exo.run(['exo', 
+                  'script', 
+                  'scripts/myscript.lua', 
+                  'ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa'])
+
+print(result.exitcode)    # 0
+print(result.stdout)      # Updated script RID: c9c6daf83c44e44985aa724fea683f14eda71fac
+print(result.stderr)      # <no output> 
+```
+
+It's also possible to use Exoline's wrapper for the pyonep library, which covers a lot of
+Exoline's functionality.
+
+```python
+
+from exoline import exo
+
+rpc = exo.ExoRPC()
+ 
+rpc.upload_script(ciks=['ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa'], 
+                  filename='scripts/myscript.lua')
+```
+
+
+Issues/Feature Requests
+-----------------------
+
+If you see an issue with exoline, please log it [on github](https://github.com/dweaver/exoline).
 
 
 Test
@@ -268,6 +307,5 @@ TODO
 - add raw command, taking full RPC json from stdin
 - Make the info command take multiple rids (or stdin)
 - delete serial number when dropping device
-- add a --verbose option that logs complete requests and response bodies
 - add --howmany option to create command
 - tab completion for commands and shortcuts

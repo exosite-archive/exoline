@@ -1,6 +1,13 @@
 History
 =======
 
+0.2.3 (2013-8-19)
+-----------------
+
+- --debughttp shows http requests & responses
+- --discreet hides ciks/rids
+- documented usage as library
+
 0.2.2 (2013-8-16)
 -----------------
 

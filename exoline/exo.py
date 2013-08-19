@@ -33,6 +33,8 @@ Options:
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS
   --debug              Show info like stack traces
+  --debughttp          Turn on debug level loggin in pyonep
+  --discreet           Obfuscate RIDs in stdout and stderr
   -h --help            Show this screen
   -v --version         Show version
 
@@ -53,6 +55,7 @@ from pprint import pprint
 from operator import itemgetter
 import logging
 from collections import defaultdict
+import StringIO
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -205,7 +208,7 @@ Options:
     {{ startend }}''',
     'tree':
         '''Display a resource's descendants.\n\nUsage:
-    exo [options] tree [--verbose] [--hide-keys] <cik>
+    exo [options] tree [--verbose] <cik>
 
     --counts       show item counts (from info.storage.counts)
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]''',
@@ -631,20 +634,12 @@ class ExoRPC():
             print("{0}:{1} {2}".format(
                   metrics[i], ' ' * (maxlen - len(metrics[i])), r))
 
-    def _disp_key(self, cli_args, k):
-        if cli_args['--hide-keys']:
-            # number of digits to show
-            num = 20
-            return k[:num] + '0' * len(k[num:])
-        else:
-            return k
-
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast):
         typ = info['basic']['type']
         if typ == 'client':
-            id = 'cik: ' + self._disp_key(cli_args, info['key'])
+            id = 'cik: ' + info['key']
         else:
-            id = 'rid: ' + self._disp_key(cli_args, rid)
+            id = 'rid: ' + rid
         name = info['description']['name']
         try:
             # Units are a portals only thing
@@ -693,7 +688,7 @@ class ExoRPC():
                 ridopt = '--verbose'
             else:
                 ridopt = True
-        add_opt(ridopt, 'rid', self._disp_key(cli_args, rid))
+        add_opt(ridopt, 'rid', rid)
         add_opt('--verbose', 'unit', units)
         if 'storage' in info and 'count' in info['storage']:
             add_opt(True, 'count', info['storage']['count'])
@@ -1415,6 +1410,10 @@ def pretty_print(arg):
 
 
 def handle_args(cmd, args):
+    if args['--debughttp']:
+        # TODO: log debug level messages to stdout
+        logging.getLogger("pyonep.onep").setLevel(logging.DEBUG)
+
     er = ExoRPC(host=args['--host'], port=args['--port'], https=args['--https'], httptimeout=args["--httptimeout"])
 
     regex_rid = re.compile("[0-9a-zA-Z]{40}")
@@ -1668,6 +1667,17 @@ def handle_args(cmd, args):
         raise ExoException("Command not handled")
 
 
+class DiscreetFilter(object):
+    '''Filter stdin/stdout to hide anything that looks like
+       an RID'''
+    def __init__(self, out):
+        self.out = out
+        self.ridre = re.compile('([a-fA-F0-9]{20})([a-fA-F0-9]{20})')
+
+    def write(self, message):
+        self.out.write(self.ridre.sub(r'\g<1>01234567890123456789',
+                                      message))
+
 def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     '''Wrap the command line interface. Globally redirects args
     and io so that the application can be tested externally.'''
@@ -1699,6 +1709,11 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     # merge command-specific arguments into general arguments
     args.update(args_cmd)
 
+    # turn on stdout/stderr filtering
+    if args['--discreet']:
+        sys.stdout = DiscreetFilter(sys.stdout)
+        sys.stderr = DiscreetFilter(sys.stderr)
+
     # substitute environment variables
     if args['--host'] is None:
         args['--host'] = os.environ.get('EXO_HOST', DEFAULT_HOST)
@@ -1729,6 +1744,34 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         if args['--debug']:
             raise
     return 0
+
+
+class CmdResult():
+    def __init__(self, exitcode, stdout, stderr):
+        self.exitcode = exitcode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def run(argv, stdin):
+    '''Runs an exoline command, translating stdin from
+    string and stdout to string. Returns a CmdResult.'''
+    if type(stdin) is str:
+        sio = StringIO.StringIO()
+        sio.write(stdin)
+        sio.seek(0)
+        stdin = sio
+    stdout = StringIO.StringIO()
+    stderr = StringIO.StringIO()
+
+    # unicode causes problems in docopt
+    argv = [str(a) for a in argv]
+    exitcode = cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
+    stdout.seek(0)
+    stdout = stdout.read().strip()  # strip to get rid of leading newline
+    stderr.seek(0)
+    stderr = stderr.read().strip()
+    return CmdResult(exitcode, stdout, stderr)
 
 
 if __name__ == '__main__':
