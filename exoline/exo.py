@@ -74,9 +74,6 @@ try:
 except:
     from exoline import __version__
 
-logging.basicConfig(stream=sys.stderr)
-logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
-
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
@@ -1410,10 +1407,6 @@ def pretty_print(arg):
 
 
 def handle_args(cmd, args):
-    if args['--debughttp']:
-        # TODO: log debug level messages to stdout
-        logging.getLogger("pyonep.onep").setLevel(logging.DEBUG)
-
     er = ExoRPC(host=args['--host'], port=args['--port'], https=args['--https'], httptimeout=args["--httptimeout"])
 
     regex_rid = re.compile("[0-9a-zA-Z]{40}")
@@ -1713,6 +1706,13 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if args['--discreet']:
         sys.stdout = DiscreetFilter(sys.stdout)
         sys.stderr = DiscreetFilter(sys.stderr)
+
+    # configure logging
+    logging.basicConfig(stream=sys.stderr)
+    logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
+    if args['--debughttp']:
+        # TODO: log debug level messages to stdout
+        logging.getLogger("pyonep.onep").setLevel(logging.DEBUG)
 
     # substitute environment variables
     if args['--host'] is None:

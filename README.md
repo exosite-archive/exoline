@@ -229,6 +229,21 @@ cik: 5de0cfcf7baaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: Dev, aliases: (see p
     }
 ```
 
+See the HTTP requests and responses being made by pyonep:
+
+```bash
+
+$ exo --debughttp --discreet read <cik> temperature
+DEBUG:pyonep.onep:POST /api:v1/rpc/process
+Host: m2.exosite.com:80
+Headers: {'Content-Type': 'application/json; charset=utf-8'}
+Body: {"calls": [{"id": 70, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1, "endtime": 1376943416, "starttime": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}
+DEBUG:pyonep.onep:HTTP/1.1 200 OK
+Headers: [('date', 'Mon, 19 Aug 2013 20:16:53 GMT'), ('content-length', '54'), ('content-type', 'application/json; charset=utf-8'), ('connection', 'keep-alive'), ('server', 'nginx')]
+Body: [{"id":70,"status":"ok","result":[[1376819736,24.1]]}]
+2013-08-18 04:55:36,24.1
+```
+
 Environment Variables
 ---------------------
 
