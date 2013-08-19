@@ -1,6 +1,11 @@
 History
 =======
 
+0.2.4 (2013-8-19)
+-----------------
+
+- fixed combination of --debughttp and --discreet
+
 0.2.3 (2013-8-19)
 -----------------
 
