@@ -244,6 +244,7 @@ Body: [{"id":70,"status":"ok","result":[[1376819736,24.1]]}]
 2013-08-18 04:55:36,24.1
 ```
 
+
 Environment Variables
 ---------------------
 
@@ -252,6 +253,19 @@ For convenience, several command line options may be replaced by environment var
 * EXO\_HOST: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
 * EXO\_PORT: port, e.g. 80. Currently this only applies to exo, not exodata.
 
+
+CIK Shortcuts
+-------------
+
+Store your commonly used CIKs in a file:
+
+```bash
+
+$ printf "keys:\n" > ~/.exoline
+$ printf "    foo: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> ~/.exoline
+$ exo read foo temperature
+2013-08-18 04:55:36,24.1
+```
 
 Help 
 ----
@@ -297,7 +311,7 @@ rpc.upload_script(ciks=['ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa'],
 Issues/Feature Requests
 -----------------------
 
-If you see an issue with exoline, please log it [on github](https://github.com/dweaver/exoline).
+If you see an issue with exoline or want to suggest an improvement, please log it [here](https://github.com/dweaver/exoline/issues).
 
 
 Test
