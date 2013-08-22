@@ -88,6 +88,7 @@ Options:
     --limit=<limit>          number of data points to read [default: 1]
     --start=<time>
     --end=<time>             start and end times (see details below)
+    --sort=<order>           asc or desc [default: desc]
     --selection=all|autowindow|givenwindow  downsample method [default: all]
     --format=csv|raw         output format [default: csv]
     --timeformat=unix|human|iso8601
@@ -230,7 +231,8 @@ Options:
     Returns CIK of the copy. NOTE: copy excludes all data in dataports.
 
 Options:
-    --cikonly  show unlabeled CIK by itself''',
+    --cikonly  show unlabeled CIK by itself
+    {{ helpoption }}''',
     'diff': '''Show differences between two clients.\n\nUsage:
     exo [options] diff <cik> <cik2>
 
@@ -240,7 +242,8 @@ Options:
 
 Options:
     --full         compare all info, even usage, data counts, etc.
-    --no-children  don't compare children'''
+    --no-children  don't compare children
+    {{ helpoption }}'''
 }
 
 # shared sections of documentation
@@ -281,6 +284,7 @@ class ExolineOnepV1(onep.OnepV1):
 class ExoRPC():
     '''Wrapper for pyonep RPC API.
     Raises exceptions on error and provides some reasonable defaults.'''
+    regex_rid = re.compile("[0-9a-zA-Z]{40}")
     def __init__(self,
             host=DEFAULT_HOST,
             port=None,
@@ -344,6 +348,35 @@ class ExoRPC():
         if endtime is not None:
             options['endtime'] = int(endtime)
         return options
+
+    def lookup_shortcut(self, cik):
+        '''Look up what was passed for cik in config file
+            if it doesn't look like a CIK.'''
+        if self.regex_rid.match(cik) is None:
+            # if cik doesn't look like a cik, maybe it's a shortcut
+            configfile = os.path.join(os.environ['HOME'], '.exoline')
+            try:
+                import yaml
+                with open(configfile) as f:
+                    config = yaml.safe_load(f)
+                    if 'keys' in config:
+                        if cik in config['keys']:
+                            return config['keys'][cik].strip()
+                        else:
+                            raise ExoException('No CIK shortcut {0}\n{1}'.format(
+                                cik,
+                                '\n'.join(config['keys'])))
+                    else:
+                        raise ExoException('Tried a CIK shortcut {0}, but found no keys in {1}'.format(
+                            cik,
+                            configfile))
+            except IOError as ex:
+                raise ExoException(
+                    'Tried a CIK shortcut {0}, but couldn\'t open {1}'.format(
+                    cik,
+                    configfile))
+        else:
+            return cik
 
     def read(self,
              cik,
@@ -483,7 +516,7 @@ class ExoRPC():
                     yield r
 
     def write(self, cik, rid, value):
-        isok, response = self.exo.write(cik, rid, value, {})
+        isok, response = self.exo.write(cik, rid, value)
         self._raise_for_response(isok, response)
 
     def record(self, cik, rid, entries):
@@ -932,6 +965,7 @@ class ExoRPC():
 
         # read in the whole client to copy at once
         if infotree is None:
+            destcik = self.lookup_shortcut(destcik)
             infotree = self._infotree(cik, options={})
 
         # check counts
@@ -1065,6 +1099,8 @@ class ExoRPC():
 
     def diff(self, cik1, cik2, full=False, nochildren=False):
         '''Show differences between two ciks.'''
+
+        cik2 = self.lookup_shortcut(cik2)
 
         # list of info "keypaths" to not include in comparison
         # only the last item in the list is removed. E.g. for a
@@ -1390,7 +1426,7 @@ def read_cmd(er, cik, rids, args):
                 "--chunkhours requires --start and --end be set")
         for t, v in er.readmult(cik,
                                 rids,
-                                sort='desc',
+                                sort=args['--sort'],
                                 starttime=start,
                                 endtime=end,
                                 limit=limit,
@@ -1406,50 +1442,22 @@ def pretty_print(arg):
     print(json.dumps(arg, sort_keys=True, indent=4, separators=(',', ': ')))
 
 
+
+
 def handle_args(cmd, args):
     er = ExoRPC(host=args['--host'], port=args['--port'], https=args['--https'], httptimeout=args["--httptimeout"])
 
-    regex_rid = re.compile("[0-9a-zA-Z]{40}")
     cik = args['<cik>']
 
-    def cik_or_shortcut(cik):
-        '''Look up what was passed for <cik> in config
-           if it doesn't look like a CIK.'''
-        if regex_rid.match(cik) is None:
-            # if cik doesn't look like a cik, maybe it's a shortcut
-            configfile = os.path.join(os.environ['HOME'], '.exoline')
-            try:
-                import yaml
-                with open(configfile) as f:
-                    config = yaml.safe_load(f)
-                    if 'keys' in config:
-                        if cik in config['keys']:
-                            return config['keys'][cik].strip()
-                        else:
-                            raise ExoException('No CIK shortcut {0}\n{1}'.format(
-                                cik,
-                                '\n'.join(config['keys'])))
-                    else:
-                        raise ExoException('Tried a CIK shortcut {0}, but found no keys in {1}'.format(
-                            cik,
-                            configfile))
-            except IOError as ex:
-                raise ExoException(
-                    'Tried a CIK shortcut {0}, but couldn\'t open {1}'.format(
-                    cik,
-                    configfile))
-        else:
-            return cik
-
     if type(cik) is list:
-        cik = [cik_or_shortcut(c) for c in cik]
+        cik = [er.lookup_shortcut(c) for c in cik]
     else:
-        cik = cik_or_shortcut(cik)
+        cik = er.lookup_shortcut(cik)
 
     def rid_or_alias(rid):
         '''Translate what was passed for <rid> to an alias object if
            it doesn't look like a RID.'''
-        if regex_rid.match(rid) is None:
+        if er.regex_rid.match(rid) is None:
             return {"alias": rid}
         else:
             return rid
@@ -1565,8 +1573,10 @@ def handle_args(cmd, args):
         er.unmap(cik, args['<alias>'])
     elif cmd == 'lookup':
         # look up by cik or alias
-        if args['--cik'] is not None:
-            rid = er.lookup_rid(cik, args['--cik'])
+        cik_to_find = args['--cik']
+        if cik_to_find is not None:
+            cik_to_find = er.lookup_shortcut(cik_to_find)
+            rid = er.lookup_rid(cik, cik_to_find)
             if rid is not None:
                 pr(rid)
         else:
