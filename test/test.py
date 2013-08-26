@@ -78,16 +78,19 @@ class TestRPC(TestCase):
     RE_RID = '[0-9a-f]{40}'
 
     def _logall(self, r):
-        self.l('stdout: {0}\nstderr: {1}'.format(abbrev(r.stdout), abbrev(r.stderr)))
+        self.l('stdout: {0}\nstdout length:{1}\nstderr: {2}\nstderr length:{3}'.format(abbrev(r.stdout),
+                                                                                       len(r.stdout),
+                                                                                       abbrev(r.stderr),
+                                                                                       len(r.stderr)))
 
     def _stdre(self, r, msg, search, match, stderr=False):
         std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
         if search is not None:
             self.assertTrue(re.search(search, std, flags=re.MULTILINE) is not None,
-                msg + ' - failed to find {0}\n'.format(search) + label + ':' + std + '\nsearch expression: ' + search)
+                            msg + u' - failed to find in {1}:\n{2}\nsearch expression:\n{0}\nlengths: {3} (search) vs. {4} ({1})'.format(search, label, std, len(search), len(std)))
         if match is not None:
             self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
-                msg + ' - failed to match {0}\n'.format(match) + label + ':' + std + '\nmatch expression: ' + match)
+                            msg + u' - failed to match in {1}:\n{2}\nmatch expression:\n{0}\nlengths: {3} (match) vs. {4} ({1})'.format(match, label, std, len(match), len(std)))
 
     def notok(self, response, msg='', search=None, match=None):
         if response.exitcode == 0:
@@ -862,3 +865,49 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         readcmdchunks = readcmd + ['--chunkhours=6']
         r = rpc(*readcmdchunks)
         self.ok(r, "read a lot of data with multiple reads")
+
+        r = rpc('flush', cik, rid1)
+        r = rpc('record', cik, rid1, '--value=41,12.33', '--value=42,12.34', '--value=43,12.35', '--value=-1,12.36')
+        self.ok(r, 'record some points')
+        r = rpc('read', cik, rid1, '--start=42', '--end=42', '--timeformat=unix', '--limit=3')
+        self.ok(r, 'read window of 1 second', match='42,12.34')
+
+        # TODO: why doesn't this match?
+        #r = rpc('read', cik, rid1, '--start=42', '--end=43', '--timeformat=unix', '--limit=3')
+        #self.ok(r, 'read window of 2 seconds', match='43,12.35\n42,12.34')
+
+        r = rpc('read', cik, rid1, '--start=44', '--timeformat=unix', '--limit=2')
+        self.ok(r, '--end has a default', match='[0-9]+,12.36')
+
+    def sort_test(self):
+        '''Read command with --sort flag'''
+        cik = self.client.cik()
+        rid = self._createMultiple(
+            cik,
+            [Resource(cik,
+                      'dataport',
+                      {'format': 'float', 'name': 'float_port'})])[0]
+
+        r = rpc('write', cik, rid, '--value=1')
+        self.ok(r, 'write 1')
+        time.sleep(1)
+        r = rpc('write', cik, rid, '--value=2')
+        self.ok(r, 'write 2')
+        time.sleep(1)
+        r = rpc('write', cik, rid, '--value=3')
+        self.ok(r, 'write 3')
+        time.sleep(1)
+
+        r = rpc('read', cik, rid, '--limit=2', '--format=raw', '--sort=asc')
+        self.ok(r, 'read two points, ascending', match="1\n2")
+
+        r = rpc('read', cik, rid, '--limit=2', '--format=raw', '--sort=desc')
+        self.ok(r, 'read two points, descending', match="3\n2")
+
+        r = rpc('read', cik, rid, '--limit=2', '--format=raw')
+        self.ok(r, 'read two points, ascending (desc is default)', match="3\n2")
+
+        r = rpc('read', cik, rid, '--limit=3', '--format=raw', '--sort=desc')
+        self.ok(r, 'read two points, descending', match="3\n2\n1")
+
+

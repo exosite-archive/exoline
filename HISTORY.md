@@ -1,6 +1,13 @@
 History
 =======
 
+0.2.5 (2013-8-26)
+-----------------
+
+- record reads csv on stdin
+- fixed read --sort=asc
+- fixed --follow order when multiple values come within the polling window
+
 0.2.4 (2013-8-19)
 -----------------
 

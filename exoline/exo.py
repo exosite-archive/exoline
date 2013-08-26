@@ -394,7 +394,7 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def _combinereads(self, reads):
+    def _combinereads(self, reads, sort):
         '''
         >>> exo = ExoRPC()
         >>> exo._combinereads([[[2, 'a'], [1, 'b']]])
@@ -440,7 +440,12 @@ class ExoRPC():
                     if v is not None:
                         curi[i] -= 1
 
-            combined.sort(key=itemgetter(0), reverse=True)
+            if sort == 'desc':
+                reverse = True
+            else:
+                reverse = False
+
+            combined.sort(key=itemgetter(0), reverse=reverse)
             return combined
 
     def readmult(self,
@@ -461,7 +466,7 @@ class ExoRPC():
 
         def _read(cik, rids, options):
             responses = self._exomult(cik, [['read', rid, options] for rid in rids])
-            return self._combinereads(responses)
+            return self._combinereads(responses, options['sort'])
 
         def _read_chunk(cik, rids, options, start, end):
             chunkoptions = options.copy()
@@ -1406,11 +1411,13 @@ def read_cmd(er, cik, rids, args):
         while True:
             results = er.readmult(cik,
                                   rids,
+                                  sort='desc',
                                   # Read all points that arrived since last
                                   # read time. Could also be now - last_t?
                                   limit=sleep_seconds * 3,
                                   starttime=last_t + 1)
             results = list(results)
+            results.reverse()
 
             for t, v in results:
                 printline(t, v)
@@ -1487,27 +1494,32 @@ def handle_args(cmd, args):
         if interval is None:
             entries = []
             # split timestamp, value
+            has_errors = False
             if args['-']:
-                tvalues = sys.stdin.readlines()
+                headers = ['timestamp', 'value']
+                dr = csv.DictReader(sys.stdin, headers)
+                for row in dr:
+                    # TODO: handle something other than unix timestamps
+                    entries.append([int(row['timestamp']), row['value']])
             else:
                 tvalues = args['--value']
+                reentry = re.compile('(-?\d+),(.*)')
+                for tv in tvalues:
+                    match = reentry.match(tv)
+                    if match is None:
+                        try:
+                            t, v = tv.split(',')
+                            t = parse_ts(t)
+                            entries.append([t, v])
+                        except Exception:
+                            sys.stderr.write(
+                                'Line not in <timestamp>,<value> format: {0}'.format(tv))
+                            has_errors = True
+                    else:
+                        g = match.groups()
+                        # TODO: handle something other than unix timestamps
+                        entries.append([int(g[0]), g[1]])
 
-            reentry = re.compile('(-?\d+),(.*)')
-            has_errors = False
-            for tv in tvalues:
-                match = reentry.match(tv)
-                if match is None:
-                    try:
-                        t, v = tv.split(',')
-                        t = parse_ts(t)
-                        entries.append([t, v])
-                    except Exception:
-                        sys.stderr.write(
-                            'Line not in <timestamp>,<value> format: {0}'.format(tv))
-                        has_errors = True
-                else:
-                    g = match.groups()
-                    entries.append([int(g[0]), g[1]])
             if has_errors or len(entries) == 0:
                 raise ExoException("Problems with input.")
             else:
