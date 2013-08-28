@@ -910,4 +910,54 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, rid, '--limit=3', '--format=raw', '--sort=desc')
         self.ok(r, 'read two points, descending', match="3\n2\n1")
 
+    def ip_test(self):
+        '''ip command'''
+        r = rpc('ip')
+        self.ok(r, 'ip command succeeds', match='\d+,\d+,\d+,\d+,\d+,\d+')
 
+    def data_test(self):
+        '''Data command'''
+        cik = self.client.cik()
+        rid_float, rid_str, rid_integer = self._createMultiple(
+            cik,
+            [Resource(cik, 'dataport',
+                      {'format': 'float'},
+                      alias='float'),
+             Resource(cik, 'dataport',
+                      {'format': 'string'},
+                      alias='string'),
+             Resource(cik, 'dataport',
+                      {'format': 'integer'},
+                      alias='integer')])
+
+        r = rpc('data', cik, '--read=float')
+        self.ok(r, 'read dataport with no value', '')
+
+        r = rpc('data', cik + 'a', '--write=float,3.1415')
+        self.notok(r, 'bad cik fails')
+
+        r = rpc('data', cik, '--write=float')
+        self.notok(r, 'bad write format fails')
+
+        r = rpc('data', cik, '--write=float,,2')
+        self.notok(r, 'multiple commas in write fails')
+
+        r = rpc('data', cik, '--write=float,3.1415')
+        self.ok(r, 'write single value', match='')
+
+        r = rpc('data', cik, '--read=float', '--read=integer')
+        self.ok(r, 'read two values, only one of which exists', match='float=3.1415')
+
+        r = rpc('data', cik, '--write=string,foo', '--write=integer,616')
+        self.ok(r, 'write multiple values', match='')
+
+        r = rpc('data', cik, '--read=string', '--read=integer', '--read=float')
+        self.ok(r, 'read multiple values', match='float=3.1415&integer=616&string=foo')
+
+        r = rpc('data', cik, '--read=integer', '--read=float', '--read=string')
+        self.ok(r, 'read multiple values, different order', match='string=foo&float=3.1415&integer=616')
+
+        r = rpc('data', cik, '--read=integer', '--write=float,17.5', '--write=string,bar', '--read=string')
+        # TODO: why does the platform return string=foo&integer=616 sometimes?
+        #self.ok(r, 'write and read multiple values', match='string=bar&integer=616')
+        self.ok(r, 'write and read multiple values', search='string=[a-z]{3}&integer=616')

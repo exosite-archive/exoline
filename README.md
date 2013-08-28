@@ -1,10 +1,7 @@
 Exoline: Exosite Command Line
 =============================
 
-Exoline is a set of commands for accessing the Exosite [One Platform](http://exosite.com/products/onep) from the command line.  
-
-- **exo** - command for the [RPC API](http://developers.exosite.com/display/DEV/Remote+Procedure+Call+API) 
-- **exodata** - command for the [HTTP Data Interface API](http://developers.exosite.com/display/DEV/HTTP+Data+Interface+API) 
+Exoline is command line tool for working with the Exosite [One Platform](http://exosite.com/products/onep).  
 
 Installation 
 ------------
@@ -25,7 +22,7 @@ Alternatively, you can install from source:
     $ python setup.py install
 ```
 
-Depending on your python environment, you may need to run the above install commands as sudo. [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to keep your python environment clean, and has the side-effect that you don't need to use sudo when installing python packages.
+Depending on your Python environment, you may need to run the above install commands as sudo. [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments, and has the side effect that you don't need to use sudo when installing Python packages.
 
 Examples
 --------
@@ -338,3 +335,4 @@ TODO
 - delete serial number when dropping device
 - add --howmany option to create command
 - tab completion for commands and shortcuts
+- sort tree nodes by name

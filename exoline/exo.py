@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Exosite RPC API Command Line Interface
    Provides command line access to the Remote Procedure Call API:
-   http://developers.exosite.com/display/OP/Remote+Procedure+Call+API
+   https://github.com/exosite/api/tree/master/rpc
 
 Usage:
   exo [--help] [options] <command> [<args> ...]
@@ -26,6 +26,7 @@ Commands:
   spark
   copy
   diff
+  data
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
@@ -61,12 +62,13 @@ try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict
-
 import itertools
 import math
 
 from docopt import docopt
 from dateutil import parser
+import requests
+
 from pyonep import onep
 import pyonep
 try:
@@ -204,8 +206,7 @@ Options:
     exo [options] usage <cik> [<rid>] --start=<time> [--end=<time>]
 
     {{ startend }}''',
-    'tree':
-        '''Display a resource's descendants.\n\nUsage:
+    'tree': '''Display a resource's descendants.\n\nUsage:
     exo [options] tree [--verbose] <cik>
 
     --counts       show item counts (from info.storage.counts)
@@ -243,7 +244,17 @@ Options:
 Options:
     --full         compare all info, even usage, data counts, etc.
     --no-children  don't compare children
-    {{ helpoption }}'''
+    {{ helpoption }}''',
+    'ip': '''Get IP address of the server.\n\nUsage:
+    exo [options] ip''',
+    'data': '''Read or write with the HTTP Data API.\n\nUsage:
+    exo [options] data <cik> [--write=<alias,value> ...] [--read=<alias> ...]
+
+    Writes and/or reads a set of dataports.
+    If only --write arguments are specified, the call is a write.
+    If only --read arguments are specified, the call is a read.
+    If both --write and --read arguments are specified, the hybrid
+        write/read API is used. Writes are executed before reads.'''
 }
 
 # shared sections of documentation
@@ -1188,6 +1199,52 @@ class ExoRPC():
         return options
 
 
+class ExoData():
+    '''Implements the Data Interface API
+    https://github.com/exosite/api/tree/master/data'''
+
+    def __init__(self, url='http://m2.exosite.com'):
+        self.url = url
+
+    def raise_for_status(self, r):
+        try:
+            r.raise_for_status()
+        except Exception as ex:
+            raise ExoException(str(ex))
+
+    def read(self, cik, aliases):
+        headers = {'X-Exosite-CIK': cik,
+                   'Accept': 'application/x-www-form-urlencoded; charset=utf-8'}
+        url = self.url + '/onep:v1/stack/alias?' + '&'.join(aliases)
+        r = requests.get(url, headers=headers)
+        self.raise_for_status(r)
+        return r.text
+
+    def write(self, cik, alias_values):
+        headers = {'X-Exosite-CIK': cik,
+                   'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'}
+        url = self.url + '/onep:v1/stack/alias'
+        data = '&'.join(['='.join(t) for t in alias_values])
+        r = requests.post(url, headers=headers, data=data)
+        self.raise_for_status(r)
+        return r.text
+
+    def writeread(self, cik, alias_values, aliases):
+        headers = {'X-Exosite-CIK': cik,
+                   'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+                   'Accept': 'application/x-www-form-urlencoded; charset=utf-8'}
+        url = self.url + '/onep:v1/stack/alias?' + '&'.join(aliases)
+        data = '&'.join(['='.join(t) for t in alias_values])
+        r = requests.post(url, headers=headers, data=data)
+        self.raise_for_status(r)
+        return r.text
+
+    def ip(self):
+        r = requests.get(self.url + '/ip')
+        r.raise_for_status()
+        return r.text
+
+
 def parse_ts(s):
     return int(time.mktime(parser.parse(s).timetuple()))
 
@@ -1453,13 +1510,21 @@ def pretty_print(arg):
 
 def handle_args(cmd, args):
     er = ExoRPC(host=args['--host'], port=args['--port'], https=args['--https'], httptimeout=args["--httptimeout"])
+    if cmd in ['ip', 'data']:
+        if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
+            # TODO: support these
+            raise ExoException('--https, --port, and --debughttp are not supported for ip and data commands.')
+        ed = ExoData(url='http://' + args['--host'])
 
-    cik = args['<cik>']
-
-    if type(cik) is list:
-        cik = [er.lookup_shortcut(c) for c in cik]
+    if '<cik>' in args:
+        cik = args['<cik>']
+        if type(cik) is list:
+            cik = [er.lookup_shortcut(c) for c in cik]
+        else:
+            cik = er.lookup_shortcut(cik)
     else:
-        cik = er.lookup_shortcut(cik)
+        # for data ip command
+        cik = None
 
     def rid_or_alias(rid):
         '''Translate what was passed for <rid> to an alias object if
@@ -1571,7 +1636,6 @@ def handle_args(cmd, args):
             er.map(cik, rid, args['--alias'])
             if not ridonly:
                 print("alias: {0}".format(args['--alias']))
-
     elif cmd == 'update':
         s = sys.stdin.read()
         try:
@@ -1678,6 +1742,32 @@ def handle_args(cmd, args):
                         nochildren=args['--no-children'])
         if diffs is not None:
             print(diffs)
+    elif cmd == 'ip':
+        pr(ed.ip())
+    elif cmd == 'data':
+        reads = args['--read']
+        writes = args['--write']
+        def get_alias_values(writes):
+            # TODO: support values with commas
+            alias_values = []
+            re_assign = re.compile('(.*),(.*)')
+            for w in writes:
+                if w.count(',') > 1:
+                    raise ExoException('Values with commas not supported yet.')
+                m = re_assign.match(w)
+                if m is None or len(m.groups()) != 2:
+                    raise ExoException("Bad alias assignment format")
+                alias_values.append(m.groups())
+            return alias_values
+
+        if len(reads) > 0 and len(writes) > 0:
+            alias_values = get_alias_values(writes)
+            print(ed.writeread(cik, alias_values, reads))
+        elif len(reads) > 0:
+            print(ed.read(cik, reads))
+        elif len(writes) > 0:
+            alias_values = get_alias_values(writes)
+            ed.write(cik, alias_values)
     else:
         raise ExoException("Command not handled")
 
@@ -1720,7 +1810,6 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     else:
         print('Unknown command {0}. Try "exo --help"'.format(cmd))
         return 1
-
     # merge command-specific arguments into general arguments
     args.update(args_cmd)
 
