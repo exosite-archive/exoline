@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 import logging
 from unittest import TestCase
+import copy
 
 from ..exoline import exo
 from ..exoline.exo import ExolineOnepV1
@@ -961,3 +962,38 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # TODO: why does the platform return string=foo&integer=616 sometimes?
         #self.ok(r, 'write and read multiple values', match='string=bar&integer=616')
         self.ok(r, 'write and read multiple values', search='string=[a-z]{3}&integer=616')
+
+    def update_test(self):
+        '''Update command'''
+        cik = self.client.cik()
+
+        rid_float = self._createMultiple(
+            cik,
+            [Resource(cik, 'dataport',
+                      {'format': 'float'},
+                      alias='float')])[0]
+
+        r = rpc('info', cik)
+        info_old = json.loads(r.stdout)
+        name_old = info_old['description']['name']
+
+        tmp = copy.deepcopy(info_old['description'])
+        tmp['name'] = 'update_test'
+        r = rpc('update', cik, rid_float, '-', stdin=json.dumps(tmp))
+        self.ok(r, 'update name', match='ok')
+
+        r = rpc('info', cik)
+        info_new = json.loads(r.stdout)
+        name_new = info_new['description']['name']
+
+        log.debug(name_old)
+        log.debug(name_new)
+        self.assertTrue(name_old != name_new, 'client name was changed')
+        self.assertTrue(name_new == "update_test", 'new name is correct')
+
+        info_new['description']['name'] = name_old
+        self.assertTrue(info_old == info_new, 'client name was only difference')
+
+
+
+

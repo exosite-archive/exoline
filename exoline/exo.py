@@ -158,7 +158,8 @@ Options:
                    all available keys are returned.''',
     'update':
         '''Update a resource from a json description passed on stdin.\n\nUsage:
-    exo [options] update <cik> [<rid>] -
+    exo [options] update <cik> (<rid> - | -)
+
 
 Restrictions:
 
@@ -547,7 +548,7 @@ class ExoRPC():
         return response
 
     def update(self, cik, rid, desc):
-        isok, response = self.exo.create(cik, rid, desc)
+        isok, response = self.exo.update(cik, rid, desc)
         self._raise_for_response(isok, response)
         return response
 
