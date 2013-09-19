@@ -22,7 +22,7 @@ setup(
                       open('HISTORY.md').read(),
     packages=['exoline'],
     package_dir={'exoline': 'exoline'},
-    scripts=['bin/exo', 'bin/exoline', 'bin/exodata'],
+    scripts=['bin/exo', 'bin/exoline'],
     keywords=['exosite', 'onep', 'one platform', 'm2m'],
     install_requires=required,
     zip_safe=False,

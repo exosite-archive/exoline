@@ -27,6 +27,7 @@ Commands:
   copy
   diff
   data
+  spec
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
@@ -68,6 +69,7 @@ import math
 from docopt import docopt
 from dateutil import parser
 import requests
+import yaml
 
 from pyonep import onep
 import pyonep
@@ -79,6 +81,20 @@ except:
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
+
+#from functools import wraps
+#from time import time
+
+
+#def timed(f):
+#    @wraps(f)
+#    def wrapper(*args, **kwds):
+#        start = time()
+#        result = f(*args, **kwds)
+#        elapsed = time() - start
+#        #print "%s took %.3f seconds" % (f.__name__, elapsed)
+#        return result
+#    return wrapper
 
 cmd_doc = {
     'read':
@@ -136,8 +152,11 @@ Details:
 
     If - is not present, creates a resource with common defaults.''',
     'listing':
-        '''List a client's children based on their type.\n\nUsage:
-    exo [options] listing <cik> (--type=client|dataport|datarule|dispatch) ...
+        '''List the RIDs of a client's children.\n\nUsage:
+    exo [options] listing <cik> [(--type=client|dataport|datarule|dispatch) ...]
+
+    If --type is omitted, it defaults to:
+    --type=client --type=dataport --type=datarule --type=dispatch
 
 Options:
     --plain   show only the child RIDs
@@ -212,6 +231,8 @@ Options:
 
     --counts       show item counts (from info.storage.counts)
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]''',
+    'ut': '''Display a tree as fast as possible\n\nUsage:
+    exo [options] ut <cik>''',
     'script': '''Upload a client's a Lua script\n\nUsage:
     exo [options] script <script-file> <cik> ...
 
@@ -251,11 +272,17 @@ Options:
     'data': '''Read or write with the HTTP Data API.\n\nUsage:
     exo [options] data <cik> [--write=<alias,value> ...] [--read=<alias> ...]
 
-    Writes and/or reads a set of dataports.
     If only --write arguments are specified, the call is a write.
     If only --read arguments are specified, the call is a read.
     If both --write and --read arguments are specified, the hybrid
-        write/read API is used. Writes are executed before reads.'''
+        write/read API is used. Writes are executed before reads.''',
+    'spec': '''Determine whether a client matches a specification (beta)\n\nUsage:
+    exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>]
+
+Options:
+    --update-scripts  Update any scripts that do not match what's on the filesystem
+    --create          Create any resources that do not exist
+    --ids substitutes values for <% id %> when matching alias.'''
 }
 
 # shared sections of documentation
@@ -309,7 +336,8 @@ class ExoRPC():
         self.exo = ExolineOnepV1(host=host,
                                port=port,
                                httptimeout=httptimeout,
-                               https=https)
+                               https=https,
+                               agent="Exoline {0}".format(__version__))
 
     def _raise_for_response(self, isok, response, call=None):
         if not isok:
@@ -335,6 +363,7 @@ class ExoRPC():
             r.append(response)
         return r
 
+    #@timed
     def _exomult(self, cik, commands):
         '''Takes a list of onep commands with cik omitted, e.g.:
             [['info', {alias: ""}], ['listing']]'''
@@ -368,7 +397,6 @@ class ExoRPC():
             # if cik doesn't look like a cik, maybe it's a shortcut
             configfile = os.path.join(os.environ['HOME'], '.exoline')
             try:
-                import yaml
                 with open(configfile) as f:
                     config = yaml.safe_load(f)
                     if 'keys' in config:
@@ -553,6 +581,9 @@ class ExoRPC():
         return response
 
     def create_dataport(self, cik, format, name=None):
+        '''Create a dataport child of cik with common defaults.
+           (retention count duration set to "infinity"). Returns
+           RID string of the created dataport.'''
         desc = {"format": format,
                 "retention": {
                     "count": "infinity",
@@ -563,23 +594,25 @@ class ExoRPC():
         return self.create(cik, 'dataport', desc)
 
     def create_client(self, cik, name=None, desc=None):
+        '''Create a client child of cik with common defaults.
+        ('inherit' set for all limits). Returns RID string
+        of the created client.'''
         if desc is None:
             # default description
-            desc = {'limits': {
-                              'client': 'inherit',
-                              'dataport': 'inherit',
-                              'datarule': 'inherit',
-                              'disk': 'inherit',
-                              'dispatch': 'inherit',
-                              'email': 'inherit',
-                              'email_bucket': 'inherit',
-                              'http': 'inherit',
-                              'http_bucket': 'inherit',
-                              'share': 'inherit',
-                              'sms': 'inherit',
-                              'sms_bucket': 'inherit',
-                              'xmpp': 'inherit',
-                              'xmpp_bucket': 'inherit'},
+            desc = {'limits': {'client': 'inherit',
+                               'dataport': 'inherit',
+                               'datarule': 'inherit',
+                               'disk': 'inherit',
+                               'dispatch': 'inherit',
+                               'email': 'inherit',
+                               'email_bucket': 'inherit',
+                               'http': 'inherit',
+                               'http_bucket': 'inherit',
+                               'share': 'inherit',
+                               'sms': 'inherit',
+                               'sms_bucket': 'inherit',
+                               'xmpp': 'inherit',
+                               'xmpp_bucket': 'inherit'},
                     'writeinterval': 'inherit'}
         if name is not None:
             desc['name'] = name
@@ -593,11 +626,13 @@ class ExoRPC():
             self._raise_for_deferred(self.exo.send_deferred(cik))
 
     def map(self, cik, rid, alias):
+        '''Creates an alias for rid. '''
         isok, response = self.exo.map(cik, rid, alias)
         self._raise_for_response(isok, response)
         return response
 
     def unmap(self, cik, alias):
+        '''Removes an alias a child of calling client.'''
         isok, response = self.exo.unmap(cik, alias)
         self._raise_for_response(isok, response)
         return response
@@ -650,6 +685,7 @@ class ExoRPC():
              options={},
              cikonly=False,
              recursive=False):
+        '''Returns info for RID as a dict.'''
         if recursive:
             rid = None if type(rid) is dict else rid
             response = self._infotree(cik, rid=rid, options=options)
@@ -681,7 +717,7 @@ class ExoRPC():
             print("{0}:{1} {2}".format(
                   metrics[i], ' ' * (maxlen - len(metrics[i])), r))
 
-    def _print_node(self, rid, info, aliases, cli_args, spacer, islast):
+    def _print_node(self, rid, info, aliases, cli_args, spacer, islast, max_name):
         typ = info['basic']['type']
         if typ == 'client':
             id = 'cik: ' + info['key']
@@ -709,10 +745,6 @@ class ExoRPC():
         def add_opt(o, label, value):
             if o is True or (o in cli_args and cli_args[o] is True):
                 opt[label] = value
-        add_opt(True, typ + ' name', name)
-        if 'format' in info['description']:
-            add_opt(True, 'format', info['description']['format'])
-
         try:
             # show portals metadata if present
             # http://developers.exosite.com/display/POR/Developing+for+Portals
@@ -740,9 +772,16 @@ class ExoRPC():
         if 'storage' in info and 'count' in info['storage']:
             add_opt(True, 'count', info['storage']['count'])
 
-        print(u'{0}{1} {2}'.format(
+        if 'format' in info['description']:
+            desc = info['description']['format'] + ' ' + typ + ' ' + id
+        else:
+            desc = typ + ' ' + id
+
+        print(u'{0}{1}{2} {3} {4}'.format(
             spacer,
-            id,
+            name,
+            ' ' * (max_name - len(name)),
+            desc,
             u'' if len(opt) == 0 else u'({0})'.format(u', '.join(
                 [u'{0}: {1}'.format(k, v) for k, v in opt.iteritems()]))))
 
@@ -758,6 +797,7 @@ class ExoRPC():
                 exclude.append('counts')
                 exclude.append('storage')
             info_options = self.make_info_options(exclude=exclude)
+            #pprint(info_options)
             # todo: combine these (maybe also the _listing_with_info function
             # below?)
             rid = self.lookup(cik, "")
@@ -772,7 +812,8 @@ class ExoRPC():
                              root_aliases,
                              cli_args,
                              spacer,
-                             islast=True)
+                             True,
+                             len(info['description']['name']))
             if max_level == 0:
                 return
             level += 1
@@ -786,9 +827,13 @@ class ExoRPC():
         except pyonep.exceptions.OnePlatformException:
             print(spacer + u"  └─listing for {0} failed. Is info['basic']['status'] == 'expired'?".format(cik))
         else:
+            # calculate the maximum length name of all children
+            lengths = [len(l[1]['description']['name']) for i in range(len(types)) for l in listing[i].iteritems()]
+            max_name = 0 if len(lengths) == 0 else max(lengths)
+
             # print everything
             for t_idx, t in enumerate(types):
-                typelisting = listing[t_idx]
+                typelisting = OrderedDict(sorted(listing[t_idx].iteritems(), key=lambda x: x[1]['description']['name'].lower()))
                 islast_nonempty_type = (t_idx == len(types) - 1) or (all(len(x) == 0 for x in listing[t_idx + 1:]))
                 for rid_idx, rid in enumerate(typelisting):
                     info = typelisting[rid]
@@ -803,11 +848,142 @@ class ExoRPC():
 
                     if t == 'client':
                         next_cik = info['key']
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, max_name)
                         if max_level == -1 or level < max_level:
                             self.tree(next_cik, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
                     else:
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast)
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, max_name)
+
+    def _uberlistingtree(self, cik, rid=None, stats={'calls': 0}):
+        '''Get something like this: {'rid': '<rid1>',
+                                     'type': 'client',
+                                     'children': [{'rid': '<rid2>',
+                                                   'type': 'dataport'}]}'''
+        types = ['client', 'dataport', 'datarule', 'dispatch']
+        # result tree
+        tree = {}
+        # generation 0 (self)
+        if rid is None:
+            rid, listing = self._exomult(cik, [['lookup', 'aliased', ''],
+                                               ['listing', types]])
+            stats['calls'] += 1
+        else:
+            # connect_as() is an awkward API. What advantage does it have
+            # over passing in an auth dict?
+            self.exo.connect_as(rid)
+            listing = self._exomult(cik, [['listing', types]])[0]
+            stats['calls'] += 1
+            self.exo.connect_as(None)
+
+        tree['rid'] = rid
+
+        # children should look like this:
+        # [{'type': 'client',
+        #   'rid': '<rid1>'},
+        #  {'type': 'dataport',
+        #   'rid': '<rid2>'}]
+        def children(listing):
+            return [{'type': type, 'rid': rid} for i, type in enumerate(types) for rid in listing[i]]
+        tree['children'] = children(listing)
+
+        for node in tree['children']:
+            if node['type'] == 'client':
+                subtree = self._uberlistingtree(cik, node['rid'], stats)
+                if 'children' not in node:
+                    node['children'] = []
+                node['children'] = subtree['children']
+
+        return tree
+
+
+    def _uberinfotree(self, cik):
+        '''Get all info for a cik and its children in a nested dict.
+        The basic unit is {'rid': '<rid>',
+                           'info': <info>,
+                           'children': {'client': [child1],
+                                        'dataport': [child2]}
+                                        }
+        where <info-with-children> is just the info object for that node
+        with the addition of 'children' key, which is a dict containing
+        more nodes. Here's an example return value:
+
+           {'rid': '<rid 0>',
+            'info': {'description': ...,
+                     'basic': ....,
+                     ...},
+            'children: [{'rid': '<rid 1>',
+                         'info': {'description': ...,
+                                  'basic': ...},
+                         'children': [{'rid': '<rid 2>',
+                                       'info': {'description': ...,
+                                                'basic': ...},
+                                       'children: [] } } },
+                                      {'rid': '<rid 3>',
+                                       'info': {'description': ...,
+                                                'basic': ...},
+                                       'children': {} } }] } }
+
+           As it's building this nested dict, it calls nodeidfn with the rid and info
+           (w/o children) for each node.
+        '''
+        types = ['client', 'dataport', 'datarule', 'dispatch']
+
+        # result tree
+        tree = {}
+
+        # list of result nodes to fill out in the next generation
+        nextgen = []
+
+        # generation 0 (self)
+        rid, listing = self._exomult(cik, [['lookup', 'aliased', ''],
+                                           ['listing', types]])
+
+        tree['rid'] = rid
+
+        # children should look like this:
+        # [{'type': 'client',
+        #   'rid': '<rid1>'},
+        #  {'type': 'dataport',
+        #   'rid': '<rid2>'}]
+        def children(listing):
+            return [{'type': type, 'rid': rid} for i, type in enumerate(types) for rid in listing[i]]
+        tree['children'] = children(listing)
+
+        # calculate next generation list
+        # TODO: paging
+        nextgen = tree['children']
+
+        while len(nextgen) > 0:
+            print(len(nextgen))
+            curgen = nextgen
+            nextgen = []
+
+            cmds = []
+            for node in curgen:
+                if node['type'] == 'client':
+                    cmds.append(['listing', types])
+
+            if len(cmds) > 0:
+                result = self._exomult(cik, cmds)
+            else:
+                break
+
+            result_idx = 0
+            for i, node in enumerate(curgen):
+                # TODO: add results to members of curgen, and update nextgen
+                if node['type'] == 'client':
+                    r = result[result_idx]
+                    node['children'] = children(r)
+                    result_idx += 1
+                    nextgen.extend(node['children'])
+
+        return tree
+
+    def ubertree(self, cik):
+        #pprint(self._uberinfotree(cik)) #, options={'key': True, 'basic': True}))
+        stats = {'calls': 0}
+        pprint(self._uberlistingtree(cik, rid=None, stats=stats)) #, options={'key': True, 'basic': True}))
+        print('calls: {0}'.format(stats['calls']))
 
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(cik,
@@ -881,14 +1057,15 @@ class ExoRPC():
                       filename,
                       name=None,
                       recursive=False,
-                      create=False):
+                      create=False,
+                      filterfn=lambda script: script):
         try:
             f = open(filename)
         except IOError:
             raise ExoException('Error opening file {0}.'.format(filename))
         else:
             with f:
-                text = f.read().strip()
+                text = filterfn(f.read())
                 if name is None:
                     # if no name is specified, use the file name as a name
                     name = os.path.basename(filename)
@@ -898,7 +1075,10 @@ class ExoRPC():
                         if rid is not None or create:
                             self._upload_script(cik, name, text, rid=rid)
                         else:
-                            print("Skipping CIK: {0} -- {1} not found (--create will create it)".format(cik, name))
+                            print("Skipping CIK: {0} -- {1} not found".format(cik, name))
+                            if not create:
+                                    print('Pass --create to create it')
+
 
                     if recursive:
                         self.cik_recursive(cik, up)
@@ -987,7 +1167,7 @@ class ExoRPC():
 
         # check counts
         counts = self._counttypes(infotree)
-        destinfo = self.info(destcik)
+        destinfo = self.info(destcik, {'description': True, 'counts': True})
 
         noroom = ''
         for typ in counts:
@@ -1670,6 +1850,8 @@ def handle_args(cmd, args):
             er.drop(cik, rids)
     elif cmd == 'listing':
         types = args['--type']
+        if len(types) == 0:
+            types = ['client', 'dataport', 'datarule', 'dispatch']
         listing = er.listing(cik, types)
         if args['--plain']:
             for l in listing:
@@ -1713,6 +1895,8 @@ def handle_args(cmd, args):
     # special commands
     elif cmd == 'tree':
         er.tree(cik, cli_args=args)
+    elif cmd == 'ut':
+        er.ubertree(cik)
     elif cmd == 'script':
         # cik is a list of ciks
         er.upload_script(cik, args['<script-file>'],
@@ -1769,6 +1953,126 @@ def handle_args(cmd, args):
         elif len(writes) > 0:
             alias_values = get_alias_values(writes)
             ed.write(cik, alias_values)
+    elif cmd == 'spec':
+        updatescripts = args['--update-scripts']
+        create = args['--create']
+        def generate_aliases_and_data(res, args):
+            ids = args['--ids']
+            if 'alias' in res:
+                alias = res['alias']
+            else:
+                if 'file' in res:
+                    alias = os.path.basename(res['file'])
+                else:
+                    raise ExoException('Resources in spec must have an alias.')
+
+            if reid.search(alias) is None:
+                yield alias, None
+            else:
+                alias_template = alias
+                if ids is None:
+                    raise ExoException('This spec requires --ids')
+                ids = ids.split(',')
+                for id, alias in [(id, reid.sub(id, alias_template)) for id in ids]:
+                    yield alias, {'id': id}
+
+        reid = re.compile('<% *id *%>')
+
+        def infoval(cik, alias):
+            return er._exomult(
+                cik,
+                [['info', {'alias': alias}, {'description': True, 'basic': True}],
+                ['read', {'alias': alias}, {'limit': 1}]])
+
+        with open(args['<spec-yaml>']) as f:
+            spec = yaml.safe_load(f)
+            for typ in ['dataport', 'client', 'script']:
+                if typ + 's' in spec:
+                    for res in spec[typ + 's']:
+                        for alias, resource_data in generate_aliases_and_data(res, args):
+                            # TODO: handle nonexistence
+                            exists = True
+                            try:
+                                info, val = infoval(cik, alias)
+                            except RPCException, e:
+                                exists = False
+                                print('Failed to get info and data from {0}.'.format(alias))
+                                if not create:
+                                    print('Pass --create to create it')
+                                    continue
+
+                            # TODO: use templating library
+                            def template(script):
+                                if resource_data is None:
+                                    return script
+                                else:
+                                    return reid.sub(resource_data['id'], script)
+
+                            if typ == 'client':
+                                if not exists:
+                                    if create:
+                                        print('Client creation is not yet supported')
+                                    continue
+                            elif typ == 'dataport':
+                                format = res['format'] if 'format' in res else 'string'
+                                name = res['name'] if 'name' in res else alias
+                                if not exists and create:
+                                    print('Creating dataport with name: {0} alias: {1} format: {2}'.format(
+                                        name, alias, format))
+                                    rid = er.create_dataport(cik, format, name=name)
+                                    er.map(cik, rid, alias)
+                                    info, val = infoval(cik, alias)
+
+                                if info['basic']['type'] != typ:
+                                    raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
+
+                                if format != info['description']['format']:
+                                        raise ExoException(
+                                            '{0} is a {1} but should be a {2}.'.format(
+                                            alias, info['basic']['type'], typ))
+                                #print(alias, resource_data, val)
+                                if 'initial' in res and len(val) == 0:
+                                    if create:
+                                        value = template(res['initial'])
+                                        print('Writing initial value {0}'.format(value))
+                                        er.write(cik, {'alias': alias}, value)
+                                    else:
+                                        print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
+
+                            elif typ == 'script':
+                                if 'file' not in res:
+                                    raise ExoException('{0} is a script, so it needs a "file" key'.format(alias))
+                                name = res['name'] if 'name' in res else alias
+
+
+                                if not exists and create:
+                                    er.upload_script([cik], res['file'], name=alias, create=True, filterfn=template)
+                                    continue
+
+                                with open(res['file']) as scriptfile:
+                                    script_spec = template(scriptfile.read())
+                                    script_svr = info['description']['rule']['script']
+                                    if script_svr != script_spec:
+                                        print ('Script for {0} does not match file {1}.'.format(alias, res['file']))
+                                        if updatescripts:
+                                            print('Uploading script to {0}...'.format(alias))
+                                            er.upload_script([cik], res['file'], name=name, create=False, filterfn=template)
+                                        else:
+                                            # show diff
+                                            import difflib
+                                            differ = difflib.Differ()
+
+                                            differences = '\n'.join(
+                                                difflib.unified_diff(
+                                                    script_spec.splitlines(),
+                                                    script_svr.splitlines(),
+                                                    fromfile=res['file'],
+                                                    tofile='info["description"]["rule"]["script"]'))
+
+                                            print(differences)
+                            else:
+                                raise ExoException('Found unsupported type {0} in spec.'.format(typ))
+
     else:
         raise ExoException("Command not handled")
 
