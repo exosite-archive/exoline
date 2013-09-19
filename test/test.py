@@ -11,7 +11,6 @@ import time
 from datetime import datetime
 import logging
 from unittest import TestCase
-import copy
 
 from ..exoline import exo
 from ..exoline.exo import ExolineOnepV1
@@ -967,33 +966,30 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Update command'''
         cik = self.client.cik()
 
-        rid_float = self._createMultiple(
+        rid = self._createMultiple(
             cik,
             [Resource(cik, 'dataport',
-                      {'format': 'float'},
+                      {'format': 'float', 'name': 'Original Name'},
                       alias='float')])[0]
 
-        r = rpc('info', cik)
+        r = rpc('info', cik, rid, '--include=description')
         info_old = json.loads(r.stdout)
         name_old = info_old['description']['name']
 
-        tmp = copy.deepcopy(info_old['description'])
-        tmp['name'] = 'update_test'
-        r = rpc('update', cik, rid_float, '-', stdin=json.dumps(tmp))
+        r = rpc('update', cik, rid, '-', stdin=json.dumps({'name': 'update_test'}))
         self.ok(r, 'update name', match='ok')
 
-        r = rpc('info', cik)
+        r = rpc('info', cik, rid, '--include=description')
         info_new = json.loads(r.stdout)
         name_new = info_new['description']['name']
 
         log.debug(name_old)
         log.debug(name_new)
+        log.debug('Description:')
+        log.debug(json.dumps(info_old))
+        log.debug(json.dumps(info_new))
         self.assertTrue(name_old != name_new, 'client name was changed')
         self.assertTrue(name_new == "update_test", 'new name is correct')
 
         info_new['description']['name'] = name_old
         self.assertTrue(info_old == info_new, 'client name was only difference')
-
-
-
-
