@@ -38,6 +38,7 @@ from operator import itemgetter
 import logging
 from collections import defaultdict
 import StringIO
+import pytz
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -75,6 +76,7 @@ Options:
     --limit=<limit>          number of data points to read [default: 1]
     --start=<time>
     --end=<time>             start and end times (see details below)
+    --tz=<TZ>                Olson TZ name
     --sort=<order>           asc or desc [default: desc]
     --selection=all|autowindow|givenwindow  downsample method [default: all]
     --format=csv|raw         output format [default: csv]
@@ -88,6 +90,7 @@ Options:
     {{ helpoption }}
 
     If <rid> is omitted, reads all datasources and datarules under <cik>.
+    All output is in UTC.
 
     {{ startend }}''',
     'write':
@@ -253,8 +256,10 @@ doc_replace = {
 
     2011-10-23T08:00:00-07:00
     10/1/2012
+    "2012-10-23 14:01 UTC"
     "2012-10-23 14:01"
 
+    If timezone information is omitted, local timezone is assumed
     If time part is omitted, it assumes 00:00:00.
     To report through the present time, omit --end or pass --end=now''',
     '{{ helpoption }}': '''-h --help  Show this screen.''',
@@ -1408,7 +1413,10 @@ class ExoData():
 
 
 def parse_ts(s):
-    return int(time.mktime(parser.parse(s).timetuple()))
+    return parse_ts_tuple(parser.parse(s).timetuple())
+    
+def parse_ts_tuple(t):
+    return int(time.mktime(t))
 
 def is_ts(s):
     return re.match('^[0-9]+$', s) is not None
@@ -1424,7 +1432,7 @@ def get_startend(args):
     else:
         start = parse_ts(start)
     if end is None or end == 'now':
-        end = int(time.mktime(datetime.now().timetuple()))
+        end = int(parse_ts_tuple(datetime.now().timetuple()))
     elif is_ts(end):
         end = int(end)
     else:
@@ -1592,6 +1600,20 @@ def read_cmd(er, cik, rids, args):
         dw.writerow(dict([(h, h) for h in headers]))
 
     fmt = args['--format']
+    
+    tz = args['--tz']
+    
+    if tz == None:
+        # default to UTC
+        tz = pytz.timezone('UTC')
+    else:
+        try:
+            tz = pytz.timezone(tz)
+        except Exception, e:
+            #default to utc if error
+            print "Error parsing tz, defaulting to UTC"
+            tz = pytz.timezone('UTC')
+            
 
     recarriage = re.compile('\r(?!\\n)')
 
@@ -1602,9 +1624,9 @@ def read_cmd(er, cik, rids, args):
             if timeformat == 'unix':
                 dt = timestamp
             elif timeformat == 'iso8601':
-                dt = datetime.isoformat(datetime.fromtimestamp(timestamp))
+                dt = datetime.isoformat(pytz.utc.localize(datetime.utcfromtimestamp(timestamp)))
             else:
-                dt = datetime.fromtimestamp(timestamp)
+                dt = tz.localize(datetime.utcfromtimestamp(timestamp))
 
             row = {'timestamp': str(dt)}
 
@@ -1897,8 +1919,8 @@ def handle_args(cmd, args):
                          create=args['--create'])
     elif cmd == 'spark':
         days = int(args['--days'])
-        end = time.mktime(datetime.now().timetuple())
-        start = time.mktime((datetime.now() - timedelta(days=days)).timetuple())
+        end = parse_ts_tuple(datetime.now().timetuple())
+        start = parse_ts_tuple((datetime.now() - timedelta(days=days)).timetuple())
         numstd = args['--stddev']
         numstd = int(numstd) if numstd is not None else None
         show_intervals(er, cik, rids[0], start, end, limit=1000000, numstd=numstd)
