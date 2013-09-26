@@ -9,7 +9,12 @@ with open('requirements.txt') as f:
 try:
     from collections import OrderedDict
 except ImportError:
-    required.append('ordereddict==1.1')
+    required.append('ordereddict>=1.1')
+
+try:
+    import importlib
+except ImportError:
+    required.append('importlib>=1.0.2')
 
 setup(
     name='exoline',
