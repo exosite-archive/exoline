@@ -1,6 +1,7 @@
 #!/bin/bash
 
 function test() {
+    PYTHONPATH=../exoline/:$PYTHONPATH
     nosetests --verbose --with-coverage --cover-erase --cover-package=exoline
     #nosetests --with-xunit --xunit-file=$1 --verbose --with-coverage --cover-erase --cover-package=exoline
     #python -m coverage xml

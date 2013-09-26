@@ -8,27 +8,7 @@ Usage:
   exo [--help] [options] <command> [<args> ...]
 
 Commands:
-  read
-  write
-  record
-  create
-  update
-  map
-  unmap
-  lookup
-  drop
-  listing
-  info
-  flush
-  usage
-  tree
-  script
-  spark
-  copy
-  diff
-  data
-  spec
-
+  {{ command_list }}
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
   --port=<port>        OneP port. Default is $EXO_HOST or 80
@@ -75,26 +55,15 @@ from pyonep import onep
 import pyonep
 try:
     from ..exoline import __version__
+    from ..exoline.exocommon import ExoException
 except:
     from exoline import __version__
+    from exocommon import ExoException
+
 
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
-
-#from functools import wraps
-#from time import time
-
-
-#def timed(f):
-#    @wraps(f)
-#    def wrapper(*args, **kwds):
-#        start = time()
-#        result = f(*args, **kwds)
-#        elapsed = time() - start
-#        #print "%s took %.3f seconds" % (f.__name__, elapsed)
-#        return result
-#    return wrapper
 
 cmd_doc = {
     'read':
@@ -275,15 +244,8 @@ Options:
     If only --write arguments are specified, the call is a write.
     If only --read arguments are specified, the call is a read.
     If both --write and --read arguments are specified, the hybrid
-        write/read API is used. Writes are executed before reads.''',
-    'spec': '''Determine whether a client matches a specification (beta)\n\nUsage:
-    exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>]
-
-Options:
-    --update-scripts  Update any scripts that do not match what's on the filesystem
-    --create          Create any resources that do not exist
-    --ids substitutes values for <% id %> when matching alias.'''
-}
+        write/read API is used. Writes are executed before reads.'''
+    }
 
 # shared sections of documentation
 doc_replace = {
@@ -298,6 +260,28 @@ doc_replace = {
     '{{ helpoption }}': '''-h --help  Show this screen.''',
 }
 
+# load plugins
+import importlib
+import plugins as plugins_package
+#plugin_path = os.path.dirname(os.path.realpath(plugins_package.__file__))
+plugins = []
+for module_name in plugins_package.__all__:
+    #plugin = imp.load_module(module_name, *imp.find_module(module_name, [plugin_path]))
+
+    try:
+        plugin = importlib.import_module('plugins.' + module_name)
+    except:
+        plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
+
+    # instantiate plugin
+    p = plugin.Plugin()
+    plugins.append(p)
+
+    # get documentation
+    cmd_doc[p.command()] = plugin.__doc__
+
+
+# perform substitutions on command documentation
 for k in cmd_doc:
     # helpoption is appended to any commands that don't already have it
     if '{{ helpoption }}' not in cmd_doc[k]:
@@ -306,12 +290,6 @@ for k in cmd_doc:
         cmd_doc[k] = cmd_doc[k].replace(r, doc_replace[r])
 
 
-class ExoException(Exception):
-    pass
-
-
-class RPCException(Exception):
-    pass
 
 
 class ExolineOnepV1(onep.OnepV1):
@@ -324,12 +302,16 @@ class ExoRPC():
     '''Wrapper for pyonep RPC API.
     Raises exceptions on error and provides some reasonable defaults.'''
     regex_rid = re.compile("[0-9a-zA-Z]{40}")
+
+    class RPCException(Exception):
+        pass
+
     def __init__(self,
-            host=DEFAULT_HOST,
-            port=None,
-            httptimeout=60,
-            https=False,
-            verbose=True):
+                 host=DEFAULT_HOST,
+                 port=None,
+                 httptimeout=60,
+                 https=False,
+                 verbose=True):
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
@@ -345,7 +327,7 @@ class ExoRPC():
                 msg = str(response)
             else:
                 msg = '{0} ({1})'.format(str(response), str(call))
-            raise RPCException(msg)
+            raise ExoRPC.RPCException(msg)
 
     def _raise_for_response_record(self, isok, response):
         '''Undocumented RPC behavior-- if record timestamps are invalid, isok
@@ -354,7 +336,7 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         if type(response) is list:
             # TODO: does this always indicate an error condition?
-            raise RPCException(', '.join(['{0}: {1}'.format(msg, t) for msg, t in response]))
+            raise ExoRPC.RPCException(', '.join(['{0}: {1}'.format(msg, t) for msg, t in response]))
 
     def _raise_for_deferred(self, responses):
         r = []
@@ -363,7 +345,6 @@ class ExoRPC():
             r.append(response)
         return r
 
-    #@timed
     def _exomult(self, cik, commands):
         '''Takes a list of onep commands with cik omitted, e.g.:
             [['info', {alias: ""}], ['listing']]'''
@@ -1167,7 +1148,7 @@ class ExoRPC():
 
         # check counts
         counts = self._counttypes(infotree)
-        destinfo = self.info(destcik, {'description': True, 'counts': True})
+        destinfo = self.info(destcik, options={'description': True, 'counts': True})
 
         noroom = ''
         for typ in counts:
@@ -1612,6 +1593,8 @@ def read_cmd(er, cik, rids, args):
 
     fmt = args['--format']
 
+    recarriage = re.compile('\r(?!\\n)')
+
     def printline(timestamp, val):
         if fmt == 'raw':
             print(val[0])
@@ -1624,7 +1607,16 @@ def read_cmd(er, cik, rids, args):
                 dt = datetime.fromtimestamp(timestamp)
 
             row = {'timestamp': str(dt)}
-            values = dict([(str(headers[i + 1]), val[i]) for i in range(len(rids))])
+
+            def stripcarriage(s):
+                # strip carriage returns not followed
+                if type(s) is str:
+                    return recarriage.sub('', s)
+                else:
+                    return s
+
+            values = dict([(str(headers[i + 1]), stripcarriage(val[i])) for i in range(len(rids))])
+
             row.update(values)
             dw.writerow(row)
 
@@ -1669,13 +1661,14 @@ def read_cmd(er, cik, rids, args):
         if chunkhours is not None and (start is None or end is None):
             raise ExoException(
                 "--chunkhours requires --start and --end be set")
-        for t, v in er.readmult(cik,
+        result = er.readmult(cik,
                                 rids,
                                 sort=args['--sort'],
                                 starttime=start,
                                 endtime=end,
                                 limit=limit,
-                                chunkhours=chunkhours):
+                                chunkhours=chunkhours)
+        for t, v in result:
             printline(t, v)
 
 
@@ -1706,7 +1699,6 @@ def handle_args(cmd, args):
     else:
         # for data ip command
         cik = None
-
     def rid_or_alias(rid):
         '''Translate what was passed for <rid> to an alias object if
            it doesn't look like a RID.'''
@@ -1953,128 +1945,22 @@ def handle_args(cmd, args):
         elif len(writes) > 0:
             alias_values = get_alias_values(writes)
             ed.write(cik, alias_values)
-    elif cmd == 'spec':
-        updatescripts = args['--update-scripts']
-        create = args['--create']
-        def generate_aliases_and_data(res, args):
-            ids = args['--ids']
-            if 'alias' in res:
-                alias = res['alias']
-            else:
-                if 'file' in res:
-                    alias = os.path.basename(res['file'])
-                else:
-                    raise ExoException('Resources in spec must have an alias.')
-
-            if reid.search(alias) is None:
-                yield alias, None
-            else:
-                alias_template = alias
-                if ids is None:
-                    raise ExoException('This spec requires --ids')
-                ids = ids.split(',')
-                for id, alias in [(id, reid.sub(id, alias_template)) for id in ids]:
-                    yield alias, {'id': id}
-
-        reid = re.compile('<% *id *%>')
-
-        def infoval(cik, alias):
-            return er._exomult(
-                cik,
-                [['info', {'alias': alias}, {'description': True, 'basic': True}],
-                ['read', {'alias': alias}, {'limit': 1}]])
-
-        with open(args['<spec-yaml>']) as f:
-            spec = yaml.safe_load(f)
-            for typ in ['dataport', 'client', 'script']:
-                if typ + 's' in spec:
-                    for res in spec[typ + 's']:
-                        for alias, resource_data in generate_aliases_and_data(res, args):
-                            # TODO: handle nonexistence
-                            exists = True
-                            try:
-                                info, val = infoval(cik, alias)
-                            except RPCException, e:
-                                exists = False
-                                print('Failed to get info and data from {0}.'.format(alias))
-                                if not create:
-                                    print('Pass --create to create it')
-                                    continue
-
-                            # TODO: use templating library
-                            def template(script):
-                                if resource_data is None:
-                                    return script
-                                else:
-                                    return reid.sub(resource_data['id'], script)
-
-                            if typ == 'client':
-                                if not exists:
-                                    if create:
-                                        print('Client creation is not yet supported')
-                                    continue
-                            elif typ == 'dataport':
-                                format = res['format'] if 'format' in res else 'string'
-                                name = res['name'] if 'name' in res else alias
-                                if not exists and create:
-                                    print('Creating dataport with name: {0} alias: {1} format: {2}'.format(
-                                        name, alias, format))
-                                    rid = er.create_dataport(cik, format, name=name)
-                                    er.map(cik, rid, alias)
-                                    info, val = infoval(cik, alias)
-
-                                if info['basic']['type'] != typ:
-                                    raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
-
-                                if format != info['description']['format']:
-                                        raise ExoException(
-                                            '{0} is a {1} but should be a {2}.'.format(
-                                            alias, info['basic']['type'], typ))
-                                #print(alias, resource_data, val)
-                                if 'initial' in res and len(val) == 0:
-                                    if create:
-                                        value = template(res['initial'])
-                                        print('Writing initial value {0}'.format(value))
-                                        er.write(cik, {'alias': alias}, value)
-                                    else:
-                                        print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
-
-                            elif typ == 'script':
-                                if 'file' not in res:
-                                    raise ExoException('{0} is a script, so it needs a "file" key'.format(alias))
-                                name = res['name'] if 'name' in res else alias
-
-
-                                if not exists and create:
-                                    er.upload_script([cik], res['file'], name=alias, create=True, filterfn=template)
-                                    continue
-
-                                with open(res['file']) as scriptfile:
-                                    script_spec = template(scriptfile.read())
-                                    script_svr = info['description']['rule']['script']
-                                    if script_svr != script_spec:
-                                        print ('Script for {0} does not match file {1}.'.format(alias, res['file']))
-                                        if updatescripts:
-                                            print('Uploading script to {0}...'.format(alias))
-                                            er.upload_script([cik], res['file'], name=name, create=False, filterfn=template)
-                                        else:
-                                            # show diff
-                                            import difflib
-                                            differ = difflib.Differ()
-
-                                            differences = '\n'.join(
-                                                difflib.unified_diff(
-                                                    script_spec.splitlines(),
-                                                    script_svr.splitlines(),
-                                                    fromfile=res['file'],
-                                                    tofile='info["description"]["rule"]["script"]'))
-
-                                            print(differences)
-                            else:
-                                raise ExoException('Found unsupported type {0} in spec.'.format(typ))
-
     else:
-        raise ExoException("Command not handled")
+        # search plugins
+        handled = False
+        for plugin in plugins:
+            if cmd in plugin.command():
+                options = {'cik': cik, 'rpc': er}
+                try:
+                    options['data'] = ed
+                except NameError:
+                    # no problem
+                    pass
+                plugin.run(cmd, args, options)
+                handled = True
+                break
+        if not handled:
+            raise ExoException("Command not handled")
 
 
 class DiscreetFilter(object):
@@ -2102,8 +1988,10 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if stdout is not None:
         sys.stdout = stdout
 
+    command_list = '  '.join([k + '\n' for k in cmd_doc])
+    doc = __doc__.replace('{{ command_list }}', command_list)
     args = docopt(
-        __doc__,
+        doc,
         version="Exosite Command Line {0}".format(__version__),
         options_first=True)
 
@@ -2117,7 +2005,6 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         return 1
     # merge command-specific arguments into general arguments
     args.update(args_cmd)
-
     # turn on stdout/stderr filtering
     if args['--discreet']:
         sys.stdout = DiscreetFilter(sys.stdout)
@@ -2142,7 +2029,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         # command line tool threw an exception on purpose
         sys.stderr.write("Command line error: {0}\r\n".format(ex))
         return 1
-    except RPCException as ex:
+    except ExoRPC.RPCException as ex:
         # pyonep library call signaled an error in return values
         sys.stderr.write("One Platform error: {0}\r\n".format(ex))
         return 1

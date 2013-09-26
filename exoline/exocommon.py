@@ -1,0 +1,4 @@
+class ExoException(Exception):
+    pass
+
+

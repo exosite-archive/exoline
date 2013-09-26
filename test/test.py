@@ -12,8 +12,8 @@ from datetime import datetime
 import logging
 from unittest import TestCase
 
-from ..exoline import exo
-from ..exoline.exo import ExolineOnepV1
+from exoline import exo
+from exoline.exo import ExolineOnepV1
 
 try:
     from testconfig import config
@@ -393,7 +393,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # starts with cik
         self.l(r.stdout)
         self.assertTrue(
-            re.match("cik: {0}.*".format(cik), r.stdout) is not None)
+            re.match(".* cik: {0}.*".format(cik), r.stdout) is not None)
 
         # has correct number of lines
         self.assertTrue(len(r.stdout.split('\n')) == len(stdports) + 1 + 1)
