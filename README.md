@@ -33,7 +33,7 @@ Here are a few things you can do with Exoline.
 
 ```bash
 
-$ exo tree 5de0cfcf7baaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --hide-keys
+$ exo tree 5de0cfcf7baaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 cik: 5de0cfcf7baaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: Dev, aliases: (see parent), count: 1088)
   ├─cik: 173a087812aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: testclient, rid: 6de3fd516faaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, count: 1)
   │   ├─rid: 097fea31e0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: int_port, format: integer, count: 0)
@@ -336,3 +336,4 @@ TODO
 - add --howmany option to create command
 - tab completion for commands and shortcuts
 - sort tree nodes by name
+- move official version to github.com/exosite
