@@ -335,4 +335,3 @@ TODO
 - delete serial number when dropping device
 - add --howmany option to create command
 - tab completion for commands and shortcuts
-- sort tree nodes by name
