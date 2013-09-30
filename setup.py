@@ -19,7 +19,7 @@ except ImportError:
 setup(
     name='exoline',
     version=version,
-    url = 'http://github.com/dweaver/exoline',
+    url = 'http://github.com/exosite/exoline',
     author = 'Dan Weaver',
     author_email = 'danweaver@exosite.com',
     description = 'Command line interface for Exosite platform.',

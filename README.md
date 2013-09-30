@@ -17,7 +17,7 @@ Alternatively, you can install from source:
 
 ```bash
 
-    $ git clone git://github.com/dweaver/exoline
+    $ git clone git://github.com/exosite/exoline
     $ cd exoline
     $ python setup.py install
 ```
@@ -308,7 +308,7 @@ rpc.upload_script(ciks=['ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa'],
 Issues/Feature Requests
 -----------------------
 
-If you see an issue with exoline or want to suggest an improvement, please log it [here](https://github.com/dweaver/exoline/issues).
+If you see an issue with exoline or want to suggest an improvement, please log it [here](https://github.com/exosite/exoline/issues).
 
 
 Test
@@ -336,4 +336,3 @@ TODO
 - add --howmany option to create command
 - tab completion for commands and shortcuts
 - sort tree nodes by name
-- move official version to github.com/exosite

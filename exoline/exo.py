@@ -54,6 +54,7 @@ import yaml
 
 from pyonep import onep
 import pyonep
+import timezone
 try:
     from ..exoline import __version__
     from ..exoline.exocommon import ExoException
@@ -1414,7 +1415,7 @@ class ExoData():
 
 def parse_ts(s):
     return parse_ts_tuple(parser.parse(s).timetuple())
-    
+
 def parse_ts_tuple(t):
     return int(time.mktime(t))
 
@@ -1461,20 +1462,7 @@ def spark(numbers, empty_val=None):
     When value is empty_val, show no bar.
 
     https://github.com/1stvamp/py-sparkblocks
-        start = args['--start']
-        end = args['--end']
-        parse_ts = lambda(s): int(time.mktime(parser.parse(s).timetuple()))
-        is_ts = lambda(s): re.match('^[0-9]+$', s) is not None
-        if is_ts(start):
-            start = int(start)
-        else:
-            start = parse_ts(start)
-        if end is None or end == 'now':
-            end = int(time.mktime(datetime.now().timetuple()))
-        elif is_ts(end):
-            end = int(end)
-        else:
-            end = parse_ts(end)
+
     Based on:
       https://github.com/holman/spark
     and:
@@ -1600,20 +1588,19 @@ def read_cmd(er, cik, rids, args):
         dw.writerow(dict([(h, h) for h in headers]))
 
     fmt = args['--format']
-    
+
     tz = args['--tz']
-    
+
     if tz == None:
         # default to UTC
-        tz = pytz.timezone('UTC')
+        tz = timezone.localtz()
     else:
         try:
             tz = pytz.timezone(tz)
         except Exception, e:
             #default to utc if error
-            print "Error parsing tz, defaulting to UTC"
-            tz = pytz.timezone('UTC')
-            
+            print "Error parsing --tz option, defaulting to local timezone"
+            tz = timezone.localtz()
 
     recarriage = re.compile('\r(?!\\n)')
 
@@ -1972,7 +1959,7 @@ def handle_args(cmd, args):
         handled = False
         for plugin in plugins:
             if cmd in plugin.command():
-                options = {'cik': cik, 'rpc': er}
+                options = {'cik': cik, 'rpc': er, 'exception': ExoException}
                 try:
                     options['data'] = ed
                 except NameError:
