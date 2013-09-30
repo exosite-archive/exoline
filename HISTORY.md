@@ -1,6 +1,15 @@
 History
 =======
 
+0.2.7 (2013-9-30)
+-----------------
+
+- add plugin framework
+- update tree output, incl. sort by client name
+- add spec command as a plugin (beta)
+- make listing default to all resource types
+- timezone support for read command
+
 0.2.6 (2013-9-19)
 -----------------
 

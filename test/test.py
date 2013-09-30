@@ -12,8 +12,12 @@ from datetime import datetime
 import logging
 from unittest import TestCase
 
+from dateutil import parser
+
 from exoline import exo
 from exoline.exo import ExolineOnepV1
+import pytz
+from exoline import timezone
 
 try:
     from testconfig import config
@@ -646,15 +650,25 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         rids = [stdports[fmt].rid for fmt in ['string', 'integer', 'float']]
         r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', cik, *rids)
-        self.assertEqual(r.exitcode, 0, 'read with multiple rids')
-        self.assertTrue(r.stdout == '2013-07-20 03:00:08,,3,0.3', 'two readings on one timestamp')
+        def parse_ts(s):
+            return parse_ts_tuple(parser.parse(s).timetuple())
+
+        def parse_ts_tuple(t):
+            return int(time.mktime(t))
+
+        def tolocaltz(s):
+            # parse string and translate to local timezone
+            tz = timezone.localtz()
+            return str(tz.localize(datetime.utcfromtimestamp(parse_ts(s))))
+
+        self.ok(r, 'two readings on one timestamp', match='{0},,3,0.3'.format(tolocaltz('2013-07-20 03:00:08')))
 
         r = rpc('read', '--start=2013-07-20T2:40:07', '--end=2013-07-20T2:40:09', cik, *rids)
         self.l(r.stdout)
         lines = r.stdout.splitlines()
-        self.assertEqual(lines[0], '2013-07-20 02:40:09,,,0.1', 'three timestamps')
-        self.assertEqual(lines[1], '2013-07-20 02:40:08,,1,', 'three timestamps')
-        self.assertEqual(lines[2], '2013-07-20 02:40:07,a,,', 'three timestamps')
+        self.assertEqual(lines[0], '{0},,,0.1'.format(tolocaltz('2013-07-20 02:40:09')), 'three timestamps')
+        self.assertEqual(lines[1], '{0},,1,'.format(tolocaltz('2013-07-20 02:40:08')), 'three timestamps')
+        self.assertEqual(lines[2], '{0},a,,'.format(tolocaltz('2013-07-20 02:40:07')), 'three timestamps')
 
         r = rpc('read', '--start=2013-07-20T3:00:09', cik, *rids)
         self.ok(r, "no data read succeeds", match='')
@@ -662,7 +676,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         rids.reverse()
         r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', cik, *rids)
         self.ok(r, 'rid order reversed')
-        self.assertTrue(r.stdout == '2013-07-20 03:00:08,0.3,3,', 'rid order reversed')
+        self.assertTrue(r.stdout == '{0},0.3,3,'.format(tolocaltz('2013-07-20 03:00:08')), 'rid order reversed')
 
     def copy_diff_test(self):
         '''Copy and diff commands'''
@@ -993,3 +1007,16 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         info_new['description']['name'] = name_old
         self.assertTrue(info_old == info_new, 'client name was only difference')
+
+    def spec_test(self):
+        '''Spec command'''
+        cik = self.client.cik()
+        spec = 'files/spec.yml'
+        r = rpc('spec', cik, spec)
+        self.notok(r, 'no ids specified')
+        r = rpc('spec', cik, spec, '--ids=1,2')
+        self.ok(r, 'specify ids, client doesn''t match', search='Failed to get info and data')
+        r = rpc('spec', cik, spec, '--ids=1,2', '--create')
+        self.ok(r, 'create dataports and scripts based on spec')
+        r = rpc('spec', cik, spec, '--ids=1,2')
+        self.ok(r, 'create dataports and scripts based on spec', match='')

@@ -2,7 +2,7 @@
 
 function test() {
     PYTHONPATH=../exoline/:$PYTHONPATH
-    nosetests --verbose --with-coverage --cover-erase --cover-package=exoline
+    nosetests --verbose --with-coverage --cover-erase --cover-package=exoline --cover-package=exoline.plugins
     #nosetests --with-xunit --xunit-file=$1 --verbose --with-coverage --cover-erase --cover-package=exoline
     #python -m coverage xml
     #cp coverage.xml coverage$1.xml

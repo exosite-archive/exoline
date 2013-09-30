@@ -8,15 +8,9 @@ Options:
     --create          Create any resources that do not exist
     --ids substitutes values for <% id %> when matching alias.'''
 import re
+import os
 
 import yaml
-
-try:
-    from exocommon import ExoException
-except:
-    # for tests
-    from ..exocommon import ExoException
-
 
 class Plugin():
     def command(self):
@@ -24,6 +18,7 @@ class Plugin():
     def run(self, cmd, args, options):
         cik = options['cik']
         rpc = options['rpc']
+        ExoException = options['exception']
         if cmd == 'spec':
             updatescripts = args['--update-scripts']
             create = args['--create']
@@ -65,7 +60,7 @@ class Plugin():
                                 exists = True
                                 try:
                                     info, val = infoval(cik, alias)
-                                except RPCException, e:
+                                except rpc.RPCException, e:
                                     exists = False
                                     print('Failed to get info and data from {0}.'.format(alias))
                                     if not create:
