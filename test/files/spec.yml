@@ -1,0 +1,14 @@
+# Test spec
+
+dataports:
+    - alias: teststring 
+      format: string
+    - alias: teststring_set<% id %>
+      format: string
+    - alias: testint
+      format: integer
+
+scripts:
+    - file: files/helloworld.lua
+    - file: files/helloworld2.lua
+      alias: helloworld2_set<% id %> 
