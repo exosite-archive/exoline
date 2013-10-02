@@ -25,8 +25,8 @@ setup(
     description = 'Command line interface for Exosite platform.',
     long_description = open('README.md').read() + '\n\n' +
                       open('HISTORY.md').read(),
-    packages=['exoline'],
-    package_dir={'exoline': 'exoline'},
+    packages=['exoline', 'exoline.plugins'],
+    package_dir={'exoline': 'exoline', 'plugins': 'exoline/plugins'},
     scripts=['bin/exo', 'bin/exoline'],
     keywords=['exosite', 'onep', 'one platform', 'm2m'],
     install_requires=required,

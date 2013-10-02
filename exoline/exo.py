@@ -46,22 +46,28 @@ except ImportError:
     from ordereddict import OrderedDict
 import itertools
 import math
+import glob
 
 from docopt import docopt
 from dateutil import parser
 import requests
 import yaml
+import importlib
 
 from pyonep import onep
 import pyonep
-import timezone
+
+try:
+    from ..exoline import timezone
+except:
+    from exoline import timezone
+
 try:
     from ..exoline import __version__
     from ..exoline.exocommon import ExoException
 except:
     from exoline import __version__
-    from exocommon import ExoException
-
+    from exoline.exocommon import ExoException
 
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
@@ -267,13 +273,19 @@ doc_replace = {
 }
 
 # load plugins
-import importlib
-import plugins as plugins_package
-#plugin_path = os.path.dirname(os.path.realpath(plugins_package.__file__))
-plugins = []
-for module_name in plugins_package.__all__:
-    #plugin = imp.load_module(module_name, *imp.find_module(module_name, [plugin_path]))
+plugin_path = os.path.dirname(__file__)
+# HACK -- figure out how to do this
+if plugin_path[-7:] == 'scripts':
+    plugin_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'exoline')
 
+plugin_path = os.path.join(plugin_path, 'plugins')
+
+plugin_names = [os.path.basename(f)[:-3]
+    for f in glob.glob(plugin_path + "/*.py")
+    if not os.path.basename(f).startswith('_')]
+
+plugins = []
+for module_name in plugin_names:
     try:
         plugin = importlib.import_module('plugins.' + module_name)
     except:
@@ -294,8 +306,6 @@ for k in cmd_doc:
         cmd_doc[k] += '\n\nOptions:\n{{ helpoption }}'
     for r in doc_replace:
         cmd_doc[k] = cmd_doc[k].replace(r, doc_replace[r])
-
-
 
 
 class ExolineOnepV1(onep.OnepV1):
