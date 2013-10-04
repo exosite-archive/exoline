@@ -116,7 +116,7 @@ class Plugin():
                                         continue
 
                                     with open(res['file']) as scriptfile:
-                                        script_spec = template(scriptfile.read())
+                                        script_spec = template(scriptfile.read().decode('utf8'))
                                         script_svr = info['description']['rule']['script']
                                         if script_svr != script_spec:
                                             print ('Script for {0} does not match file {1}.'.format(alias, res['file']))
