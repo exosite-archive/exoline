@@ -1,10 +1,15 @@
 History
 =======
 
+0.3.2 (2013-10-4)
+-----------------
+
+- remove plugin dependency on script install location
+
 0.3.1 (2013-10-1)
 -----------------
 
-- fixed install issue
+- fix install issue
 
 0.3.0 (2013-9-30)
 -----------------

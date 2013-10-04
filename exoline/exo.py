@@ -272,13 +272,9 @@ doc_replace = {
     '{{ helpoption }}': '''-h --help  Show this screen.''',
 }
 
-# load plugins
-plugin_path = os.path.dirname(__file__)
-# HACK -- figure out how to do this
-if plugin_path[-7:] == 'scripts':
-    plugin_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'exoline')
-
-plugin_path = os.path.join(plugin_path, 'plugins')
+# load plugins. use timezone because this file may be running
+# as a script in some other location.
+plugin_path = os.path.join(os.path.dirname(timezone.__file__), 'plugins')
 
 plugin_names = [os.path.basename(f)[:-3]
     for f in glob.glob(plugin_path + "/*.py")
