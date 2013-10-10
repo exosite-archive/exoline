@@ -1599,7 +1599,11 @@ def read_cmd(er, cik, rids, args):
 
     if tz == None:
         # default to UTC
-        tz = timezone.localtz()
+        try:
+            tz = timezone.localtz()
+        except pytz.UnknownTimeZoneError, e:
+            print "Unable to detect local time zone, defaulting to UTC"
+            tz = pytz.utc
     else:
         try:
             tz = pytz.timezone(tz)
