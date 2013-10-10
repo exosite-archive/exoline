@@ -16,7 +16,6 @@ from dateutil import parser
 
 from exoline import exo
 from exoline.exo import ExolineOnepV1
-import pytz
 from exoline import timezone
 
 try:
@@ -657,9 +656,11 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             return int(time.mktime(t))
 
         def tolocaltz(s):
-            # parse string and translate to local timezone
+            # parse string and translate to local timezone with offset
+            # specified
             tz = timezone.localtz()
-            return str(tz.localize(datetime.utcfromtimestamp(parse_ts(s))))
+            local_time_without_offset = datetime.fromtimestamp(parse_ts(s))
+            return str(tz.localize(local_time_without_offset))
 
         self.ok(r, 'two readings on one timestamp', match='{0},,3,0.3'.format(tolocaltz('2013-07-20 03:00:08')))
 
