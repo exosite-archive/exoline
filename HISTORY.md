@@ -1,6 +1,12 @@
 History
 =======
 
+0.3.4 (2013-10-10)
+------------------
+
+- default to utc if local timezone can't be determined
+- fix timezone bug in read output
+
 0.3.3 (2013-10-4)
 -----------------
 
