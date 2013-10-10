@@ -1610,7 +1610,11 @@ def read_cmd(er, cik, rids, args):
         except Exception, e:
             #default to utc if error
             print "Error parsing --tz option, defaulting to local timezone"
-            tz = timezone.localtz()
+            try:
+                tz = timezone.localtz()
+            except pytz.UnknownTimeZoneError, e:
+                print "Unable to detect local time zone, defaulting to UTC"
+                tz = pytz.utc
 
     recarriage = re.compile('\r(?!\\n)')
 
