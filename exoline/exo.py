@@ -1599,14 +1599,22 @@ def read_cmd(er, cik, rids, args):
 
     if tz == None:
         # default to UTC
-        tz = timezone.localtz()
+        try:
+            tz = timezone.localtz()
+        except pytz.UnknownTimeZoneError, e:
+            print "Unable to detect local time zone, defaulting to UTC"
+            tz = pytz.utc
     else:
         try:
             tz = pytz.timezone(tz)
         except Exception, e:
             #default to utc if error
             print "Error parsing --tz option, defaulting to local timezone"
-            tz = timezone.localtz()
+            try:
+                tz = timezone.localtz()
+            except pytz.UnknownTimeZoneError, e:
+                print "Unable to detect local time zone, defaulting to UTC"
+                tz = pytz.utc
 
     recarriage = re.compile('\r(?!\\n)')
 
@@ -1619,7 +1627,7 @@ def read_cmd(er, cik, rids, args):
             elif timeformat == 'iso8601':
                 dt = datetime.isoformat(pytz.utc.localize(datetime.utcfromtimestamp(timestamp)))
             else:
-                dt = tz.localize(datetime.utcfromtimestamp(timestamp))
+                dt = tz.localize(datetime.fromtimestamp(timestamp))
 
             row = {'timestamp': str(dt)}
 
