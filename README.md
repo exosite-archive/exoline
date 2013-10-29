@@ -64,7 +64,7 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
 
 ```bash
 
-    $ exo write e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw --value=4458.755987,N,09317.538945,W
+    $ exo write e469e336ff9c8ed9176bc05ed7fa40daaaaaaaa gps-raw --value=4458.755987,N,09317.538945,W
 ```
 
 * Record a bunch of data without timestamps
