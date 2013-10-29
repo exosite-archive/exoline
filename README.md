@@ -22,7 +22,7 @@ Alternatively, you can install from source:
     $ python setup.py install
 ```
 
-Depending on your Python environment, you may need to run the above install commands as sudo. [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments, and has the side effect that you don't need to use sudo when installing Python packages.
+Depending on your Python environment, you may need to run the above install commands as sudo. [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments.
 
 Examples
 --------
