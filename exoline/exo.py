@@ -331,7 +331,8 @@ class ExoRPC():
                                port=port,
                                httptimeout=httptimeout,
                                https=https,
-                               agent="Exoline {0}".format(__version__))
+                               agent="Exoline {0}".format(__version__),
+                               reuseconnection=True)
 
     def _raise_for_response(self, isok, response, call=None):
         if not isok:

@@ -32,25 +32,12 @@ Here are a few things you can do with Exoline.
 * Show a tree view of a client
 
 ```bash
+$ exo --discreet tree 5de0cfcf7b5bed2ea7a801234567890123456789
+Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
+  ├─device1 client cik: 970346d3391a2d8c703a01234567890123456789 (aliases: [u'device1'])
+  └─device2 client cik: e95052ab56f985e6807d01234567890123456789 (aliases: [u'device2'])
+      └─somejson string dataport rid: 82209d5888a3bd1530d201234567890123456789 (aliases: [u'somejson'])
 
-$ exo tree 5de0cfcf7baaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-cik: 5de0cfcf7baaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: Dev, aliases: (see parent), count: 1088)
-  ├─cik: 173a087812aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: testclient, rid: 6de3fd516faaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, count: 1)
-  │   ├─rid: 097fea31e0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: int_port, format: integer, count: 0)
-  │   ├─rid: a0e62edd21aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: boolean_port, format: boolean, count: 0)
-  │   ├─rid: b005167070aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: float_port, format: float, count: 0)
-  │   └─rid: f9f21bc8ceaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: string_port, format: string, aliases: [u'newalias', u'string_port_alias'], count: 0)
-  └─cik: c81e6ae0fbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: Sally, rid: dec8dedcc1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, count: 2)
-      ├─rid: e84b7cb6cbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: anothertest, format: string, count: 0)
-      └─cik: bed592d350aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: George, rid: 7f94e98943aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, count: 2)
-          ├─cik: e0b93720eeaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: MrFlippy, aliases: [u'bedchild'], count: 1)
-          │   └─cik: fa3cdb81e2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: LemonJello, rid: 4f9ff15a52aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, count: 4)
-          │       ├─rid: 1043eabc31aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: inttest, format: integer, count: 0)
-          │       ├─rid: 59b7b90ac2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: strtest, format: string, count: 0)
-          │       ├─rid: 616749f6ddaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (dataport name: bintest, format: binary, count: 0)
-          │       └─rid: 7b7a3bcc36aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (datarule name: test.lua, format: string, aliases: [u'test.lua'], count: 1)
-          └─cik: ed6c3facb6aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (client name: Mack, rid: cbc55a2e06aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, count: 1)
-              └─rid: 1b62533276aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (datarule name: test.lua, format: string, aliases: [u'test.lua'], count: 1)
 ```
 
 * Upload a Lua script
@@ -335,3 +322,4 @@ TODO
 - delete serial number when dropping device
 - add --howmany option to create command
 - tab completion for commands and shortcuts
+

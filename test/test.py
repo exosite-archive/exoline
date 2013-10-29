@@ -588,8 +588,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertEqual(readscript(childcik3, lua1['name']), lua2['content'], "grandchild updated")
 
 
-    def _removed_thing(self):
-        '''OneP resource usage'''
+    def usage_test(self):
+        '''get resource usage'''
         # This test passes inconsistently due to time passing between calls to
         # usage. Mainly all it was testing was date parsing, though.
         #r = rpc('usage', self.client.cik(), '--start=10/1/2012', '--end=11/1/2013')
