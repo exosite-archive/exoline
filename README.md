@@ -43,16 +43,16 @@ Commands:
   record   Write data at a specified time.
   create   Create a resource from a json description passed on stdin,
            or using reasonable defaults.
-  listing  List the RIDs of a client\'s children.
+  listing  List the RIDs of a client's children.
   info     Get metadata for a resource in json format.
   update   Update a resource from a json description passed on stdin.
   map      Add an alias to a resource.
   unmap    Remove an alias from a resource.
-  lookup   Look up a resource\'s RID based on its alias or cik.
+  lookup   Look up a resource's RID based on its alias or cik.
   drop     Drop (permanently delete) a resource.
   flush    Remove all time series data from a resource.
   usage    Display usage of One Platform resources over a time period.
-  tree     Display a resource\'s descendants.
+  tree     Display a resource's descendants.
   script   Upload a Lua script
   spark    Show distribution of intervals between points.
   copy     Make a copy of a client.
@@ -73,7 +73,7 @@ Options:
   -h --help            Show this screen
   -v --version         Show version
 
-See \'exo <command> --help\' for more information on a specific command.
+See 'exo <command> --help' for more information on a specific command.
 ```
 
 Examples
