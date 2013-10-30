@@ -1,6 +1,14 @@
 History
 =======
 
+0.4.0 (2013-10-30)
+------------------
+
+- use https by default, specify --http for http
+- fix issue where read --follow could not be piped to other commands due to stdout buffering 
+- show commands in a consistent order in 'exo --help' 
+- show command summaries in 'exo --help'
+
 0.3.6 (2013-10-29)
 ------------------
 

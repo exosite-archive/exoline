@@ -590,7 +590,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
 
     def usage_test(self):
-        '''get resource usage'''
+        '''Get resource usage'''
         # This test passes inconsistently due to time passing between calls to
         # usage. Mainly all it was testing was date parsing, though.
         #r = rpc('usage', self.client.cik(), '--start=10/1/2012', '--end=11/1/2013')
@@ -679,6 +679,13 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', cik, *rids)
         self.ok(r, 'rid order reversed')
         self.assertTrue(r.stdout == '{0},0.3,3,'.format(tolocaltz('2013-07-20 03:00:08')), 'rid order reversed')
+
+        rids = [rid for rid in itertools.chain(*json.loads(rpc('listing', cik, '--type=dataport', '--type=datarule').stdout))]
+
+        # this test could be better -- for now, just verify that the right
+        # number of columns come out
+        r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', '--timeformat=unix', cik)
+        self.ok(r, 'read all RIDs', match='timestamp,' + ','.join(['.*' for rid in rids]) + '\n[0-9]+' + ','.join(['.*' for rid in rids]))
 
     def copy_diff_test(self):
         '''Copy and diff commands'''
@@ -789,7 +796,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         copy_without_comments = r.stdout
 
         r = rpc('diff', childcik, copy_without_comments)
-        self.ok(r, 'no differences', match='')
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'no differences', match='')
 
         # add comments
         exo = ExolineOnepV1()
@@ -797,14 +807,21 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         exo.comment(childcik, ridFloat, 'public', 'World')
 
         r = rpc('diff', childcik, copy_without_comments)
-        self.ok(r, 'diff notices comment differences', search=r'^\+.+')
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff notices comment differences', search=r'^\+.+')
 
         r = rpc('copy', childcik, cik, '--cikonly')
         self.ok(r, 'make copy without comments')
         copy_with_comments = r.stdout
 
         r = rpc('diff', childcik, copy_with_comments)
-        self.ok(r, 'no differences -- comment was copied', match='')
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'no differences -- comment was copied', match='')
+
 
     def copy_limit_test(self):
         '''Check limits with copy command'''
@@ -814,17 +831,17 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Connection settings'''
         cik = self.client.cik()
 
-        r = rpc('--port=80', '--host=m2.exosite.com', 'info', cik)
+        r = rpc('--port=80', '--host=m2.exosite.com', '--http', 'info', cik)
         self.ok(r, 'valid port and host at command line')
 
         r = rpc('--https', 'info', cik)
         self.ok(r, 'https connection')
 
-        r = rpc('--port=443', '--host=m2.exosite.com', '--https', 'info', cik)
+        r = rpc('--port=443', '--host=m2.exosite.com', 'info', cik)
         self.ok(r, 'invalid port')
 
         r = rpc('--port=88', 'info', cik)
-        self.notok(r, 'invalid port', match='JSON RPC Request Exception.*')
+        self.notok(r, 'wrong port', match='JSON RPC Request Exception.*')
 
     def info_test(self):
         '''Info command'''
@@ -895,11 +912,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, rid1, '--start=44', '--timeformat=unix', '--limit=2')
         self.ok(r, '--end has a default', match='[0-9]+,12.36')
 
-        # get a list of dataport and datarule RIDs in their output order
-        rids = [rid for rid in itertools.chain(*json.loads(rpc('listing', cik, '--type=dataport', '--type=datarule').stdout))]
-
-        r = rpc('read', cik, '--timeformat=unix')
-        self.ok(r, 'read all RIDs', match='timestamp,' + ','.join(rids) + '\n[0-9]+,12.36,')
 
     def sort_test(self):
         '''Read command with --sort flag'''

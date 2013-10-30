@@ -8,14 +8,15 @@ Usage:
   exo [--help] [options] <command> [<args> ...]
 
 Commands:
-  {{ command_list }}
+{{ command_list }}
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
   --port=<port>        OneP port. Default is $EXO_HOST or 80
   --httptimeout=<sec>  HTTP timeout [default: 60]
-  --https              Enable HTTPS
+  --https              Enable HTTPS (deprecated, HTTPS is default)
+  --http               Disable HTTPS
   --debug              Show info like stack traces
-  --debughttp          Turn on debug level loggin in pyonep
+  --debughttp          Turn on debug level logging in pyonep
   --discreet           Obfuscate RIDs in stdout and stderr
   -h --help            Show this screen
   -v --version         Show version
@@ -73,8 +74,8 @@ DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
 
-cmd_doc = {
-    'read':
+cmd_doc = OrderedDict([
+    ('read',
         '''Read data from a resource.\n\nUsage:
     exo [options] read <cik> [<rid> ...]
 
@@ -99,20 +100,20 @@ Options:
     If <rid> is omitted, reads all datasources and datarules under <cik>.
     All output is in UTC.
 
-    {{ startend }}''',
-    'write':
+    {{ startend }}'''),
+    ('write',
         '''Write data at the current time.\n\nUsage:
-    exo [options] write <cik> [<rid>] --value=<value>''',
-    'record':
+    exo [options] write <cik> [<rid>] --value=<value>'''),
+    ('record',
         '''Write data at a specified time.\n\nUsage:
     exo [options] record <cik> [<rid>] ((--value=<timestamp,value> ...) | -)
     exo [options] record <cik> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
 
     - reads data from stdin.
-    --interval generates timestamps at a regular interval into the past.''',
-    'create':
-        '''Create a resource from a json description passed on stdin, or using
-    defaults.\n\nUsage:
+    --interval generates timestamps at a regular interval into the past.'''),
+    ('create',
+        '''Create a resource from a json description passed on stdin,
+    or using reasonable defaults.\n\nUsage:
     exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
     exo [options] create <cik> --type=client
     exo [options] create <cik> --type=dataport (--format=binary|boolean|float|integer|string)
@@ -129,8 +130,8 @@ Details:
     Description is documented here:
     http://developers.exosite.com/display/OP/Remote+Procedure+Call+API#RemoteProcedureCallAPI-create
 
-    If - is not present, creates a resource with common defaults.''',
-    'listing':
+    If - is not present, creates a resource with common defaults.'''),
+    ('listing',
         '''List the RIDs of a client's children.\n\nUsage:
     exo [options] listing <cik> [(--type=client|dataport|datarule|dispatch) ...]
 
@@ -139,8 +140,8 @@ Details:
 
 Options:
     --plain   show only the child RIDs
-    --pretty  pretty print output''',
-    'info':
+    --pretty  pretty print output'''),
+    ('info',
         '''Get metadata for a resource in json format.\n\nUsage:
     exo [options] info <cik> [<rid>]
 
@@ -153,8 +154,8 @@ Options:
                    comma separated list of info keys to include and exclude.
                    Available keys are aliases, basic, counts, description,
                    key, shares, storage, subscribers, tags, usage. If omitted,
-                   all available keys are returned.''',
-    'update':
+                   all available keys are returned.'''),
+    ('update',
         '''Update a resource from a json description passed on stdin.\n\nUsage:
     exo [options] update <cik> (<rid> - | -)
 
@@ -175,58 +176,58 @@ Datarule Descriptions
 Dispatch Description
     If the recipient or method is changed, and the recipient/method combination has
     never been used before, then further dispatches will be halted until a
-    Validation Request is sent and validated.''',
-    'map':
+    Validation Request is sent and validated.'''),
+    ('map',
         '''Add an alias to a resource.\n\nUsage:
-    exo [options] map <cik> <rid> <alias>''',
-    'unmap':
+    exo [options] map <cik> <rid> <alias>'''),
+    ('unmap',
         '''Remove an alias from a resource.\n\nUsage:
-    exo [options] unmap <cik> <alias>''',
-    'lookup':
+    exo [options] unmap <cik> <alias>'''),
+    ('lookup',
         '''Look up a resource's RID based on its alias or cik.\n\nUsage:
     exo [options] lookup <cik> [<alias>]
     exo [options] lookup <cik> --cik=<cik-to-find>
 
     If <alias> is omitted, the rid for <cik> is returned. This is equivalent to:
 
-    exo lookup <cik> ""''',
-    'drop':
+    exo lookup <cik> ""'''),
+    ('drop',
         '''Drop (permanently delete) a resource.\n\nUsage:
     exo [options] drop <cik> [<rid> ...]
 
 Options:
     --all-children  drop all children of the resource.
-    {{ helpoption }}''',
-    'flush':
+    {{ helpoption }}'''),
+    ('flush',
         '''Remove all time series data from a resource.\n\nUsage:
-    exo [options] flush <cik> [<rid>]''',
-    'usage':
+    exo [options] flush <cik> [<rid>]'''),
+    ('usage',
         '''Display usage of One Platform resources over a time period.\n\nUsage:
     exo [options] usage <cik> [<rid>] --start=<time> [--end=<time>]
 
-    {{ startend }}''',
-    'tree': '''Display a resource's descendants.\n\nUsage:
+    {{ startend }}'''),
+    ('tree', '''Display a resource's descendants.\n\nUsage:
     exo [options] tree [--verbose] <cik>
 
     --counts       show item counts (from info.storage.counts)
-    --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]''',
-    'ut': '''Display a tree as fast as possible\n\nUsage:
-    exo [options] ut <cik>''',
-    'script': '''Upload a client's a Lua script\n\nUsage:
+    --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]'''),
+    #('ut', '''Display a tree as fast as possible\n\nUsage:
+    #exo [options] ut <cik>'''),
+    ('script', '''Upload a Lua script\n\nUsage:
     exo [options] script <script-file> <cik> ...
 
 Options:
     --name=<name>  script name, if different from script filename. The name
                    is used to identify the script, too.
     --recursive    operate on client and any children
-    --create       create the script if it doesn't already exist''',
-    'spark': '''Show distribution of intervals between points.\n\nUsage:
+    --create       create the script if it doesn't already exist'''),
+    ('spark', '''Show distribution of intervals between points.\n\nUsage:
     exo [options] spark <cik> [<rid>] --days=<days>
 
 Options:
     --stddev=<num>  exclude intervals more than num standard deviations from mean
-    {{ helpoption }}''',
-    'copy': '''Make a copy of a client.\n\nUsage:
+    {{ helpoption }}'''),
+    ('copy', '''Make a copy of a client.\n\nUsage:
     exo [options] copy <cik> <destination-cik>
 
     Copies <cik> and all its non-client children to <destination-cik>.
@@ -234,8 +235,8 @@ Options:
 
 Options:
     --cikonly  show unlabeled CIK by itself
-    {{ helpoption }}''',
-    'diff': '''Show differences between two clients.\n\nUsage:
+    {{ helpoption }}'''),
+    ('diff', '''Show differences between two clients.\n\nUsage:
     exo [options] diff <cik> <cik2>
 
     Displays differences between <cik> and <cik2>, including all non-client
@@ -245,17 +246,17 @@ Options:
 Options:
     --full         compare all info, even usage, data counts, etc.
     --no-children  don't compare children
-    {{ helpoption }}''',
-    'ip': '''Get IP address of the server.\n\nUsage:
-    exo [options] ip''',
-    'data': '''Read or write with the HTTP Data API.\n\nUsage:
+    {{ helpoption }}'''),
+    ('ip', '''Get IP address of the server.\n\nUsage:
+    exo [options] ip'''),
+    ('data', '''Read or write with the HTTP Data API.\n\nUsage:
     exo [options] data <cik> [--write=<alias,value> ...] [--read=<alias> ...]
 
     If only --write arguments are specified, the call is a write.
     If only --read arguments are specified, the call is a read.
     If both --write and --read arguments are specified, the hybrid
-        write/read API is used. Writes are executed before reads.'''
-    }
+        write/read API is used. Writes are executed before reads.''')
+    ])
 
 # shared sections of documentation
 doc_replace = {
@@ -1693,6 +1694,9 @@ def read_cmd(er, cik, rids, args):
             for t, v in results:
                 printline(t, v)
 
+            # flush output for piping this output to other programs
+            sys.stdout.flush()
+
             if len(results) > 0:
                 last_t, last_v = results[-1]
 
@@ -1703,12 +1707,12 @@ def read_cmd(er, cik, rids, args):
             raise ExoException(
                 "--chunkhours requires --start and --end be set")
         result = er.readmult(cik,
-                                rids,
-                                sort=args['--sort'],
-                                starttime=start,
-                                endtime=end,
-                                limit=limit,
-                                chunkhours=chunkhours)
+                             rids,
+                             sort=args['--sort'],
+                             starttime=start,
+                             endtime=end,
+                             limit=limit,
+                             chunkhours=chunkhours)
         for t, v in result:
             printline(t, v)
 
@@ -1724,7 +1728,7 @@ def pretty_print(arg):
 
 
 def handle_args(cmd, args):
-    er = ExoRPC(host=args['--host'], port=args['--port'], https=args['--https'], httptimeout=args["--httptimeout"])
+    er = ExoRPC(host=args['--host'], port=args['--port'], https=not args['--http'], httptimeout=args["--httptimeout"])
     if cmd in ['ip', 'data']:
         if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
             # TODO: support these
@@ -1928,8 +1932,8 @@ def handle_args(cmd, args):
     # special commands
     elif cmd == 'tree':
         er.tree(cik, cli_args=args)
-    elif cmd == 'ut':
-        er.ubertree(cik)
+    #elif cmd == 'ut':
+    #    er.ubertree(cik)
     elif cmd == 'script':
         # cik is a list of ciks
         er.upload_script(cik, args['<script-file>'],
@@ -2029,7 +2033,15 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if stdout is not None:
         sys.stdout = stdout
 
-    command_list = '  '.join([k + '\n' for k in cmd_doc])
+    # add the first line of the detailed documentation to
+    # the exo --help output. Some lines span newlines.
+    max_cmd_length = max(len(cmd) for cmd in cmd_doc)
+    command_list = ''
+    for cmd in cmd_doc:
+        lines = cmd_doc[cmd].split('\n\n')[0].split('\n')
+        command_list += '  ' + cmd + ' ' * (max_cmd_length - len(cmd)) + '  ' + lines[0] + '\n'
+        for line in lines[1:]:
+            command_list += ' ' * max_cmd_length + line + '\n'
     doc = __doc__.replace('{{ command_list }}', command_list)
     args = docopt(
         doc,
