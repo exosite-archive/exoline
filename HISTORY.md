@@ -1,6 +1,12 @@
 History
 =======
 
+0.3.6 (2013-10-29)
+------------------
+
+- read command defaults to reading all dataports/datarules if no RIDs are specified 
+- listing command outputs valid JSON
+
 0.3.5 (2013-10-28)
 ------------------
 

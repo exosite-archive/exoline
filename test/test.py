@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 import logging
 from unittest import TestCase
+import itertools
 
 from dateutil import parser
 
@@ -893,6 +894,12 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         r = rpc('read', cik, rid1, '--start=44', '--timeformat=unix', '--limit=2')
         self.ok(r, '--end has a default', match='[0-9]+,12.36')
+
+        # get a list of dataport and datarule RIDs in their output order
+        rids = [rid for rid in itertools.chain(*json.loads(rpc('listing', cik, '--type=dataport', '--type=datarule').stdout))]
+
+        r = rpc('read', cik, '--timeformat=unix')
+        self.ok(r, 'read all RIDs', match='timestamp,' + ','.join(rids) + '\n[0-9]+,12.36,')
 
     def sort_test(self):
         '''Read command with --sort flag'''

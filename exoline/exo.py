@@ -1573,6 +1573,22 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
 
 def read_cmd(er, cik, rids, args):
     '''Read command'''
+
+    if len(rids) == 0:
+        # if only a CIK was passed, include all dataports and datarules
+        # by default.
+        listing = er.listing(cik, ['dataport', 'datarule'])
+        rids = [rid for rid in itertools.chain(*listing)]
+        aliases = er.info(cik, options={'aliases': True})['aliases']
+        # look up aliases for column headers
+        cmdline_rids = [aliases[rid][0] if rid in aliases else rid for rid in rids]
+
+        # in this case default to showing headers
+        headertype = 'rid'
+    else:
+        cmdline_rids = args['<rid>']
+        headertype = args['--header']
+
     limit = args['--limit']
     limit = 1 if limit is None else int(limit)
 
@@ -1580,14 +1596,15 @@ def read_cmd(er, cik, rids, args):
     start, end = get_startend(args)
 
     timeformat = args['--timeformat']
-    headertype = args['--header']
     if headertype == 'name':
         # look up names of rids
         infos = er._exomult(cik,
                             [['info', r, {'description': True}] for r in rids])
         headers = ['timestamp'] + [i['description']['name'] for i in infos]
     else:
-        headers = ['timestamp'] + [str(r) for r in args['<rid>']]
+        # use whatever headers were passed at the command line (RIDs or
+        # aliases)
+        headers = ['timestamp'] + [str(r) for r in cmdline_rids]
 
     dw = csv.DictWriter(sys.stdout, headers)
     if headertype is not None:
@@ -1874,7 +1891,7 @@ def handle_args(cmd, args):
                 for rid in listing[0]:
                     print(rid)
         else:
-            pr(listing)
+            pr(json.dumps(listing))
     elif cmd == 'info':
         include = args['--include']
         include = [] if include is None else [key.strip()
