@@ -24,6 +24,58 @@ Alternatively, you can install from source:
 
 Depending on your Python environment, you may need to run the above install commands as sudo. [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments.
 
+Usage
+-----
+
+```bash
+
+$ exo --help
+Exosite RPC API Command Line Interface
+   Provides command line access to the Remote Procedure Call API:
+   https://github.com/exosite/api/tree/master/rpc
+
+Usage:
+  exo [--help] [options] <command> [<args> ...]
+
+Commands:
+  read     Read data from a resource.
+  write    Write data at the current time.
+  record   Write data at a specified time.
+  create   Create a resource from a json description passed on stdin,
+           or using reasonable defaults.
+  listing  List the RIDs of a client's children.
+  info     Get metadata for a resource in json format.
+  update   Update a resource from a json description passed on stdin.
+  map      Add an alias to a resource.
+  unmap    Remove an alias from a resource.
+  lookup   Look up a resource's RID based on its alias or cik.
+  drop     Drop (permanently delete) a resource.
+  flush    Remove all time series data from a resource.
+  usage    Display usage of One Platform resources over a time period.
+  tree     Display a resource's descendants.
+  script   Upload a Lua script
+  spark    Show distribution of intervals between points.
+  copy     Make a copy of a client.
+  diff     Show differences between two clients.
+  ip       Get IP address of the server.
+  data     Read or write with the HTTP Data API.
+  spec     Determine whether a client matches a specification (beta)
+
+Options:
+  --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
+  --port=<port>        OneP port. Default is $EXO_HOST or 80
+  --httptimeout=<sec>  HTTP timeout [default: 60]
+  --https              Enable HTTPS (deprecated, HTTPS is default)
+  --http               Disable HTTPS
+  --debug              Show info like stack traces
+  --debughttp          Turn on debug level logging in pyonep
+  --discreet           Obfuscate RIDs in stdout and stderr
+  -h --help            Show this screen
+  -v --version         Show version
+
+See 'exo <command> --help' for more information on a specific command.
+```
+
 Examples
 --------
 
