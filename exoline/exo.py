@@ -112,8 +112,8 @@ Options:
     - reads data from stdin.
     --interval generates timestamps at a regular interval into the past.'''),
     ('create',
-        '''Create a resource from a json description passed on stdin,
-    or using reasonable defaults.\n\nUsage:
+        '''Create a resource from a json description passed on stdin (with -),
+    or using command line shorthand (other variants).\n\nUsage:
     exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
     exo [options] create <cik> --type=client
     exo [options] create <cik> --type=dataport (--format=binary|boolean|float|integer|string)
@@ -255,7 +255,10 @@ Options:
     If only --write arguments are specified, the call is a write.
     If only --read arguments are specified, the call is a read.
     If both --write and --read arguments are specified, the hybrid
-        write/read API is used. Writes are executed before reads.''')
+        write/read API is used. Writes are executed before reads.'''),
+    ('activate', '''Activate a model-backed device, based on vendor name,
+    vendor model and serial number.\n\nUsage:
+     exo [options] activate <vendor> <model> <sn>''')
     ])
 
 # shared sections of documentation
@@ -1400,8 +1403,7 @@ class ExoData():
         headers = {'X-Exosite-CIK': cik,
                    'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'}
         url = self.url + '/onep:v1/stack/alias'
-        data = '&'.join(['='.join(t) for t in alias_values])
-        r = requests.post(url, headers=headers, data=data)
+        r = requests.post(url, headers=headers, data=alias_values)
         self.raise_for_status(r)
         return r.text
 
@@ -1410,8 +1412,7 @@ class ExoData():
                    'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
                    'Accept': 'application/x-www-form-urlencoded; charset=utf-8'}
         url = self.url + '/onep:v1/stack/alias?' + '&'.join(aliases)
-        data = '&'.join(['='.join(t) for t in alias_values])
-        r = requests.post(url, headers=headers, data=data)
+        r = requests.post(url, headers=headers, data=alias_values)
         self.raise_for_status(r)
         return r.text
 
@@ -1420,6 +1421,28 @@ class ExoData():
         r.raise_for_status()
         return r.text
 
+
+class ExoProvision():
+    '''Implements the Provision API
+    https://github.com/exosite/api/tree/master/provision'''
+
+    def __init__(self, url='http://m2.exosite.com'):
+        self.url = url
+
+    def raise_for_status(self, r):
+        try:
+            r.raise_for_status()
+        except Exception as ex:
+            raise ExoException(str(ex))
+
+    def activate(self, vendor, model, serialnumber):
+        headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+                   'Accept': 'application/x-www-form-urlencoded; charset=utf-8'}
+        url = self.url + '/provision/activate'
+        data = {'vendor': vendor, 'model': model, 'sn': serialnumber}
+        r = requests.post(url, headers=headers, data=data)
+        self.raise_for_status(r)
+        return r.text
 
 def parse_ts(s):
     return parse_ts_tuple(parser.parse(s).timetuple())
@@ -1735,6 +1758,12 @@ def handle_args(cmd, args):
             raise ExoException('--https, --port, and --debughttp are not supported for ip and data commands.')
         ed = ExoData(url='http://' + args['--host'])
 
+    if cmd in ['activate']:
+        if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
+            # TODO: support these
+            raise ExoException('--https, --port, and --debughttp are not supported for ip and data commands.')
+        ep = ExoProvision(url='http://' + args['--host'])
+
     if '<cik>' in args:
         cik = args['<cik>']
         if type(cik) is list:
@@ -1990,6 +2019,8 @@ def handle_args(cmd, args):
         elif len(writes) > 0:
             alias_values = get_alias_values(writes)
             ed.write(cik, alias_values)
+    elif cmd == 'activate':
+        pr(ep.activate(args['<vendor>'], args['<model>'], args['<sn>']))
     else:
         # search plugins
         handled = False

@@ -374,4 +374,6 @@ TODO
 - delete serial number when dropping device
 - add --howmany option to create command
 - tab completion for commands and shortcuts
-
+- add create command shorthand: "exo create float foo" to create a dataport of format float with alias and name both set to foo
+- add create clone support
+- add test for --tz option

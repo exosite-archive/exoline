@@ -6,7 +6,48 @@ Usage:
 Options:
     --update-scripts  Update any scripts that do not match what's on the filesystem
     --create          Create any resources that do not exist
-    --ids substitutes values for <% id %> when matching alias.'''
+    --ids substitutes values for <% id %> when matching alias.
+
+Specification files are in YAML format (a superset of JSON
+with more readable syntax and support for comments) and
+look like this:
+
+# Sensor spec
+dataports:
+    # names are created, but not compared
+    - name: Temperature
+    # aliases, type, and format are compared
+      alias: teststring
+      format: float
+    - name: LED Control
+      alias: led6
+      format: integer
+    # any dataports not listed but found in the client
+    # are ignored. The spec command does not delete things.
+
+scripts:
+    # by default, scripts are datarules with
+    # names and aliases set to the file name
+    - file: files/helloworld.lua
+    # you can also set them explicitly
+    - file: files/convertCelsius.lua
+      name: helloworld2 Name
+      # if <% id %> is embedded in aliases
+      # or script content, the --ids parameter must
+      # be passed in. The spec command then substitutes
+      # each ID. In this example, if the command was:
+      #
+      # $ exo spec mysensor sensorspec.yaml --ids=A,B
+      #
+      # ...then the spec command looks for *two* script datarules
+      # in mysensor would be expected, with aliases
+      # convertCelsiusA and convertCelsiusB. Additionally,
+      # any instances of <% id %> embedded in convertCelsius.lua
+      # file are substituted with A and B before being written
+      # to each script datarule.
+      #
+      alias: convertCelsius<% id %>
+'''
 import re
 import os
 
@@ -93,9 +134,9 @@ class Plugin():
                                         raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
 
                                     if format != info['description']['format']:
-                                            raise ExoException(
-                                                '{0} is a {1} but should be a {2}.'.format(
-                                                alias, info['basic']['type'], typ))
+                                        raise ExoException(
+                                            '{0} is a {1} but should be a {2}.'.format(
+                                            alias, info['description']['format'], format))
                                     #print(alias, resource_data, val)
                                     if 'initial' in res and len(val) == 0:
                                         if create:

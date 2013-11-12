@@ -1,6 +1,14 @@
 History
 =======
 
+0.4.1 (2013-11-11)
+------------------
+
+- add activate command
+- fix spec message for dataport format differences
+- add documentation of spec command yaml syntax
+- fix data write to handle urlencode characters (e.g. %)
+
 0.4.0 (2013-10-30)
 ------------------
 
