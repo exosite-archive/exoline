@@ -7,7 +7,7 @@ dataports:
       initial: my initial value 
     - alias: testint_units
       format: integer
-      unit: F
+      unit: °F
     - alias: testjson
       format: string/json
       initial: '{}'

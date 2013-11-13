@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Exoline test
    Tests exoline commands. Requires portalcik to be set in config.py.
 
@@ -12,6 +13,7 @@ from datetime import datetime
 import logging
 from unittest import TestCase
 import itertools
+import os
 
 from dateutil import parser
 
@@ -82,10 +84,10 @@ class TestRPC(TestCase):
     RE_RID = '[0-9a-f]{40}'
 
     def _logall(self, r):
-        self.l('stdout: {0}\nstdout length:{1}\nstderr: {2}\nstderr length:{3}'.format(abbrev(r.stdout),
-                                                                                       len(r.stdout),
-                                                                                       abbrev(r.stderr),
-                                                                                       len(r.stderr)))
+        self.l(u'stdout: {0}\nstdout length:{1}\nstderr: {2}\nstderr length:{3}'.format(abbrev(r.stdout),
+                                                                                        len(r.stdout),
+                                                                                        abbrev(r.stderr),
+                                                                                        len(r.stderr)))
 
     def _stdre(self, r, msg, search, match, stderr=False):
         std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
@@ -1073,11 +1075,30 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         meta_string = description['meta']
         self.assertFalse(len(meta_string) == 0)
         meta = json.loads(meta_string)
-        self.assertEqual(meta['datasource']['unit'], 'F', 'unit set correctly based on spec')
+        self.assertEqual(meta['datasource']['unit'], u'°F', 'unit set correctly based on spec')
 
         # test format content
+        r = rpc('read', cik, 'testjson', '--format=raw')
+        self.ok(r, 'read testjson initial value', match='{}')
 
         # TODO: test lua script templating
         # TODO: test that correct differences are reported. Change one thing
         # at a time, confirm report is correct, then confirm passing --create
         # resolves it.
+
+        # text --example script
+        r = rpc('drop', cik, '--all-children')
+        self.ok(r, 'drop children from test client')
+        r = rpc('spec', '--example')
+        example_spec = 'files/tmp_examplespec.yaml'
+        with open(example_spec, 'w') as f:
+            print(r.stdout)
+            f.write(r.stdout)
+        r = rpc('spec', cik, example_spec, '--ids=A,B')
+        self.ok(r, 'empty client does not match example spec', match='.+')
+        r = rpc('spec', cik, example_spec, '--create', '--ids=A,B')
+        self.ok(r, 'create from example spec')
+        r = rpc('spec', cik, example_spec, '--ids=A,B')
+        self.ok(r, 'client now matches example spec', match='')
+
+        os.remove(example_spec)

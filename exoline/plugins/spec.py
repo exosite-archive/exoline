@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''Determine whether a client matches a specification (beta)
 
 Usage:
@@ -27,20 +28,24 @@ class Plugin():
 # Example client specification file
 # Specification files are in YAML format (a superset of JSON
 # with more readable syntax and support for comments) and
-# look like this.
+# look like this. They may contain comments that begin
+# with a # sign.
 
 # list of dataports that must exist
 dataports:
+      # this the absolute minimum needed to specify a
+      # dataport.
+    - alias: mystring
       # names are created, but not compared
     - name: Temperature
       # aliases, type, and format are created
       # and compared
       alias: temp
       format: float
+      unit: °F
     - name: LED Control
       alias: led6
       format: integer
-      # name is not required, but alias is
     - alias: config
       # format should be string, and parseable JSON
       format: string/json
@@ -56,23 +61,22 @@ scripts:
     # names and aliases set to the file name
     - file: files/helloworld.lua
     # you can also set them explicitly
-    - file: files/convertCelsius.lua
-      name: helloworld2 Name
+    - file: files/convert.lua
       # if <% id %> is embedded in aliases
       # or script content, the --ids parameter must
-      # be passed in. The spec command then substitutes
-      # each ID. In this example, if the command was:
+      # be passed in. The spec command then expects
+      # a script or dataport resource per id passed, substituting
+      # each ID for <% id %>. In this example, if the command was:
       #
       # $ exo spec mysensor sensorspec.yaml --ids=A,B
       #
       # ...then the spec command looks for *two* script datarules
-      # in mysensor would be expected, with aliases
-      # convertCelsiusA and convertCelsiusB. Additionally,
-      # any instances of <% id %> embedded in convertCelsius.lua
-      # file are substituted with A and B before being written
-      # to each script datarule.
+      # in mysensor, with aliases convertA.lua and convertB.lua.
+      # Additionally, any instances of <% id %> in the content of
+      # convert.lua are substituted with A and B before being
+      # written to each script datarule.
       #
-      alias: convertCelsius<% id %>
+      alias: convert<% id %>.lua
 ''')
             return
 
@@ -105,6 +109,7 @@ scripts:
             reid = re.compile('<% *id *%>')
 
             def infoval(cik, alias):
+                '''Get info and latest value for a resource'''
                 return rpc._exomult(
                     cik,
                     [['info', {'alias': alias}, {'description': True, 'basic': True}],
@@ -149,7 +154,7 @@ scripts:
                                         format_content = None
                                     name = res['name'] if 'name' in res else alias
                                     if not exists and create:
-                                        print('Creating dataport with name: {0} alias: {1} format: {2}'.format(
+                                        print('Creating dataport with name: {0}, alias: {1}, format: {2}'.format(
                                             name, alias, format))
                                         rid = rpc.create_dataport(cik, format, name=name)
                                         rpc.map(cik, rid, alias)
@@ -165,31 +170,34 @@ scripts:
                                             '{0} is a {1} but should be a {2}.'.format(
                                             alias, info['description']['format'], format))
 
+                                    # check initial value
+                                    if 'initial' in res and len(val) == 0:
+                                        if create:
+                                            initialValue = template(res['initial'])
+                                            print('Writing initial value {0}'.format(initialValue))
+                                            rpc.write(cik, {'alias': alias}, initialValue)
+                                            # update values being validated
+                                            info, val = infoval(cik, alias)
+                                        else:
+                                            print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
+
                                     # check format content (e.g. json)
                                     if format_content == 'json':
                                         if format != 'string':
                                             raise ExoException(
-                                                'Invalid spec for {0}. json content type only applies to string.'.format(alias));
+                                                'Invalid spec for {0}. json content type only applies to string, not {1}.'.format(alias, format));
                                         if len(val) == 0:
-                                            print('Spec requires {0} be in json format, but it is empty.')
+                                            print('Spec requires {0} be in JSON format, but it is empty.'.format(alias))
                                         else:
                                             try:
-                                                obj = json.loads(val[0])
+                                                obj = json.loads(val[0][1])
                                             except:
-                                                print('Spec requires {0} be in JSON format, but it does not parse as JSON.')
+                                                print('Spec requires {0} be in JSON format, but it does not parse as JSON.'.format(alias))
                                     elif format_content is not None:
                                         raise ExoException(
                                             'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))
 
-
-                                    # check initial value
-                                    if 'initial' in res and len(val) == 0:
-                                        if create:
-                                            value = template(res['initial'])
-                                            print('Writing initial value {0}'.format(value))
-                                            rpc.write(cik, {'alias': alias}, value)
-                                        else:
-                                            print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
+                                    # check unit
                                     if 'unit' in res:
                                         meta_string = info['description']['meta']
                                         try:
@@ -203,7 +211,7 @@ scripts:
                                             new_desc = info['description'].copy()
                                             new_desc['meta'] = json.dumps(meta)
                                             rpc.update(cik, {'alias': alias}, new_desc)
-                                            print('unit value for {0} updated to {1}'.format(alias, meta['datasource']['unit']))
+                                            print(u'unit value for {0} updated to {1}'.format(alias, meta['datasource']['unit']))
 
                                         if meta is None:
                                             if create:
