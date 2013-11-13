@@ -1,12 +1,16 @@
 # Test spec
-
 dataports:
     - alias: teststring 
       format: string
     - alias: teststring_set<% id %>
       format: string
-    - alias: testint
+      initial: my initial value 
+    - alias: testint_units
       format: integer
+      unit: F
+    - alias: testjson
+      format: string/json
+      initial: '{}'
 
 scripts:
     - file: files/helloworld.lua

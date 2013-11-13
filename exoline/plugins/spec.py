@@ -2,29 +2,55 @@
 
 Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>]
+    exo [options] spec --example
 
 Options:
-    --update-scripts  Update any scripts that do not match what's on the filesystem
+    --update-scripts  Update any scripts that do not match what's
+                      on the filesystem
     --create          Create any resources that do not exist
-    --ids substitutes values for <% id %> when matching alias.
+    --ids substitutes values for <% id %> when matching alias
+    --example         Show an annotated example spec YAML file
+'''
 
-Specification files are in YAML format (a superset of JSON
-with more readable syntax and support for comments) and
-look like this:
+import re
+import os
+import json
 
-# Sensor spec
+import yaml
+
+class Plugin():
+    def command(self):
+        return 'spec'
+    def run(self, cmd, args, options):
+        if args['--example']:
+            print('''
+# Example client specification file
+# Specification files are in YAML format (a superset of JSON
+# with more readable syntax and support for comments) and
+# look like this.
+
+# list of dataports that must exist
 dataports:
-    # names are created, but not compared
+      # names are created, but not compared
     - name: Temperature
-    # aliases, type, and format are compared
-      alias: teststring
+      # aliases, type, and format are created
+      # and compared
+      alias: temp
       format: float
     - name: LED Control
       alias: led6
       format: integer
+      # name is not required, but alias is
+    - alias: config
+      # format should be string, and parseable JSON
+      format: string/json
+      # initial value (if no other value is read back)
+      initial: '{"text": "555-555-1234", "email": "jeff@555.com"}'
+
     # any dataports not listed but found in the client
     # are ignored. The spec command does not delete things.
 
+# list of script datarules that must exist
 scripts:
     # by default, scripts are datarules with
     # names and aliases set to the file name
@@ -47,16 +73,9 @@ scripts:
       # to each script datarule.
       #
       alias: convertCelsius<% id %>
-'''
-import re
-import os
+''')
+            return
 
-import yaml
-
-class Plugin():
-    def command(self):
-        return 'spec'
-    def run(self, cmd, args, options):
         cik = options['cik']
         rpc = options['rpc']
         ExoException = options['exception']
@@ -103,7 +122,7 @@ class Plugin():
                                     info, val = infoval(cik, alias)
                                 except rpc.RPCException, e:
                                     exists = False
-                                    print('Failed to get info and data from {0}.'.format(alias))
+                                    print('{0} not found.'.format(alias))
                                     if not create:
                                         print('Pass --create to create it')
                                         continue
@@ -122,6 +141,12 @@ class Plugin():
                                         continue
                                 elif typ == 'dataport':
                                     format = res['format'] if 'format' in res else 'string'
+                                    pieces = format.split('/')
+                                    if len(pieces) > 1:
+                                        format = pieces[0]
+                                        format_content = pieces[1]
+                                    else:
+                                        format_content = None
                                     name = res['name'] if 'name' in res else alias
                                     if not exists and create:
                                         print('Creating dataport with name: {0} alias: {1} format: {2}'.format(
@@ -130,14 +155,34 @@ class Plugin():
                                         rpc.map(cik, rid, alias)
                                         info, val = infoval(cik, alias)
 
+                                    # check type
                                     if info['basic']['type'] != typ:
                                         raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
 
+                                    # check format
                                     if format != info['description']['format']:
                                         raise ExoException(
                                             '{0} is a {1} but should be a {2}.'.format(
                                             alias, info['description']['format'], format))
-                                    #print(alias, resource_data, val)
+
+                                    # check format content (e.g. json)
+                                    if format_content == 'json':
+                                        if format != 'string':
+                                            raise ExoException(
+                                                'Invalid spec for {0}. json content type only applies to string.'.format(alias));
+                                        if len(val) == 0:
+                                            print('Spec requires {0} be in json format, but it is empty.')
+                                        else:
+                                            try:
+                                                obj = json.loads(val[0])
+                                            except:
+                                                print('Spec requires {0} be in JSON format, but it does not parse as JSON.')
+                                    elif format_content is not None:
+                                        raise ExoException(
+                                            'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))
+
+
+                                    # check initial value
                                     if 'initial' in res and len(val) == 0:
                                         if create:
                                             value = template(res['initial'])
@@ -145,12 +190,44 @@ class Plugin():
                                             rpc.write(cik, {'alias': alias}, value)
                                         else:
                                             print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
+                                    if 'unit' in res:
+                                        meta_string = info['description']['meta']
+                                        try:
+                                            meta = json.loads(meta_string)
+                                        except:
+                                            meta = None
+
+                                        def bad_unit_msg(s):
+                                            sys.stdout.write('spec expects unit for {0} to be {1}, but they are not.'.format(alias, res['unit']))
+                                        def update_meta(meta):
+                                            new_desc = info['description'].copy()
+                                            new_desc['meta'] = json.dumps(meta)
+                                            rpc.update(cik, {'alias': alias}, new_desc)
+                                            print('unit value for {0} updated to {1}'.format(alias, meta['datasource']['unit']))
+
+                                        if meta is None:
+                                            if create:
+                                                update_meta({'datasource':{'description':'','unit':res['unit']}})
+                                            else:
+                                                bad_unit_msg(', but found has no metadata at all. Pass --create to write metadata with unit.')
+                                        elif 'datasource' not in meta or 'unit' not in meta['datasource']:
+                                            if create:
+                                                meta.setdefault('datasource', {})
+                                                meta['datasource']['unit'] = res['unit']
+                                                update_meta(meta)
+                                            else:
+                                                bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.')
+                                        elif meta['datasource']['unit'] != res['unit']:
+                                            if create:
+                                                meta['datasource']['unit'] = res['unit']
+                                                update_meta(meta)
+                                            else:
+                                                bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
 
                                 elif typ == 'script':
                                     if 'file' not in res:
                                         raise ExoException('{0} is a script, so it needs a "file" key'.format(alias))
                                     name = res['name'] if 'name' in res else alias
-
 
                                     if not exists and create:
                                         rpc.upload_script([cik], res['file'], name=alias, create=True, filterfn=template)

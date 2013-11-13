@@ -852,137 +852,6 @@ class ExoRPC():
                     else:
                         self._print_node(rid, info, aliases, cli_args, own_spacer, islast, max_name)
 
-    def _uberlistingtree(self, cik, rid=None, stats={'calls': 0}):
-        '''Get something like this: {'rid': '<rid1>',
-                                     'type': 'client',
-                                     'children': [{'rid': '<rid2>',
-                                                   'type': 'dataport'}]}'''
-        types = ['client', 'dataport', 'datarule', 'dispatch']
-        # result tree
-        tree = {}
-        # generation 0 (self)
-        if rid is None:
-            rid, listing = self._exomult(cik, [['lookup', 'aliased', ''],
-                                               ['listing', types]])
-            stats['calls'] += 1
-        else:
-            # connect_as() is an awkward API. What advantage does it have
-            # over passing in an auth dict?
-            self.exo.connect_as(rid)
-            listing = self._exomult(cik, [['listing', types]])[0]
-            stats['calls'] += 1
-            self.exo.connect_as(None)
-
-        tree['rid'] = rid
-
-        # children should look like this:
-        # [{'type': 'client',
-        #   'rid': '<rid1>'},
-        #  {'type': 'dataport',
-        #   'rid': '<rid2>'}]
-        def children(listing):
-            return [{'type': type, 'rid': rid} for i, type in enumerate(types) for rid in listing[i]]
-        tree['children'] = children(listing)
-
-        for node in tree['children']:
-            if node['type'] == 'client':
-                subtree = self._uberlistingtree(cik, node['rid'], stats)
-                if 'children' not in node:
-                    node['children'] = []
-                node['children'] = subtree['children']
-
-        return tree
-
-
-    def _uberinfotree(self, cik):
-        '''Get all info for a cik and its children in a nested dict.
-        The basic unit is {'rid': '<rid>',
-                           'info': <info>,
-                           'children': {'client': [child1],
-                                        'dataport': [child2]}
-                                        }
-        where <info-with-children> is just the info object for that node
-        with the addition of 'children' key, which is a dict containing
-        more nodes. Here's an example return value:
-
-           {'rid': '<rid 0>',
-            'info': {'description': ...,
-                     'basic': ....,
-                     ...},
-            'children: [{'rid': '<rid 1>',
-                         'info': {'description': ...,
-                                  'basic': ...},
-                         'children': [{'rid': '<rid 2>',
-                                       'info': {'description': ...,
-                                                'basic': ...},
-                                       'children: [] } } },
-                                      {'rid': '<rid 3>',
-                                       'info': {'description': ...,
-                                                'basic': ...},
-                                       'children': {} } }] } }
-
-           As it's building this nested dict, it calls nodeidfn with the rid and info
-           (w/o children) for each node.
-        '''
-        types = ['client', 'dataport', 'datarule', 'dispatch']
-
-        # result tree
-        tree = {}
-
-        # list of result nodes to fill out in the next generation
-        nextgen = []
-
-        # generation 0 (self)
-        rid, listing = self._exomult(cik, [['lookup', 'aliased', ''],
-                                           ['listing', types]])
-
-        tree['rid'] = rid
-
-        # children should look like this:
-        # [{'type': 'client',
-        #   'rid': '<rid1>'},
-        #  {'type': 'dataport',
-        #   'rid': '<rid2>'}]
-        def children(listing):
-            return [{'type': type, 'rid': rid} for i, type in enumerate(types) for rid in listing[i]]
-        tree['children'] = children(listing)
-
-        # calculate next generation list
-        # TODO: paging
-        nextgen = tree['children']
-
-        while len(nextgen) > 0:
-            print(len(nextgen))
-            curgen = nextgen
-            nextgen = []
-
-            cmds = []
-            for node in curgen:
-                if node['type'] == 'client':
-                    cmds.append(['listing', types])
-
-            if len(cmds) > 0:
-                result = self._exomult(cik, cmds)
-            else:
-                break
-
-            result_idx = 0
-            for i, node in enumerate(curgen):
-                # TODO: add results to members of curgen, and update nextgen
-                if node['type'] == 'client':
-                    r = result[result_idx]
-                    node['children'] = children(r)
-                    result_idx += 1
-                    nextgen.extend(node['children'])
-
-        return tree
-
-    def ubertree(self, cik):
-        #pprint(self._uberinfotree(cik)) #, options={'key': True, 'basic': True}))
-        stats = {'calls': 0}
-        pprint(self._uberlistingtree(cik, rid=None, stats=stats)) #, options={'key': True, 'basic': True}))
-        print('calls: {0}'.format(stats['calls']))
-
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(cik,
             types=['client', 'dataport', 'datarule', 'dispatch'])
@@ -1763,8 +1632,7 @@ def handle_args(cmd, args):
             # TODO: support these
             raise ExoException('--https, --port, and --debughttp are not supported for ip and data commands.')
         ep = ExoProvision(url='http://' + args['--host'])
-
-    if '<cik>' in args:
+    if '<cik>' in args and args['<cik>'] is not None:
         cik = args['<cik>']
         if type(cik) is list:
             cik = [er.lookup_shortcut(c) for c in cik]
@@ -1961,8 +1829,6 @@ def handle_args(cmd, args):
     # special commands
     elif cmd == 'tree':
         er.tree(cik, cli_args=args)
-    #elif cmd == 'ut':
-    #    er.ubertree(cik)
     elif cmd == 'script':
         # cik is a list of ciks
         er.upload_script(cik, args['<script-file>'],

@@ -1,6 +1,12 @@
 History
 =======
 
+0.4.2 (2013-11-13)
+------------------
+
+- spec command support for units and json format validation
+- example spec file 
+
 0.4.1 (2013-11-11)
 ------------------
 

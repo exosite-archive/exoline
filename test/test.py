@@ -263,6 +263,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 res.rid,
                 '--limit={0}'.format(limit),
                 '--timeformat=unix')
+        log.debug(r.stdout)
         lines = r.stdout.split('\n')
         vread = []
         for line in lines:
@@ -1031,12 +1032,52 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def spec_test(self):
         '''Spec command'''
         cik = self.client.cik()
-        spec = 'files/spec.yml'
+        spec = 'files/spec.yaml'
         r = rpc('spec', cik, spec)
         self.notok(r, 'no ids specified')
         r = rpc('spec', cik, spec, '--ids=1,2')
-        self.ok(r, 'specify ids, client doesn''t match', search='Failed to get info and data')
+        self.ok(r, 'specify ids, client doesn''t match', search='not found')
         r = rpc('spec', cik, spec, '--ids=1,2', '--create')
         self.ok(r, 'create dataports and scripts based on spec')
         r = rpc('spec', cik, spec, '--ids=1,2')
         self.ok(r, 'create dataports and scripts based on spec', match='')
+
+        # test correct number of children of each type
+        r = rpc('listing', cik, '--type=dataport', '--type=datarule')
+        self.ok(r, 'get listing of client')
+        dataports, datarules = json.loads(r.stdout)
+        self.assertEqual(len(dataports), 5, 'created correct number of dataports')
+        self.assertEqual(len(datarules), 3, 'created correct number of datarules')
+
+        # test initial value
+        r = rpc('read', cik, 'teststring_set1', '--format=raw')
+        self.ok(r, 'check that initial value was created', match='my initial value')
+
+        # test no initial value
+        r = rpc('read', cik, 'teststring', '--format=raw')
+        self.ok(r, 'check that no initial value was created', match='')
+
+        # test format
+        r = rpc('info', cik, 'teststring', '--include=description')
+        self.ok(r, 'got info for teststring')
+        description = json.loads(r.stdout)['description']
+        self.assertEqual(description['format'], 'string', 'teststring is a string')
+
+        # test format
+        r = rpc('info', cik, 'testint_units', '--include=description')
+        self.ok(r, 'got info for testint_units')
+        description = json.loads(r.stdout)['description']
+        self.assertEqual(description['format'], 'integer', 'testints_units is an integer')
+
+        # test unit
+        meta_string = description['meta']
+        self.assertFalse(len(meta_string) == 0)
+        meta = json.loads(meta_string)
+        self.assertEqual(meta['datasource']['unit'], 'F', 'unit set correctly based on spec')
+
+        # test format content
+
+        # TODO: test lua script templating
+        # TODO: test that correct differences are reported. Change one thing
+        # at a time, confirm report is correct, then confirm passing --create
+        # resolves it.
