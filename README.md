@@ -318,12 +318,14 @@ passed on the command line, plus an optional string stdin parameter.
 
 ```python
 
+import sys
 from exoline import exo
 
 result = exo.run(['exo', 
                   'script', 
                   'scripts/myscript.lua', 
-                  'ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa'])
+                  'ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa'],
+                  stdin=sys.stdin)
 
 print(result.exitcode)    # 0
 print(result.stdout)      # Updated script RID: c9c6daf83c44e44985aa724fea683f14eda71fac
