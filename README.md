@@ -379,4 +379,5 @@ TODO
 - add create command shorthand: "exo create float foo" to create a dataport of format float with alias and name both set to foo
 - add create clone support
 - add test for --tz option
+- default stdin to sys.stdin in run()
 
