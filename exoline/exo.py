@@ -1996,6 +1996,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     except KeyboardInterrupt:
         if args['--debug']:
             raise
+
     return 0
 
 
@@ -2006,24 +2007,33 @@ class CmdResult():
         self.stderr = stderr
 
 
-def run(argv, stdin):
+def run(argv, stdin=None):
     '''Runs an exoline command, translating stdin from
     string and stdout to string. Returns a CmdResult.'''
-    if type(stdin) is str:
-        sio = StringIO.StringIO()
-        sio.write(stdin)
-        sio.seek(0)
-        stdin = sio
-    stdout = StringIO.StringIO()
-    stderr = StringIO.StringIO()
+    old = {'stdin': sys.stdin, 'stdout': sys.stdout, 'stderr': sys.stderr}
+    try:
+        if stdin is None:
+            stdin = sys.stdin
+        elif type(stdin) is str:
+            sio = StringIO.StringIO()
+            sio.write(stdin)
+            sio.seek(0)
+            stdin = sio
+        stdout = StringIO.StringIO()
+        stderr = StringIO.StringIO()
 
-    # unicode causes problems in docopt
-    argv = [str(a) for a in argv]
-    exitcode = cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
-    stdout.seek(0)
-    stdout = stdout.read().strip()  # strip to get rid of leading newline
-    stderr.seek(0)
-    stderr = stderr.read().strip()
+        # unicode causes problems in docopt
+        argv = [str(a) for a in argv]
+        exitcode = cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
+        stdout.seek(0)
+        stdout = stdout.read().strip()  # strip to get rid of leading newline
+        stderr.seek(0)
+        stderr = stderr.read().strip()
+    finally:
+        # restore stdout, stderr, stdin
+        sys.stdin = old['stdin']
+        sys.stdout = old['stdout']
+        sys.stderr = old['stderr']
     return CmdResult(exitcode, stdout, stderr)
 
 

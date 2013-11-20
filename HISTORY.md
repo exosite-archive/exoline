@@ -1,6 +1,12 @@
 History
 =======
 
+0.4.3 (2013-11-19)
+------------------
+
+- make second parameter to exo.cmd optional
+- restore std* so stdout is visible after calling exo.cmd()
+
 0.4.2 (2013-11-13)
 ------------------
 
