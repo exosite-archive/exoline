@@ -153,7 +153,7 @@ Options:
     --exclude=<key list>
                    comma separated list of info keys to include and exclude.
                    Available keys are aliases, basic, counts, description,
-                   key, shares, storage, subscribers, tags, usage. If omitted,
+                   key, shares, subscribers, tags, usage. If omitted,
                    all available keys are returned.'''),
     ('update',
         '''Update a resource from a json description passed on stdin.\n\nUsage:
@@ -209,7 +209,6 @@ Options:
     ('tree', '''Display a resource's descendants.\n\nUsage:
     exo [options] tree [--verbose] <cik>
 
-    --counts       show item counts (from info.storage.counts)
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]'''),
     #('ut', '''Display a tree as fast as possible\n\nUsage:
     #exo [options] ut <cik>'''),
@@ -767,8 +766,6 @@ class ExoRPC():
                 ridopt = True
         add_opt(ridopt, 'rid', rid)
         add_opt('--verbose', 'unit', units)
-        if 'storage' in info and 'count' in info['storage']:
-            add_opt(True, 'count', info['storage']['count'])
 
         if 'format' in info['description']:
             desc = info['description']['format'] + ' ' + typ + ' ' + id
@@ -791,9 +788,6 @@ class ExoRPC():
         if isroot:
             # usage and counts are slow, so omit them if we don't need them
             exclude = ['usage']
-            if not cli_args['--counts']:
-                exclude.append('counts')
-                exclude.append('storage')
             info_options = self.make_info_options(exclude=exclude)
             #pprint(info_options)
             # todo: combine these (maybe also the _listing_with_info function
@@ -1180,8 +1174,7 @@ class ExoRPC():
                   ['basic', 'status'],
                   ['basic', 'modified'],
                   ['basic', 'activity'],
-                  ['data'],
-                  ['storage']]
+                  ['data']]
 
         if nochildren:
             info1 = self.info(cik1)
@@ -1235,7 +1228,6 @@ class ExoRPC():
                                                         'description',
                                                         'key',
                                                         'shares',
-                                                        'storage',
                                                         'subscribers',
                                                         'tags',
                                                         'usage']

@@ -180,7 +180,7 @@ class TestRPC(TestCase):
         self.assertEqual(r.exitcode, 0, 'create succeeds')
 
         rid = re.match('rid: ({0})'.format(self.RE_RID), r.stdout).groups()[0]
-        ri = rpc('info', res.parentcik, rid, '--exclude=count,usage')
+        ri = rpc('info', res.parentcik, rid, '--exclude=counts,usage')
         info = json.loads(ri.stdout.strip())
         res.created(rid, info)
 
@@ -849,7 +849,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def info_test(self):
         '''Info command'''
         allkeys = ['aliases', 'basic', 'counts', 'description', 'key',
-                   'shares', 'storage', 'subscribers', 'tags', 'usage']
+                   'shares', 'subscribers', 'tags', 'usage']
         cik = self.client.parentcik
         rid = self.client.rid
 

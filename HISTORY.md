@@ -1,6 +1,12 @@
 History
 =======
 
+0.5.0 (2013-11-21)
+------------------
+
+- remove --counts option to tree command
+- remove storage option to the info command
+
 0.4.3 (2013-11-19)
 ------------------
 
