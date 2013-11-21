@@ -79,9 +79,7 @@ See 'exo <command> --help' for more information on a specific command.
 Examples
 --------
 
-Here are a few things you can do with Exoline.
-
-* Show a tree view of a client
+Show a tree view of a client
 
 ```bash
 $ exo --discreet tree 5de0cfcf7b5bed2ea7a801234567890123456789
@@ -92,7 +90,7 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
 
 ```
 
-* Upload a Lua script
+Upload a Lua script
 
 ```bash
 
@@ -100,7 +98,7 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
     Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
 ```
 
-* Monitor output of a script
+Monitor output of a script
 
 ```bash
 
@@ -112,21 +110,21 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
     line 23: Writing 4458.755987_-09317.538945"
 ```
 
-* Write raw data
+Write raw data
 
 ```bash
 
     $ exo write e469e336ff9c8ed9176bc05ed7fa40daaaaaaaa gps-raw --value=4458.755987,N,09317.538945,W
 ```
 
-* Record a bunch of data without timestamps
+Record a bunch of data without timestamps
 
 ```bash
 
     $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
 ```
 
-* Dump data from multiple dataports to CSV
+Dump data from multiple dataports to CSV
 
 ```bash
 
@@ -140,7 +138,7 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
       316705 alldata.csv
 ```
 
-* Make a copy of a device
+Make a copy of a device
 
 ```bash
 
@@ -148,7 +146,7 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
     cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
 ```
 
-* Create a new client or resource
+Create a new client or resource
 
 ```bash
 
@@ -156,7 +154,7 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
     rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 ```
 
-* Show differences between two clients
+Show differences between two clients
 
 ```bash
 
