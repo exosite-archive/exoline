@@ -6,7 +6,7 @@ Exoline is command line tool for working with the Exosite [One Platform](http://
 Installation 
 ------------
 
-To install the latest released version of exoline from PyPI:
+To install the latest released version of Exoline from PyPI:
 
 ```bash
 
@@ -23,6 +23,21 @@ Alternatively, you can install from source:
 ```
 
 Depending on your Python environment, you may need to run the above install commands as sudo. [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments and avoid needing to use sudu for package installs.
+
+
+Installation - Windows
+----------------------
+
+To install Exoline to a Windows machine that does not already have Python, follow these instructions first.
+
+Install [Python](http://www.python.org/getit/).
+
+Install [setuptools](https://pypi.python.org/pypi/setuptools).
+
+Install [pip](https://pypi.python.org/pypi/pip).
+
+Then follow the standard installation instructions above (`pip install exoline`).
+
 
 Usage
 -----
@@ -375,4 +390,7 @@ TODO
 - add create command shorthand: "exo create float foo" to create a dataport of format float with alias and name both set to foo
 - add create clone support
 - add test for --tz option
-
+- add support for Portals cache invalidation: --portals to turn on cache invalidation, --portals_host to set the portals host
+  per: https://i.exosite.com/display/DEVPORTALS/Portals+Cache+Invalidation+API
+- add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
+- add windows executable to build and test
