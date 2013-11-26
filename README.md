@@ -374,6 +374,12 @@ To run the tests, install the packages in test/requirements.txt, and then type:
     $ source test.sh
 ```
 
+Version History
+---------------
+
+For information about what features are in what Exoline versions look [here](HISTORY.md).
+
+
 TODO
 ----
 
