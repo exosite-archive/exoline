@@ -10,7 +10,7 @@ To install the latest released version of Exoline from PyPI:
 
 ```bash
 
-    $ pip install exoline
+    # pip install exoline
 ```
 
 Alternatively, you can install from source:
