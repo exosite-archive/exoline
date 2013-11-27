@@ -11,7 +11,7 @@ Commands:
 {{ command_list }}
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
-  --port=<port>        OneP port. Default is $EXO_HOST or 80
+  --port=<port>        OneP port. Default is $EXO_HOST or 443
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
@@ -1612,7 +1612,8 @@ def pretty_print(arg):
 
 
 def handle_args(cmd, args):
-    er = ExoRPC(host=args['--host'], port=args['--port'], https=not args['--http'], httptimeout=args["--httptimeout"])
+    use_https = False if args['--http'] == True else True
+    er = ExoRPC(host=args['--host'], port=args['--port'], https=use_https, httptimeout=args["--httptimeout"])
     if cmd in ['ip', 'data']:
         if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
             # TODO: support these

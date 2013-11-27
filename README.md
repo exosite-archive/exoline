@@ -24,6 +24,7 @@ Alternatively, you can install from source:
 
 Depending on your Python environment, you may need to run the above install commands as sudo. [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments and avoid needing to use sudu for package installs.
 
+Exoline currently supports Python 2.6-2.7.
 
 Installation - Windows
 ----------------------
@@ -78,7 +79,7 @@ Commands:
 
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
-  --port=<port>        OneP port. Default is $EXO_HOST or 80
+  --port=<port>        OneP port. Default is $EXO_HOST or 443
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
