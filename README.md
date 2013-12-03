@@ -31,7 +31,7 @@ Depending on your Python environment, you may need to run the above install comm
 
 [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments and avoid needing to use sudu for package installs.
 
-Exoline currently supports Python 2.6 and 2.7.
+Exoline supports Python 2.6 and above. (Tests run against 2.6, 2.7, 3.2 and 3.3.)
 
 Installation - Windows
 ----------------------

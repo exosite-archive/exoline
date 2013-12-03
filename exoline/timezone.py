@@ -115,15 +115,15 @@ def detect_timezone():
 def _detect_timezone_etc_timezone():
   if os.path.exists("/etc/timezone"):
     try:
-      tz = file("/etc/timezone").read().strip()
+      tz = open("/etc/timezone").read().strip()
       try:
         return pytz.timezone(tz)
-      except (IOError, pytz.UnknownTimeZoneError), ei:
+      except (IOError, pytz.UnknownTimeZoneError) as ei:
         warnings.warn("Your /etc/timezone file references a timezone (%r) that"
                       " is not valid (%r)." % (tz, ei))
 
     # Problem reading the /etc/timezone file
-    except IOError, eo:
+    except IOError as eo:
       warnings.warn("Could not access your /etc/timezone file: %s" % eo)
 
 
@@ -131,7 +131,7 @@ def _detect_timezone_etc_localtime():
   matches = []
   if os.path.exists("/etc/localtime"):
     localtime = pytz.tzfile.build_tzinfo("/etc/localtime",
-                                         file("/etc/localtime"))
+                                         open("/etc/localtime", "rb"))
 
     # See if we can find a "Human Name" for this..
     for tzname in pytz.all_timezones:

@@ -11,7 +11,7 @@ Commands:
 {{ command_list }}
 Options:
   --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
-  --port=<port>        OneP port. Default is $EXO_HOST or 443
+  --port=<port>        OneP port. Default is $EXO_PORT or 443
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
@@ -26,6 +26,7 @@ See 'exo <command> --help' for more information on a specific command.
 
 # Copyright (c) 2013, Exosite, LLC
 # All rights reserved
+from __future__ import unicode_literals
 import sys
 import os
 import json
@@ -38,7 +39,11 @@ from pprint import pprint
 from operator import itemgetter
 import logging
 from collections import defaultdict
-import StringIO
+
+import six
+from six import StringIO
+from six import iteritems
+
 import pytz
 # python 2.6 support
 try:
@@ -308,7 +313,8 @@ for k in cmd_doc:
 
 
 class ExolineOnepV1(onep.OnepV1):
-    '''Subclass that re-adds deprecated commands used by Portals'''
+    '''Subclass that re-adds deprecated commands needed for devices created
+    in Portals before the commands were deprecated.'''
     def comment(self, cik, rid, visibility, comment, defer=False):
         return self._call('comment', cik, [rid, visibility, comment], defer)
 
@@ -772,15 +778,15 @@ class ExoRPC():
         else:
             desc = typ + ' ' + id
 
-        print(u'{0}{1}{2} {3} {4}'.format(
+        print('{0}{1}{2} {3} {4}'.format(
             spacer,
             name,
             ' ' * (max_name - len(name)),
             desc,
-            u'' if len(opt) == 0 else u'({0})'.format(u', '.join(
-                [u'{0}: {1}'.format(k, v) for k, v in opt.iteritems()]))))
+            '' if len(opt) == 0 else '({0})'.format(', '.join(
+                ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
 
-    def tree(self, cik, aliases=None, cli_args={}, spacer=u'', level=0, info_options={}):
+    def tree(self, cik, aliases=None, cli_args={}, spacer='', level=0, info_options={}):
         '''Print a tree of entities in OneP'''
         max_level = int(cli_args['--level'])
         # print root node
@@ -817,26 +823,26 @@ class ExoRPC():
             # _listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
             #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
         except pyonep.exceptions.OnePlatformException:
-            print(spacer + u"  └─listing for {0} failed. Is info['basic']['status'] == 'expired'?".format(cik))
+            print(spacer + "  └─listing for {0} failed. info['basic']['status'] is probably not valid.".format(cik))
         else:
             # calculate the maximum length name of all children
-            lengths = [len(l[1]['description']['name']) for i in range(len(types)) for l in listing[i].iteritems()]
+            lengths = [len(l[1]['description']['name']) for i in range(len(types)) for l in iteritems(listing[i])]
             max_name = 0 if len(lengths) == 0 else max(lengths)
 
             # print everything
             for t_idx, t in enumerate(types):
-                typelisting = OrderedDict(sorted(listing[t_idx].iteritems(), key=lambda x: x[1]['description']['name'].lower()))
+                typelisting = OrderedDict(sorted(iteritems(listing[t_idx]), key=lambda x: x[1]['description']['name'].lower()))
                 islast_nonempty_type = (t_idx == len(types) - 1) or (all(len(x) == 0 for x in listing[t_idx + 1:]))
                 for rid_idx, rid in enumerate(typelisting):
                     info = typelisting[rid]
                     islastoftype = rid_idx == len(typelisting) - 1
                     islast = islast_nonempty_type and islastoftype
                     if islast:
-                        child_spacer = spacer + u'    '
-                        own_spacer   = spacer + u'  └─'
+                        child_spacer = spacer + '    '
+                        own_spacer   = spacer + '  └─'
                     else:
-                        child_spacer = spacer + u'  │ '
-                        own_spacer   = spacer + u'  ├─'
+                        child_spacer = spacer + '  │ '
+                        own_spacer   = spacer + '  ├─'
 
                     if t == 'client':
                         next_cik = info['key']
@@ -1339,9 +1345,9 @@ def format_time(sec):
                     [60, 'm']]
     text = ""
     for s, label in intervals:
-        if sec >= s and sec / s > 0:
-            text = "{0} {1}{2}".format(text, sec / s, label)
-            sec -= s * (sec / s)
+        if sec >= s and sec // s > 0:
+            text = "{0} {1}{2}".format(text, sec // s, label)
+            sec -= s * (sec // s)
     if sec > 0:
         text += " {0}s".format(sec)
     return text.strip()
@@ -1369,7 +1375,7 @@ def spark(numbers, empty_val=None):
 
     for number in numbers:
         if number == empty_val:
-            out.append(u" ")
+            out.append(" ")
         else:
             if (number - min_value) != 0 and value_scale != 0:
                 scaled_value = (number - min_value) / value_scale
@@ -1387,7 +1393,11 @@ def spark(numbers, empty_val=None):
             elif num == 7:
                 num = 6
 
-            out.append(unichr(int(9601 + num)))
+            if six.PY3:
+                unichrfn = chr
+            else:
+                unichrfn = unichr
+            out.append(unichrfn(int(9601 + num)))
 
     return ''.join(out)
 
@@ -1410,7 +1420,7 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
 
     if len(data) == 0:
         return
-    intervals = [data[i - 1][0] - data[i][0] for i in xrange(1, len(data))]
+    intervals = [data[i - 1][0] - data[i][0] for i in range(1, len(data))]
     intervals = sorted(intervals)
 
     if numstd is not None:
@@ -1434,9 +1444,12 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
         else:
             critfn = lambda x: bin_min <= x and x <= bin_max
         #bins.append((bin_min, bin_max, float(
-        #    sum(itertools.imap(critfn, intervals)))))
-        bins.append(float(
-            sum(itertools.imap(critfn, intervals))))
+        #    sum(map(critfn, intervals)))))
+        if six.PY3:
+            mapfn = map
+        else:
+            mapfn = itertools.imap
+        bins.append(float(sum(mapfn(critfn, intervals))))
 
     if False:
         # debug
@@ -1504,19 +1517,19 @@ def read_cmd(er, cik, rids, args):
         # default to UTC
         try:
             tz = timezone.localtz()
-        except pytz.UnknownTimeZoneError, e:
-            print "Unable to detect local time zone, defaulting to UTC"
+        except pytz.UnknownTimeZoneError as e:
+            print('Unable to detect local time zone, defaulting to UTC')
             tz = pytz.utc
     else:
         try:
             tz = pytz.timezone(tz)
-        except Exception, e:
+        except Exception as e:
             #default to utc if error
-            print "Error parsing --tz option, defaulting to local timezone"
+            print('Error parsing --tz option, defaulting to local timezone')
             try:
                 tz = timezone.localtz()
-            except pytz.UnknownTimeZoneError, e:
-                print "Unable to detect local time zone, defaulting to UTC"
+            except pytz.UnknownTimeZoneError as e:
+                print('Unable to detect local time zone, defaulting to UTC')
                 tz = pytz.utc
 
     recarriage = re.compile('\r(?!\\n)')
@@ -2007,13 +2020,13 @@ def run(argv, stdin=None):
     try:
         if stdin is None:
             stdin = sys.stdin
-        elif type(stdin) is str:
-            sio = StringIO.StringIO()
+        elif type(stdin) is str or type(stdin) is unicode:
+            sio = StringIO()
             sio.write(stdin)
             sio.seek(0)
             stdin = sio
-        stdout = StringIO.StringIO()
-        stderr = StringIO.StringIO()
+        stdout = StringIO()
+        stderr = StringIO()
 
         # unicode causes problems in docopt
         argv = [str(a) for a in argv]

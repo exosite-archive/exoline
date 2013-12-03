@@ -5,6 +5,8 @@
 Usage:
   test.py <portal-cik>
 """
+from __future__ import unicode_literals
+
 import sys
 import json
 import re
@@ -15,6 +17,8 @@ from unittest import TestCase
 import itertools
 import os
 
+import six
+from six import iteritems
 from dateutil import parser
 
 from exoline import exo
@@ -22,8 +26,9 @@ from exoline.exo import ExolineOnepV1
 from exoline import timezone
 
 try:
-    from testconfig import config
-except:
+    from .testconfig import config
+except Exception as ex:
+    print(ex)
     sys.stderr.write(
         "Copy testconfig.py.template to testconfig.py and set portalcik.")
 
@@ -37,7 +42,7 @@ log = logging.getLogger("run")
 
 def abbrev(s, length=1000):
     if len(s) > length:
-        s = s[:length / 2] + '\n...\n' + s[-length / 2:]
+        s = s[:length // 2] + '\n...\n' + s[-length // 2:]
     return s
 
 
@@ -84,19 +89,19 @@ class TestRPC(TestCase):
     RE_RID = '[0-9a-f]{40}'
 
     def _logall(self, r):
-        self.l(u'stdout: {0}\nstdout length:{1}\nstderr: {2}\nstderr length:{3}'.format(abbrev(r.stdout),
-                                                                                        len(r.stdout),
-                                                                                        abbrev(r.stderr),
-                                                                                        len(r.stderr)))
+        self.l('stdout: {0}\nstdout length:{1}\nstderr: {2}\nstderr length:{3}'.format(abbrev(r.stdout),
+                                                                                       len(r.stdout),
+                                                                                       abbrev(r.stderr),
+                                                                                       len(r.stderr)))
 
     def _stdre(self, r, msg, search, match, stderr=False):
         std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
         if search is not None:
             self.assertTrue(re.search(search, std, flags=re.MULTILINE) is not None,
-                            msg + u' - failed to find in {1}:\n{2}\nsearch expression:\n{0}\nlengths: {3} (search) vs. {4} ({1})'.format(search, label, std, len(search), len(std)))
+                            msg + ' - failed to find in {1}:\n{2}\nsearch expression:\n{0}\nlengths: {3} (search) vs. {4} ({1})'.format(search, label, std, len(search), len(std)))
         if match is not None:
             self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
-                            msg + u' - failed to match in {1}:\n{2}\nmatch expression:\n{0}\nlengths: {3} (match) vs. {4} ({1})'.format(match, label, std, len(match), len(std)))
+                            msg + ' - failed to match in {1}:\n{2}\nmatch expression:\n{0}\nlengths: {3} (match) vs. {4} ({1})'.format(match, label, std, len(match), len(std)))
 
     def notok(self, response, msg='', search=None, match=None):
         if response.exitcode == 0:
@@ -187,7 +192,7 @@ class TestRPC(TestCase):
         # test that description contains what we asked for
         self.l('''Comparing keys.
 Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
-        for k, v in res.desc.iteritems():
+        for k, v in iteritems(res.desc):
             if k != 'limits':
                 self.l(k)
                 self.assertTrue(
@@ -232,7 +237,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             # TODO: handle scientific notation from OneP '-0.00001'
         # TODO: handle binary dataport
 
-        self._createMultiple(cik, stdports.values())
+        self._createMultiple(cik, list(stdports.values()))
 
         return stdports
 
@@ -287,7 +292,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def write_test(self):
         '''Write command'''
         stdports = self._createDataports()
-        for res in stdports.values():
+        for res in list(stdports.values()):
             if res.type == 'dataport' and res.write is not None:
                 # test writing
                 if res.write is not None:
@@ -375,7 +380,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                     stdin='\n'.join(['{0},{1}'.format(t, v) for t, v in res.record]))
             self.assertTrue(r.exitcode == 0)
 
-        for r in stdports.values():
+        for r in list(stdports.values()):
             if r.type == 'dataport':
                 _recordAndVerify(r, one_by_one)
                 _flush(r)
@@ -422,7 +427,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Map/unmap commands'''
         stdports = self._createDataports()
         cik = self.client.cik()
-        for res in stdports.values():
+        for res in list(stdports.values()):
             alias = 'foo'
             r = rpc('info', cik, alias)
             self.assertTrue(r.exitcode == 1, "info with alias should not work")
@@ -622,7 +627,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                               {'format': 'integer', 'name': 'int_port'}))
         # note that this measures seconds that the dataport existed, so time
         # must pass for the value to go up.
-        time.sleep(1)
+        time.sleep(4)
         r = rpc('usage', self.client.cik(), '--start=10/1/2012T13:04:05', '--end=now')
         dp2 = parse_metric('dataport', r)
         self.l("dp1: {0} dp2: {1}".format(dp1, dp2))
@@ -865,12 +870,12 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             r = rpc('info', cik, rid, '--include={0}'.format(k))
             self.ok(r, 'info --include={0}'.format(k))
             info = json.loads(r.stdout)
-            self.assertTrue(info.keys() == [k], 'only requested key was returned')
+            self.assertTrue(list(info.keys()) == [k], 'only requested key was returned')
             # exclude each key
             r = rpc('info', cik, rid, '--exclude={0}'.format(k))
             self.ok(r, 'info --exclude={0}'.format(k))
             info = json.loads(r.stdout)
-            keys = info.keys()
+            keys = list(info.keys())
             self.assertTrue(len(keys) == len(allkeys) - 1 and k not in keys)
 
     def read_test(self):
@@ -1075,7 +1080,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         meta_string = description['meta']
         self.assertFalse(len(meta_string) == 0)
         meta = json.loads(meta_string)
-        self.assertEqual(meta['datasource']['unit'], u'°F', 'unit set correctly based on spec')
+        self.assertEqual(meta['datasource']['unit'], '°F', 'unit set correctly based on spec')
 
         # test format content
         r = rpc('read', cik, 'testjson', '--format=raw')
@@ -1093,7 +1098,11 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         example_spec = 'files/tmp_examplespec.yaml'
         with open(example_spec, 'w') as f:
             print(r.stdout)
-            f.write(r.stdout)
+            if six.PY3:
+                out = r.stdout
+            else:
+                out = r.stdout.encode('utf8')
+            f.write(out)
         r = rpc('spec', cik, example_spec, '--ids=A,B')
         self.ok(r, 'empty client does not match example spec', match='.+')
         r = rpc('spec', cik, example_spec, '--create', '--ids=A,B')

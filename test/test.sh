@@ -24,15 +24,20 @@ function mydeactivate() {
 
 if [ "$1" == "full" ];
 then
+    #set -e
     # Python versions to test
-    declare -a pythons=('python2.6' 'python2.7')
+    declare -a pythons=('python2.6' 'python2.7' 'python3.2' 'python3.3')
 
     for i in "${pythons[@]}"
     do
         echo Setting up $i environment...
         mydeactivate
         rm -rf ve$i
-        virtualenv --quiet -p /usr/bin/$i ve$i
+        PYTHON=/usr/bin/$i
+        if [ ! -f "$PYTHON" ]; then
+            PYTHON=/usr/local/bin/$i
+        fi
+        virtualenv --quiet -p $PYTHON ve$i || exit 1
         source ve$i/bin/activate 
         pushd ..
         python setup.py install

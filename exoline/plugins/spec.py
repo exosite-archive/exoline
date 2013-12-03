@@ -13,6 +13,7 @@ Options:
     --example         Show an annotated example spec YAML file
 '''
 
+from __future__ import unicode_literals
 import re
 import os
 import json
@@ -125,7 +126,7 @@ scripts:
                                 exists = True
                                 try:
                                     info, val = infoval(cik, alias)
-                                except rpc.RPCException, e:
+                                except rpc.RPCException as e:
                                     exists = False
                                     print('{0} not found.'.format(alias))
                                     if not create:
@@ -211,7 +212,7 @@ scripts:
                                             new_desc = info['description'].copy()
                                             new_desc['meta'] = json.dumps(meta)
                                             rpc.update(cik, {'alias': alias}, new_desc)
-                                            print(u'unit value for {0} updated to {1}'.format(alias, meta['datasource']['unit']))
+                                            print('unit value for {0} updated to {1}'.format(alias, meta['datasource']['unit']))
 
                                         if meta is None:
                                             if create:
@@ -241,7 +242,7 @@ scripts:
                                         rpc.upload_script([cik], res['file'], name=alias, create=True, filterfn=template)
                                         continue
 
-                                    with open(res['file']) as scriptfile:
+                                    with open(res['file'], 'rb') as scriptfile:
                                         script_spec = template(scriptfile.read().decode('utf8'))
                                         script_svr = info['description']['rule']['script']
                                         if script_svr != script_spec:
