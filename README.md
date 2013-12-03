@@ -9,14 +9,12 @@ Installation
 To install the latest released version of Exoline from PyPI:
 
 ```
-
     # pip install exoline
 ```
 
 Alternatively, you can install from source:
 
 ```
-
     $ git clone git://github.com/exosite/exoline
     $ cd exoline
     $ python setup.py install
@@ -25,7 +23,6 @@ Alternatively, you can install from source:
 Depending on your Python environment, you may need to run the above install commands as sudo. You can avoid this by installing locally:
 
 ```
-
     $ pip install --user exoline
 ```
 
