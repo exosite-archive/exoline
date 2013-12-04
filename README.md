@@ -371,13 +371,21 @@ If you see an issue with exoline or want to suggest an improvement, please log i
 Test
 ----
 
-To run the tests, install the packages in test/requirements.txt, and then type:
+To run the tests the packages in test/requirements.txt, and then type:
 
-```bash
-
-    $ cd test
-    $ source test.sh
 ```
+    $ cd test
+    $ pip install -r requirements.txt
+
+    # run tests in current Python environment
+    $ ./test.sh
+
+    # test multiple version of Python (requires virtualenv)
+    $ ./test.sh full
+```
+
+For more on testing (including running individual tests), see [test/README.md](test/README.md).
+
 
 Version History
 ---------------
