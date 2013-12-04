@@ -1581,7 +1581,7 @@ def read_cmd(er, cik, rids, args):
             elif timeformat == 'iso8601':
                 dt = datetime.isoformat(pytz.utc.localize(datetime.utcfromtimestamp(timestamp)))
             else:
-                dt = tz.localize(datetime.fromtimestamp(timestamp))
+                dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).astimezone(tz)
 
             row = {'timestamp': str(dt)}
 
