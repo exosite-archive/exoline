@@ -20,12 +20,6 @@ Alternatively, you can install from source:
     $ python setup.py install
 ```
 
-Depending on your Python environment, you may need to run the above install commands as sudo. You can avoid this by installing locally:
-
-```
-    $ pip install --user exoline
-```
-
 [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments and avoid needing to use sudu for package installs.
 
 Exoline supports Python 2.6 and above. (Tests run against 2.6, 2.7, 3.2 and 3.3.)
