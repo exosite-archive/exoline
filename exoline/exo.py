@@ -164,24 +164,7 @@ Options:
         '''Update a resource from a json description passed on stdin.\n\nUsage:
     exo [options] update <cik> (<rid> - | -)
 
-
-Restrictions:
-
-Client Description
-    Resource limits must not be lowered below current use level. Resources must be
-    dropped prior to lowering the limits. For daily limits, those may be lowered at
-    any point and take immediate affect.
-
-Dataport Description
-    Format must not be changed.
-
-Datarule Descriptions
-    Format must not be changed.
-
-Dispatch Description
-    If the recipient or method is changed, and the recipient/method combination has
-    never been used before, then further dispatches will be halted until a
-    Validation Request is sent and validated.'''),
+    For details see https://github.com/exosite/api/tree/master/rpc#update'''),
     ('map',
         '''Add an alias to a resource.\n\nUsage:
     exo [options] map <cik> <rid> <alias>'''),
@@ -277,7 +260,7 @@ doc_replace = {
     If timezone information is omitted, local timezone is assumed
     If time part is omitted, it assumes 00:00:00.
     To report through the present time, omit --end or pass --end=now''',
-    '{{ helpoption }}': '''-h --help  Show this screen.''',
+    '{{ helpoption }}': '''    -h --help  Show this screen.''',
 }
 
 # load plugins. use timezone because this file may be running
