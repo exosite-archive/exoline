@@ -33,15 +33,14 @@ Exoline supports Python 2.6 and above. (Tests run against 2.6, 2.7, 3.2 and 3.3.
 Installation - Windows
 ----------------------
 
-To install Exoline to a Windows machine that does not already have Python, follow these instructions first.
+First install the prerequisites:
 
-Install [Python](http://www.python.org/getit/).
+- [Python](http://www.python.org/getit/)
 
-Install [setuptools](https://pypi.python.org/pypi/setuptools).
+- [pip-win](https://sites.google.com/site/pydatalog/python/pip-for-windows) (Alternatively, you can install [setuptools](https://pypi.python.org/pypi/setuptools) and [pip](https://pypi.python.org/pypi/pip) individually. pip-win just saves a few steps.)
 
-Install [pip](https://pypi.python.org/pypi/pip).
-
-Then follow the standard installation instructions above (`pip install exoline`).
+After pip-win is installed, a GUI window will pop up. To install Exoline, type
+`pip install exoline` into the command field.
 
 
 Usage
