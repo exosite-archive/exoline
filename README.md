@@ -6,13 +6,15 @@ Exoline is command line tool for working with the Exosite [One Platform](http://
 Installation 
 ------------
 
-To install the latest released version of Exoline from PyPI:
+Install the latest released version of Exoline from PyPI. 
 
 ```
     # pip install exoline
 ```
 
-Alternatively, you can install from source:
+(pip is a package manager for Python. To get pip, try `sudo easy_install pip` in Mac OS X,  `sudo apt-get install python-setuptools;sudo easy_install pip` in Ubuntu. See below for Windows instructions.)
+
+Here's how to install from source:
 
 ```
     $ git clone git://github.com/exosite/exoline
