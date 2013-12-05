@@ -95,7 +95,7 @@ Examples
 Show a tree view of a client
 
 ```bash
-$ exo --discreet tree 5de0cfcf7b5bed2ea7a801234567890123456789
+$ exo tree 5de0cfcf7b5bed2ea7a801234567890123456789
 Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
   ├─device1 client cik: 970346d3391a2d8c703a01234567890123456789 (aliases: [u'device1'])
   └─device2 client cik: e95052ab56f985e6807d01234567890123456789 (aliases: [u'device2'])
