@@ -1111,3 +1111,24 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'client now matches example spec', match='')
 
         os.remove(example_spec)
+
+    def portals_cache_test(self):
+        '''portals cache invalidation command'''
+        cik = self.client.cik()
+
+        # just make sure the command doesnt throw an exception
+        r = rpc('--portals',
+                'create',
+                cik,
+                '--type=client',
+                '--name=portals_invisible')
+        self.ok(r, 'create a client with the --portals option')
+        # TODO: verify client displays in Portals
+
+        r = rpc('portals', 'cache', cik)
+        self.ok(r, 'invalidate cache, no procedure specified')
+
+        # TODO: test each procedure
+        r = rpc('portals', 'cache', cik, 'create', 'update')
+        self.ok(r, 'invalidate cache, a couple of procedures specified')
+

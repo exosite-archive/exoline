@@ -27,10 +27,12 @@ then
     #set -e
     # Python versions to test
     declare -a pythons=('python2.6' 'python2.7' 'python3.2' 'python3.3')
+    #declare -a pythons=('python3.2' 'python3.3')
 
     for i in "${pythons[@]}"
     do
         echo Setting up $i environment...
+        unset PYTHONPATH
         mydeactivate
         rm -rf ve$i
         PYTHON=/usr/bin/$i

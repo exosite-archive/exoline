@@ -18,13 +18,15 @@ Options:
   --debug              Show info like stack traces
   --debughttp          Turn on debug level logging in pyonep
   --discreet           Obfuscate RIDs in stdout and stderr
+  --portals            Notify Portals of any actions taken so results
+                       of command may immediately be seen in Portals
   -h --help            Show this screen
   -v --version         Show version
 
 See 'exo <command> --help' for more information on a specific command.
 """
 
-# Copyright (c) 2013, Exosite, LLC
+# Copyright (c) 2014, Exosite, LLC
 # All rights reserved
 from __future__ import unicode_literals
 import sys
@@ -245,7 +247,16 @@ Options:
         write/read API is used. Writes are executed before reads.'''),
     ('activate', '''Activate a model-backed device, based on vendor name,
     vendor model and serial number.\n\nUsage:
-     exo [options] activate <vendor> <model> <sn>''')
+    exo [options] activate <vendor> <model> <sn>'''),
+    ('portals', '''Invalidate the Portals cache for a CIK by telling Portals
+a particular procedure was taken on client identified by <cik>.\n\nUsage:
+    exo [options] portals cache <cik> [<procedure> ...]
+
+    <procedure> may be any of:
+    activate, create, deactivate, drop, map, revoke, share, unmap, update
+
+    If no <procedure> is specified, Exoline tells Portals that all of the
+    procedures on the list were performed on the client.''')
     ])
 
 # shared sections of documentation
@@ -315,7 +326,8 @@ class ExoRPC():
                  port=None,
                  httptimeout=60,
                  https=False,
-                 verbose=True):
+                 verbose=True,
+                 logrequests=False):
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
@@ -324,7 +336,8 @@ class ExoRPC():
                                httptimeout=httptimeout,
                                https=https,
                                agent="Exoline {0}".format(__version__),
-                               reuseconnection=True)
+                               reuseconnection=True,
+                               logrequests=logrequests)
 
     def _raise_for_response(self, isok, response, call=None):
         if not isok:
@@ -1294,6 +1307,30 @@ class ExoProvision():
         self.raise_for_status(r)
         return r.text
 
+class ExoPortals():
+    '''Provides access to the Portals APIs'''
+
+    # list of procedures that may be included in invalidation data
+    writeprocs = ['activate',
+                  'create',
+                  'deactivate',
+                  'drop',
+                  'map',
+                  'revoke',
+                  'share',
+                  'unmap',
+                  'update']
+
+    def invalidate(self, data):
+        # This API is documented here:
+        # https://i.exosite.com/display/DEVPORTALS/Portals+Cache+Invalidation+API
+        data = json.dumps(data)
+        #print('invalidating with ' + data)
+        response = requests.post('https://portals.exosite.com/api/portals/v1/cache',
+                                 data=data)
+        response.raise_for_status
+
+
 def parse_ts(s):
     return parse_ts_tuple(parser.parse(s).timetuple())
 
@@ -1605,11 +1642,13 @@ def pretty_print(arg):
     print(json.dumps(arg, sort_keys=True, indent=4, separators=(',', ': ')))
 
 
-
-
 def handle_args(cmd, args):
-    use_https = False if args['--http'] == True else True
-    er = ExoRPC(host=args['--host'], port=args['--port'], https=use_https, httptimeout=args["--httptimeout"])
+    use_https = False if args['--http'] is True else True
+    er = ExoRPC(host=args['--host'],
+                port=args['--port'],
+                https=use_https,
+                httptimeout=args['--httptimeout'],
+                logrequests=args['--portals'])
     if cmd in ['ip', 'data']:
         if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
             # TODO: support these
@@ -1619,8 +1658,12 @@ def handle_args(cmd, args):
     if cmd in ['activate']:
         if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
             # TODO: support these
-            raise ExoException('--https, --port, and --debughttp are not supported for ip and data commands.')
+            raise ExoException('--https, --port, and --debughttp are not supported for provisioning commands.')
         ep = ExoProvision(url='http://' + args['--host'])
+
+    if cmd in ['portals'] or args['--portals']:
+        portals = ExoPortals()
+
     if '<cik>' in args and args['<cik>'] is not None:
         cik = args['<cik>']
         if type(cik) is list:
@@ -1654,244 +1697,267 @@ def handle_args(cmd, args):
     else:
         pr = plain_print
 
-    if cmd == 'read':
-        read_cmd(er, cik, rids, args)
-    elif cmd == 'write':
-        er.write(cik, rids[0], args['--value'])
-    elif cmd == 'record':
-        interval = args['--interval']
-        if interval is None:
-            entries = []
-            # split timestamp, value
-            has_errors = False
-            if args['-']:
-                headers = ['timestamp', 'value']
-                dr = csv.DictReader(sys.stdin, headers)
-                for row in dr:
-                    # TODO: handle something other than unix timestamps
-                    entries.append([int(row['timestamp']), row['value']])
-            else:
-                tvalues = args['--value']
-                reentry = re.compile('(-?\d+),(.*)')
-                for tv in tvalues:
-                    match = reentry.match(tv)
-                    if match is None:
-                        try:
-                            t, v = tv.split(',')
-                            t = parse_ts(t)
-                            entries.append([t, v])
-                        except Exception:
-                            sys.stderr.write(
-                                'Line not in <timestamp>,<value> format: {0}'.format(tv))
-                            has_errors = True
-                    else:
-                        g = match.groups()
+    try:
+        if cmd == 'read':
+            read_cmd(er, cik, rids, args)
+        elif cmd == 'write':
+            er.write(cik, rids[0], args['--value'])
+        elif cmd == 'record':
+            interval = args['--interval']
+            if interval is None:
+                entries = []
+                # split timestamp, value
+                has_errors = False
+                if args['-']:
+                    headers = ['timestamp', 'value']
+                    dr = csv.DictReader(sys.stdin, headers)
+                    for row in dr:
                         # TODO: handle something other than unix timestamps
-                        entries.append([int(g[0]), g[1]])
+                        entries.append([int(row['timestamp']), row['value']])
+                else:
+                    tvalues = args['--value']
+                    reentry = re.compile('(-?\d+),(.*)')
+                    for tv in tvalues:
+                        match = reentry.match(tv)
+                        if match is None:
+                            try:
+                                t, v = tv.split(',')
+                                t = parse_ts(t)
+                                entries.append([t, v])
+                            except Exception:
+                                sys.stderr.write(
+                                    'Line not in <timestamp>,<value> format: {0}'.format(tv))
+                                has_errors = True
+                        else:
+                            g = match.groups()
+                            # TODO: handle something other than unix timestamps
+                            entries.append([int(g[0]), g[1]])
 
-            if has_errors or len(entries) == 0:
-                raise ExoException("Problems with input.")
+                if has_errors or len(entries) == 0:
+                    raise ExoException("Problems with input.")
+                else:
+                    er.record(cik, rids[0], entries)
             else:
-                er.record(cik, rids[0], entries)
-        else:
+                if args['-']:
+                    values = [v.strip() for v in sys.stdin.readlines()]
+                else:
+                    values = args['--value']
+                interval = int(interval)
+                if interval <= 0:
+                    raise ExoException("--interval must be positive")
+                er.record_backdate(cik, rids[0], interval, values)
+        elif cmd == 'create':
+            typ = args['--type']
+            ridonly = args['--ridonly']
+            cikonly = args['--cikonly']
+            if ridonly and cikonly:
+                raise ExoException('--ridonly and --cikonly are mutually exclusive')
             if args['-']:
-                values = [v.strip() for v in sys.stdin.readlines()]
+                s = sys.stdin.read()
+                try:
+                    desc = json.loads(s)
+                except Exception as ex:
+                    raise ExoException(ex)
+                rid = er.create(cik,
+                                type=typ,
+                                desc=desc,
+                                name=args['--name'])
+            elif typ == 'client':
+                rid = er.create_client(cik,
+                                    name=args['--name'])
+            elif typ == 'dataport':
+                rid = er.create_dataport(cik,
+                                        args['--format'],
+                                        name=args['--name'])
             else:
-                values = args['--value']
-            interval = int(interval)
-            if interval <= 0:
-                raise ExoException("--interval must be positive")
-            er.record_backdate(cik, rids[0], interval, values)
-    elif cmd == 'create':
-        typ = args['--type']
-        ridonly = args['--ridonly']
-        cikonly = args['--cikonly']
-        if ridonly and cikonly:
-            raise ExoException('--ridonly and --cikonly are mutually exclusive')
-        if args['-']:
+                raise ExoException('No defaults for {0}.'.format(args['--type']))
+            if ridonly:
+                pr(rid)
+            elif cikonly:
+                print(er.info(cik, rid, cikonly=True))
+            else:
+                pr('rid: {0}'.format(rid))
+                if typ == 'client':
+                    # for convenience, look up the cik
+                    print('cik: {0}'.format(er.info(cik, rid, cikonly=True)))
+            if args['--alias'] is not None:
+                er.map(cik, rid, args['--alias'])
+                if not ridonly:
+                    print("alias: {0}".format(args['--alias']))
+        elif cmd == 'update':
             s = sys.stdin.read()
             try:
                 desc = json.loads(s)
             except Exception as ex:
                 raise ExoException(ex)
-            rid = er.create(cik,
-                            type=typ,
-                            desc=desc,
-                            name=args['--name'])
-        elif typ == 'client':
-            rid = er.create_client(cik,
-                                   name=args['--name'])
-        elif typ == 'dataport':
-            rid = er.create_dataport(cik,
-                                     args['--format'],
-                                     name=args['--name'])
-        else:
-            raise ExoException('No defaults for {0}.'.format(args['--type']))
-        if ridonly:
-            pr(rid)
-        elif cikonly:
-            print(er.info(cik, rid, cikonly=True))
-        else:
-            pr('rid: {0}'.format(rid))
-            if typ == 'client':
-                # for convenience, look up the cik
-                print('cik: {0}'.format(er.info(cik, rid, cikonly=True)))
-        if args['--alias'] is not None:
-            er.map(cik, rid, args['--alias'])
-            if not ridonly:
-                print("alias: {0}".format(args['--alias']))
-    elif cmd == 'update':
-        s = sys.stdin.read()
-        try:
-            desc = json.loads(s)
-        except Exception as ex:
-            raise ExoException(ex)
-        pr(er.update(cik, rids[0], desc=desc))
-    elif cmd == 'map':
-        er.map(cik, rids[0], args['<alias>'])
-    elif cmd == 'unmap':
-        er.unmap(cik, args['<alias>'])
-    elif cmd == 'lookup':
-        # look up by cik or alias
-        cik_to_find = args['--cik']
-        if cik_to_find is not None:
-            cik_to_find = er.lookup_shortcut(cik_to_find)
-            rid = er.lookup_rid(cik, cik_to_find)
-            if rid is not None:
-                pr(rid)
-        else:
-            alias = args['<alias>']
-            if alias is None:
-                alias = ""
-            pr(er.lookup(cik, alias))
-    elif cmd == 'drop':
-        if args['--all-children']:
-            er.drop_all_children(cik)
-        else:
-            if len(rids) == 0:
-                raise ExoException("<rid> is required")
-            er.drop(cik, rids)
-    elif cmd == 'listing':
-        types = args['--type']
-        if len(types) == 0:
-            types = ['client', 'dataport', 'datarule', 'dispatch']
-        listing = er.listing(cik, types)
-        if args['--plain']:
-            for l in listing:
-                for rid in listing[0]:
-                    print(rid)
-        else:
-            pr(json.dumps(listing))
-    elif cmd == 'info':
-        include = args['--include']
-        include = [] if include is None else [key.strip()
-                                              for key in include.split(',')]
-        exclude = args['--exclude']
-        exclude = [] if exclude is None else [key.strip()
-                                              for key in exclude.split(',')]
+            pr(er.update(cik, rids[0], desc=desc))
+        elif cmd == 'map':
+            er.map(cik, rids[0], args['<alias>'])
+        elif cmd == 'unmap':
+            er.unmap(cik, args['<alias>'])
+        elif cmd == 'lookup':
+            # look up by cik or alias
+            cik_to_find = args['--cik']
+            if cik_to_find is not None:
+                cik_to_find = er.lookup_shortcut(cik_to_find)
+                rid = er.lookup_rid(cik, cik_to_find)
+                if rid is not None:
+                    pr(rid)
+            else:
+                alias = args['<alias>']
+                if alias is None:
+                    alias = ""
+                pr(er.lookup(cik, alias))
+        elif cmd == 'drop':
+            if args['--all-children']:
+                er.drop_all_children(cik)
+            else:
+                if len(rids) == 0:
+                    raise ExoException("<rid> is required")
+                er.drop(cik, rids)
+        elif cmd == 'listing':
+            types = args['--type']
+            if len(types) == 0:
+                types = ['client', 'dataport', 'datarule', 'dispatch']
+            listing = er.listing(cik, types)
+            if args['--plain']:
+                for l in listing:
+                    for rid in listing[0]:
+                        print(rid)
+            else:
+                pr(json.dumps(listing))
+        elif cmd == 'info':
+            include = args['--include']
+            include = [] if include is None else [key.strip()
+                                                for key in include.split(',')]
+            exclude = args['--exclude']
+            exclude = [] if exclude is None else [key.strip()
+                                                for key in exclude.split(',')]
 
-        options = er.make_info_options(include, exclude)
-        info = er.info(cik,
-                       rids[0],
-                       options=options,
-                       cikonly=args['--cikonly'],
-                       recursive=args['--recursive'])
-        if args['--pretty']:
-            pr(info)
+            options = er.make_info_options(include, exclude)
+            info = er.info(cik,
+                        rids[0],
+                        options=options,
+                        cikonly=args['--cikonly'],
+                        recursive=args['--recursive'])
+            if args['--pretty']:
+                pr(info)
+            else:
+                # output json
+                pr(json.dumps(info))
+        elif cmd == 'flush':
+            er.flush(cik, rids)
+        elif cmd == 'usage':
+            allmetrics = ['client',
+                        'dataport',
+                        'datarule',
+                        'dispatch',
+                        'email',
+                        'http',
+                        'sms',
+                        'xmpp']
+
+            start, end = get_startend(args)
+            er.usage(cik, rids[0], allmetrics, start, end)
+        # special commands
+        elif cmd == 'tree':
+            er.tree(cik, cli_args=args)
+        elif cmd == 'script':
+            # cik is a list of ciks
+            er.upload_script(cik, args['<script-file>'],
+                            name=args['--name'],
+                            recursive=args['--recursive'],
+                            create=args['--create'])
+        elif cmd == 'spark':
+            days = int(args['--days'])
+            end = parse_ts_tuple(datetime.now().timetuple())
+            start = parse_ts_tuple((datetime.now() - timedelta(days=days)).timetuple())
+            numstd = args['--stddev']
+            numstd = int(numstd) if numstd is not None else None
+            show_intervals(er, cik, rids[0], start, end, limit=1000000, numstd=numstd)
+        elif cmd == 'copy':
+            destcik = args['<destination-cik>']
+            newrid, newcik = er.copy(cik, destcik)
+            if args['--cikonly']:
+                pr(newcik)
+            else:
+                pr('cik: ' + newcik)
+        elif cmd == 'diff':
+            if sys.version_info < (2, 7):
+                raise ExoException('diff command requires Python 2.7 or above')
+
+            diffs = er.diff(cik,
+                            args['<cik2>'],
+                            full=args['--full'],
+                            nochildren=args['--no-children'])
+            if diffs is not None:
+                print(diffs)
+        elif cmd == 'ip':
+            pr(ed.ip())
+        elif cmd == 'data':
+            reads = args['--read']
+            writes = args['--write']
+            def get_alias_values(writes):
+                # TODO: support values with commas
+                alias_values = []
+                re_assign = re.compile('(.*),(.*)')
+                for w in writes:
+                    if w.count(',') > 1:
+                        raise ExoException('Values with commas not supported yet.')
+                    m = re_assign.match(w)
+                    if m is None or len(m.groups()) != 2:
+                        raise ExoException("Bad alias assignment format")
+                    alias_values.append(m.groups())
+                return alias_values
+
+            if len(reads) > 0 and len(writes) > 0:
+                alias_values = get_alias_values(writes)
+                print(ed.writeread(cik, alias_values, reads))
+            elif len(reads) > 0:
+                print(ed.read(cik, reads))
+            elif len(writes) > 0:
+                alias_values = get_alias_values(writes)
+                ed.write(cik, alias_values)
+        elif cmd == 'activate':
+            pr(ep.activate(args['<vendor>'], args['<model>'], args['<sn>']))
+        elif cmd == 'portals':
+
+            procedures = args['<procedure>']
+            if len(procedures) == 0:
+                procedures = ExoPortals.writeprocs
+            else:
+                unknownprocs = []
+                for p in procedures:
+                    if p not in ExoPortals.writeprocs:
+                        unknownprocs.append(p)
+                if len(unknownprocs) > 0:
+                    raise ExoException('Unknown procedure(s) {0}'.format(','.join(unknownprocs)))
+            data = {'auth': {'cik': cik}, 'calls':[{'procedure': p, 'arguments': [], 'id': i} for i, p in enumerate(procedures)]}
+            portals.invalidate(data)
+
         else:
-            # output json
-            pr(json.dumps(info))
-    elif cmd == 'flush':
-        er.flush(cik, rids)
-    elif cmd == 'usage':
-        allmetrics = ['client',
-                      'dataport',
-                      'datarule',
-                      'dispatch',
-                      'email',
-                      'http',
-                      'sms',
-                      'xmpp']
-
-        start, end = get_startend(args)
-        er.usage(cik, rids[0], allmetrics, start, end)
-    # special commands
-    elif cmd == 'tree':
-        er.tree(cik, cli_args=args)
-    elif cmd == 'script':
-        # cik is a list of ciks
-        er.upload_script(cik, args['<script-file>'],
-                         name=args['--name'],
-                         recursive=args['--recursive'],
-                         create=args['--create'])
-    elif cmd == 'spark':
-        days = int(args['--days'])
-        end = parse_ts_tuple(datetime.now().timetuple())
-        start = parse_ts_tuple((datetime.now() - timedelta(days=days)).timetuple())
-        numstd = args['--stddev']
-        numstd = int(numstd) if numstd is not None else None
-        show_intervals(er, cik, rids[0], start, end, limit=1000000, numstd=numstd)
-    elif cmd == 'copy':
-        destcik = args['<destination-cik>']
-        newrid, newcik = er.copy(cik, destcik)
-        if args['--cikonly']:
-            pr(newcik)
-        else:
-            pr('cik: ' + newcik)
-    elif cmd == 'diff':
-        if sys.version_info < (2, 7):
-            raise ExoException('diff command requires Python 2.7 or above')
-
-        diffs = er.diff(cik,
-                        args['<cik2>'],
-                        full=args['--full'],
-                        nochildren=args['--no-children'])
-        if diffs is not None:
-            print(diffs)
-    elif cmd == 'ip':
-        pr(ed.ip())
-    elif cmd == 'data':
-        reads = args['--read']
-        writes = args['--write']
-        def get_alias_values(writes):
-            # TODO: support values with commas
-            alias_values = []
-            re_assign = re.compile('(.*),(.*)')
-            for w in writes:
-                if w.count(',') > 1:
-                    raise ExoException('Values with commas not supported yet.')
-                m = re_assign.match(w)
-                if m is None or len(m.groups()) != 2:
-                    raise ExoException("Bad alias assignment format")
-                alias_values.append(m.groups())
-            return alias_values
-
-        if len(reads) > 0 and len(writes) > 0:
-            alias_values = get_alias_values(writes)
-            print(ed.writeread(cik, alias_values, reads))
-        elif len(reads) > 0:
-            print(ed.read(cik, reads))
-        elif len(writes) > 0:
-            alias_values = get_alias_values(writes)
-            ed.write(cik, alias_values)
-    elif cmd == 'activate':
-        pr(ep.activate(args['<vendor>'], args['<model>'], args['<sn>']))
-    else:
-        # search plugins
-        handled = False
-        for plugin in plugins:
-            if cmd in plugin.command():
-                options = {'cik': cik, 'rpc': er, 'exception': ExoException}
-                try:
-                    options['data'] = ed
-                except NameError:
-                    # no problem
-                    pass
-                plugin.run(cmd, args, options)
-                handled = True
-                break
-        if not handled:
-            raise ExoException("Command not handled")
+            # search plugins
+            handled = False
+            for plugin in plugins:
+                if cmd in plugin.command():
+                    options = {'cik': cik, 'rpc': er, 'exception': ExoException}
+                    try:
+                        options['data'] = ed
+                    except NameError:
+                        # no problem
+                        pass
+                    plugin.run(cmd, args, options)
+                    handled = True
+                    break
+            if not handled:
+                raise ExoException("Command not handled")
+    finally:
+        if args['--portals']:
+            for req in er.exo.loggedrequests():
+                procs = [c['procedure'] for c in req['calls']]
+                # if operation will invalidate the Portals cache...
+                if len([p for p in procs if p in ExoPortals.writeprocs]) > 0:
+                    portals.invalidate(req)
 
 
 class DiscreetFilter(object):

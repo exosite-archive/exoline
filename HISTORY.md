@@ -1,6 +1,12 @@
 History
 =======
 
+0.5.2 (2013-12-08)
+------------------
+
+- added --portals options and portals command for cache invalidation,
+  so Portals and Exoline can stay in sync
+
 0.5.1 (2013-12-02)
 ------------------
 
