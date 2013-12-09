@@ -321,6 +321,26 @@ Help
 
 For help, run each command with -h from the command line.
 
+Portals
+-------
+
+Portals caches One Platform data, so changes made in Exoline may take up to 15 minutes to show up in Portals. You can work around this by passing `--clearcache` (or `-c`). This option tells Exoline to clear the relevent cached information in Portals.
+
+```
+$ exo --clearcache create <cik> --type=client
+```
+
+If you're using Portals on a different server, pass `--portals` to specify that server.
+
+```
+exo --clearcache --portals=https://myportals.com create <cik> --type=dataport --format=string
+```
+
+It's also possible to invalidate the cache directly.
+
+```
+$ exo portals clearcache <cik>
+```
 
 Usage as a Library
 ------------------
