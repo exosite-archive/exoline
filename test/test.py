@@ -1117,18 +1117,33 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         cik = self.client.cik()
 
         # just make sure the command doesnt throw an exception
-        r = rpc('--portals',
+        r = rpc('--clearcache',
                 'create',
                 cik,
                 '--type=client',
-                '--name=portals_invisible')
-        self.ok(r, 'create a client with the --portals option')
+                '--name=portals_visible')
+        self.ok(r, 'create a client and clear portals cache')
         # TODO: verify client displays in Portals
 
-        r = rpc('portals', 'cache', cik)
+        r = rpc('-c',
+                '--portals=https://weaver.exosite.com',
+                'create',
+                cik,
+                '--type=client',
+                '--name=portals_visible2')
+        self.ok(r, 'create a client and clear portals cache with portals server specified')
+        # TODO: verify client displays in Portals
+
+        r = rpc('portals', 'clearcache', cik)
         self.ok(r, 'invalidate cache, no procedure specified')
 
         # TODO: test each procedure
-        r = rpc('portals', 'cache', cik, 'create', 'update')
+        r = rpc('portals', 'clearcache', cik, 'create', 'update')
         self.ok(r, 'invalidate cache, a couple of procedures specified')
+
+        r = rpc('--portals=https://weaver.exosite.com', 'portals', 'clearcache', cik, 'drop')
+        self.ok(r, 'invalidate cache portals server specified')
+
+        r = rpc('--portals=https://portals.exosite.comm', 'portals', 'clearcache', cik, 'create', 'update')
+        self.notok(r, 'invalid portals server specified')
 

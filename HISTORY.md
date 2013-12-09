@@ -1,10 +1,15 @@
 History
 =======
 
-0.5.2 (2013-12-08)
+0.6.0 (2013-12-09)
 ------------------
 
-- added --portals options and portals command for cache invalidation,
+- make portals server customizable, e.g., for use with sandbox
+
+0.5.2 (2013-12-09)
+------------------
+
+- add --portals options and portals command for cache invalidation,
   so Portals and Exoline can stay in sync
 
 0.5.1 (2013-12-02)

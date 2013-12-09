@@ -10,7 +10,7 @@ Usage:
 Commands:
 {{ command_list }}
 Options:
-  --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
+  --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
   --port=<port>        OneP port. Default is $EXO_PORT or 443
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS (deprecated, HTTPS is default)
@@ -18,8 +18,8 @@ Options:
   --debug              Show info like stack traces
   --debughttp          Turn on debug level logging in pyonep
   --discreet           Obfuscate RIDs in stdout and stderr
-  --portals            Notify Portals of any actions taken so results
-                       of command may immediately be seen in Portals
+  -c --clearcache     Invalidate Portals cache after running command
+  --portals=<server>   Portals server [default: https://portals.exosite.com]
   -h --help            Show this screen
   -v --version         Show version
 
@@ -250,7 +250,7 @@ Options:
     exo [options] activate <vendor> <model> <sn>'''),
     ('portals', '''Invalidate the Portals cache for a CIK by telling Portals
 a particular procedure was taken on client identified by <cik>.\n\nUsage:
-    exo [options] portals cache <cik> [<procedure> ...]
+    exo [options] portals clearcache <cik> [<procedure> ...]
 
     <procedure> may be any of:
     activate, create, deactivate, drop, map, revoke, share, unmap, update
@@ -1321,14 +1321,23 @@ class ExoPortals():
                   'unmap',
                   'update']
 
+    def __init__(self, portalsserver='https://portals.exosite.com'):
+        self.portalsserver = portalsserver
+
     def invalidate(self, data):
         # This API is documented here:
         # https://i.exosite.com/display/DEVPORTALS/Portals+Cache+Invalidation+API
         data = json.dumps(data)
         #print('invalidating with ' + data)
-        response = requests.post('https://portals.exosite.com/api/portals/v1/cache',
-                                 data=data)
-        response.raise_for_status
+        try:
+            response = requests.post(self.portalsserver + '/api/portals/v1/cache',
+                                     data=data)
+        except Exception as ex:
+            raise ExoException('Failed to connect to ' + self.portalsserver)
+        try:
+            response.raise_for_status
+        except Exception as ex:
+            raise ExoException('Bad status from Portals cache invalidate API call: ' + ex)
 
 
 def parse_ts(s):
@@ -1648,7 +1657,7 @@ def handle_args(cmd, args):
                 port=args['--port'],
                 https=use_https,
                 httptimeout=args['--httptimeout'],
-                logrequests=args['--portals'])
+                logrequests=args['--clearcache'])
     if cmd in ['ip', 'data']:
         if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
             # TODO: support these
@@ -1661,8 +1670,8 @@ def handle_args(cmd, args):
             raise ExoException('--https, --port, and --debughttp are not supported for provisioning commands.')
         ep = ExoProvision(url='http://' + args['--host'])
 
-    if cmd in ['portals'] or args['--portals']:
-        portals = ExoPortals()
+    if cmd in ['portals'] or args['--clearcache']:
+        portals = ExoPortals(args['--portals'])
 
     if '<cik>' in args and args['<cik>'] is not None:
         cik = args['<cik>']
@@ -1952,7 +1961,7 @@ def handle_args(cmd, args):
             if not handled:
                 raise ExoException("Command not handled")
     finally:
-        if args['--portals']:
+        if args['--clearcache']:
             for req in er.exo.loggedrequests():
                 procs = [c['procedure'] for c in req['calls']]
                 # if operation will invalidate the Portals cache...
