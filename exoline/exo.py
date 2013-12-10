@@ -86,7 +86,7 @@ cmd_doc = OrderedDict([
         '''Read data from a resource.\n\nUsage:
     exo [options] read <cik> [<rid> ...]
 
-Options:
+Command options:
     --follow                 continue reading (ignores --end)
     --limit=<limit>          number of data points to read [default: 1]
     --start=<time>
@@ -125,7 +125,7 @@ Options:
     exo [options] create <cik> --type=client
     exo [options] create <cik> --type=dataport (--format=binary|boolean|float|integer|string)
 
-Options:
+Command options:
     --name=<name     set a resource name (overwriting the one in stdin if present)
     --alias=<alias>  set an alias
     --ridonly        output the RID by itself on a line
@@ -145,14 +145,14 @@ Details:
     If --type is omitted, it defaults to:
     --type=client --type=dataport --type=datarule --type=dispatch
 
-Options:
+Command options:
     --plain   show only the child RIDs
     --pretty  pretty print output'''),
     ('info',
         '''Get metadata for a resource in json format.\n\nUsage:
     exo [options] info <cik> [<rid>]
 
-Options:
+Command options:
     --cikonly      print CIK by itself
     --pretty       pretty print output
     --recursive    embed info for any children recursively
@@ -174,9 +174,13 @@ Options:
         '''Remove an alias from a resource.\n\nUsage:
     exo [options] unmap <cik> <alias>'''),
     ('lookup',
-        '''Look up a resource's RID based on its alias or cik.\n\nUsage:
+        '''Look up a resource's RID based on its alias cik.\n\nUsage:
     exo [options] lookup <cik> [<alias>]
+    exo [options] lookup <cik> --owner-of=<rid>
     exo [options] lookup <cik> --cik=<cik-to-find>
+
+    The --owner-of variant returns the RID of the immediate parent (owner)
+    of <rid>.
 
     If <alias> is omitted, the rid for <cik> is returned. This is equivalent to:
 
@@ -185,7 +189,7 @@ Options:
         '''Drop (permanently delete) a resource.\n\nUsage:
     exo [options] drop <cik> [<rid> ...]
 
-Options:
+Command options:
     --all-children  drop all children of the resource.
     {{ helpoption }}'''),
     ('flush',
@@ -205,7 +209,7 @@ Options:
     ('script', '''Upload a Lua script\n\nUsage:
     exo [options] script <script-file> <cik> ...
 
-Options:
+Command options:
     --name=<name>  script name, if different from script filename. The name
                    is used to identify the script, too.
     --recursive    operate on client and any children
@@ -213,7 +217,7 @@ Options:
     ('spark', '''Show distribution of intervals between points.\n\nUsage:
     exo [options] spark <cik> [<rid>] --days=<days>
 
-Options:
+Command options:
     --stddev=<num>  exclude intervals more than num standard deviations from mean
     {{ helpoption }}'''),
     ('copy', '''Make a copy of a client.\n\nUsage:
@@ -222,7 +226,7 @@ Options:
     Copies <cik> and all its non-client children to <destination-cik>.
     Returns CIK of the copy. NOTE: copy excludes all data in dataports.
 
-Options:
+Command options:
     --cikonly  show unlabeled CIK by itself
     {{ helpoption }}'''),
     ('diff', '''Show differences between two clients.\n\nUsage:
@@ -232,7 +236,7 @@ Options:
     children. If clients are identical, nothing is output. For best results,
     all children should have unique names.
 
-Options:
+Command options:
     --full         compare all info, even usage, data counts, etc.
     --no-children  don't compare children
     {{ helpoption }}'''),
@@ -301,7 +305,7 @@ for module_name in plugin_names:
 for k in cmd_doc:
     # helpoption is appended to any commands that don't already have it
     if '{{ helpoption }}' not in cmd_doc[k]:
-        cmd_doc[k] += '\n\nOptions:\n{{ helpoption }}'
+        cmd_doc[k] += '\n\nCommand options:\n{{ helpoption }}'
     for r in doc_replace:
         cmd_doc[k] = cmd_doc[k].replace(r, doc_replace[r])
 
@@ -638,6 +642,11 @@ class ExoRPC():
 
     def lookup(self, cik, alias):
         isok, response = self.exo.lookup(cik, 'alias', alias)
+        self._raise_for_response(isok, response)
+        return response
+
+    def lookup_owner(self, cik, rid):
+        isok, response = self.exo.lookup(cik, 'owner', rid)
         self._raise_for_response(isok, response)
         return response
 
@@ -1807,9 +1816,14 @@ def handle_args(cmd, args):
         elif cmd == 'lookup':
             # look up by cik or alias
             cik_to_find = args['--cik']
+            owner_of = args['--owner-of']
             if cik_to_find is not None:
                 cik_to_find = er.lookup_shortcut(cik_to_find)
                 rid = er.lookup_rid(cik, cik_to_find)
+                if rid is not None:
+                    pr(rid)
+            elif owner_of is not None:
+                rid = er.lookup_owner(cik, owner_of)
                 if rid is not None:
                     pr(rid)
             else:

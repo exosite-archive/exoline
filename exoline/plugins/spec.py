@@ -5,7 +5,7 @@ Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>]
     exo [options] spec --example
 
-Options:
+Command options:
     --update-scripts  Update any scripts that do not match what's
                       on the filesystem
     --create          Create any resources that do not exist

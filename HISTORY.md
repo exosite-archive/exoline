@@ -1,6 +1,12 @@
 History
 =======
 
+0.6.1 (2013-12-10)
+------------------
+
+- add owner lookup command (lookup --owner-of)
+- change "Options" to "Command Options" in usage
+
 0.6.0 (2013-12-09)
 ------------------
 

@@ -70,6 +70,23 @@ class Resource():
             self.desc['retention'] = {"count": "infinity",
                                       "duration": "infinity"}
             self.desc['public'] = False
+        if self.type == 'client' and 'limits' not in self.desc:
+            self.desc['limits'] = {
+                'dataport': 'inherit',
+                'datarule': 'inherit',
+                'dispatch': 'inherit',
+                'disk': 'inherit',
+                'io': 'inherit',
+                'share': 'inherit',
+                'client': 'inherit',
+                'sms': 'inherit',
+                'sms_bucket': 'inherit',
+                'email': 'inherit',
+                'email_bucket': 'inherit',
+                'http': 'inherit',
+                'http_bucket': 'inherit',
+                'xmpp': 'inherit',
+                'xmpp_bucket': 'inherit'}
 
     def __str__(self):
         return 'Resource (parent {0}, type {1}, desc {2})'.format(self.parentcik, self.type, self.desc)
@@ -194,7 +211,7 @@ class TestRPC(TestCase):
 Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         for k, v in iteritems(res.desc):
             if k != 'limits':
-                self.l(k)
+                #self.l(k)
                 self.assertTrue(
                     res.info['description'][k] == v,
                     'created resource matches spec')
@@ -1147,3 +1164,17 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('--portals=https://portals.exosite.comm', 'portals', 'clearcache', cik, 'create', 'update')
         self.notok(r, 'invalid portals server specified')
 
+    def lookup_owner_test(self):
+        '''test lookup --owner-of variant'''
+        cik = self.client.cik()
+
+        daughter = self._create(
+            Resource(cik, 'client',
+                {'name': 'Daughter'}))
+
+        granddaughter = self._create(
+            Resource(daughter.cik(), 'dataport',
+                      {'format': 'float', 'name': 'Original Name'}))
+
+        r = rpc('lookup', cik, '--owner-of=' + granddaughter.rid)
+        self.ok(r, 'owner lookup succeeds', match=daughter.rid)
