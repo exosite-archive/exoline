@@ -7,6 +7,8 @@ History
 - add share, activate, deactivate, and lookup --share commands
 - listing command now accepts filtering options and clearer JSON 
   output (non-backward compatible)
+- updates for incorrect timezone setting
+
 
 0.6.1 (2013-12-10)
 ------------------

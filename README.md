@@ -1,7 +1,7 @@
-Exoline: Exosite Command Line
-=============================
+Exoline
+=======
 
-Exoline is command line tool for working with the Exosite [One Platform](http://exosite.com/products/onep).  
+Exoline is command line tool for working with the Exosite [One Platform](http://exosite.com/products/onep).
 
 Installation 
 ------------
@@ -43,8 +43,7 @@ Usage
 -----
 
 ```
-
-$ exo --help
+$ exo -h
 Exosite RPC API Command Line Interface
    Provides command line access to the Remote Procedure Call API:
    https://github.com/exosite/api/tree/master/rpc
@@ -53,38 +52,46 @@ Usage:
   exo [--help] [options] <command> [<args> ...]
 
 Commands:
-  read     Read data from a resource.
-  write    Write data at the current time.
-  record   Write data at a specified time.
-  create   Create a resource from a json description passed on stdin,
-           or using reasonable defaults.
-  listing  List the RIDs of a client's children.
-  info     Get metadata for a resource in json format.
-  update   Update a resource from a json description passed on stdin.
-  map      Add an alias to a resource.
-  unmap    Remove an alias from a resource.
-  lookup   Look up a resource's RID based on its alias or cik.
-  drop     Drop (permanently delete) a resource.
-  flush    Remove all time series data from a resource.
-  usage    Display usage of One Platform resources over a time period.
-  tree     Display a resource's descendants.
-  script   Upload a Lua script
-  spark    Show distribution of intervals between points.
-  copy     Make a copy of a client.
-  diff     Show differences between two clients.
-  ip       Get IP address of the server.
-  data     Read or write with the HTTP Data API.
-  spec     Determine whether a client matches a specification (beta)
+  read        Read data from a resource.
+  write       Write data at the current time.
+  record      Write data at a specified time.
+  create      Create a resource from a json description passed on stdin (with -),
+              or using command line shorthand (other variants).
+  listing     List the RIDs of a client's children.
+  info        Get metadata for a resource in json format.
+  update      Update a resource from a json description passed on stdin.
+  map         Add an alias to a resource.
+  unmap       Remove an alias from a resource.
+  lookup      Look up a resource's RID based on its alias cik.
+  drop        Drop (permanently delete) a resource.
+  flush       Remove all time series data from a resource.
+  usage       Display usage of One Platform resources over a time period.
+  tree        Display a resource's descendants.
+  script      Upload a Lua script
+  spark       Show distribution of intervals between points.
+  copy        Make a copy of a client.
+  diff        Show differences between two clients.
+  ip          Get IP address of the server.
+  data        Read or write with the HTTP Data API.
+  portals     Invalidate the Portals cache for a CIK by telling Portals
+              a particular procedure was taken on client identified by <cik>.
+  share       Generate a code that allows non-owners to access resources
+  revoke      Revoke a share code or CIK
+  activate    Activate a share code or CIK
+  deactivate  Deactivate a share code or expire a CIK
+  spec        Determine whether a client matches a specification (beta)
 
 Options:
-  --host=<host>        OneP URL. Default is $EXO_HOST or m2.exosite.com
-  --port=<port>        OneP port. Default is $EXO_HOST or 443
+  --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
+  --port=<port>        OneP port. Default is $EXO_PORT or 443
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
-  --debug              Show info like stack traces
-  --debughttp          Turn on debug level logging in pyonep
+  --debug              Show debug info (stack traces on exceptions)
+  -d --debughttp       Turn on debug level logging in pyonep
   --discreet           Obfuscate RIDs in stdout and stderr
+  -c --clearcache     Invalidate Portals cache after running command
+  --portals=<server>   Portals server [default: https://portals.exosite.com]
   -h --help            Show this screen
   -v --version         Show version
 
@@ -96,7 +103,7 @@ Examples
 
 Show a tree view of a client
 
-```bash
+```
 $ exo tree 5de0cfcf7b5bed2ea7a801234567890123456789
 Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
   ├─device1 client cik: 970346d3391a2d8c703a01234567890123456789 (aliases: [u'device1'])
@@ -107,7 +114,7 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
 
 Upload a Lua script
 
-```bash
+```
 
     $ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa     
     Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
@@ -115,7 +122,7 @@ Upload a Lua script
 
 Monitor output of a script
 
-```bash
+```
 
     $ exo read e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --follow 
     2013-07-09 11:57:45,line 2: Running translate_gps.lua...
@@ -127,21 +134,21 @@ Monitor output of a script
 
 Write raw data
 
-```bash
+```
 
     $ exo write e469e336ff9c8ed9176bc05ed7fa40daaaaaaaa gps-raw --value=4458.755987,N,09317.538945,W
 ```
 
 Record a bunch of data without timestamps
 
-```bash
+```
 
     $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
 ```
 
 Dump data from multiple dataports to CSV
 
-```bash
+```
 
     $ time ./exo.py read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --start=5/1/2013 --end=8/1/2013 --chunkhours=24 > alldata.csv
 
@@ -155,7 +162,7 @@ Dump data from multiple dataports to CSV
 
 Make a copy of a device
 
-```bash
+```
 
     $ exo copy e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
     cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
@@ -163,7 +170,7 @@ Make a copy of a device
 
 Create a new client or resource
 
-```bash
+```
 
     $ ../exoline/exo.py create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --name=NewString
     rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
@@ -171,7 +178,7 @@ Create a new client or resource
 
 Show differences between two clients
 
-```bash
+```
 
     $ exo copy 3ae52bdd5280d7cb96a2077b0cd5aaaaaaaaaaaa 5de0cfcf7b5bed2ea7a802ebe0679baaaaaaaaaa
     cik: cc080a86b1c9b53d5371e0fa793faaaaaaaaaaa
@@ -280,7 +287,7 @@ Show differences between two clients
 
 See the HTTP requests and responses being made by pyonep:
 
-```bash
+```
 
 $ exo --debughttp --discreet read <cik> temperature
 DEBUG:pyonep.onep:POST /api:v1/rpc/process
@@ -291,6 +298,69 @@ DEBUG:pyonep.onep:HTTP/1.1 200 OK
 Headers: [('date', 'Mon, 19 Aug 2013 20:16:53 GMT'), ('content-length', '54'), ('content-type', 'application/json; charset=utf-8'), ('connection', 'keep-alive'), ('server', 'nginx')]
 Body: [{"id":70,"status":"ok","result":[[1376819736,24.1]]}]
 2013-08-18 04:55:36,24.1
+```
+
+<p id="shareexample">Create a share code that another client can use to get read-only access to a dataport it doesn't own.</p>
+
+```
+# we want to share client1/dataport1 with client2
+$ exo tree wb
+Dev client cik: 5de0cf0000000000000000000000000000000000 (aliases: (see parent))
+  ├─client1 client cik: 0a35320000000000000000000000000000000000 (aliases: [u'client1'])
+  │   └─dataport1 string dataport rid: 4775090000000000000000000000000000000000 (aliases: [u'dataport1'])
+  └─client2 client cik: c2d4f30000000000000000000000000000000000 (aliases: [u'client2'])
+
+# generate a share code
+$ exo share 0a35320000000000000000000000000000000000 dataport1
+e9a52a0000000000000000000000000000000000
+
+# activate the share code
+$ exo activate c2d4f30000000000000000000000000000000000 --share=e9a52a0000000000000000000000000000000000
+
+# share appears in tree
+$ exo tree wb
+Dev client cik: 5de0cf0000000000000000000000000000000000 (aliases: (see parent))
+  ├─client1 client cik: 0a35320000000000000000000000000000000000 (aliases: [u'client1'])
+  │   └─dataport1 string dataport rid: 4775090000000000000000000000000000000000 (aliases: [u'dataport1'])
+  └─client2 client cik: c2d4f30000000000000000000000000000000000 (aliases: [u'client2'])
+      └─dataport1 string dataport rid: 4775090000000000000000000000000000000000 
+
+# listing shows owned children by default (not shares)
+$ exo listing c2d4f30000000000000000000000000000000000
+{"dataport": [], "datarule": [], "client": [], "dispatch": []}
+
+# ...unless you filter for activated shares
+$ exo listing c2d4f30000000000000000000000000000000000 --filter=activated
+{"dataport": ["4775090000000000000000000000000000000000"], "datarule": [], "client": [], "dispatch": []}
+
+# write to the shared dataport from its owner
+$ exo write 0a35320000000000000000000000000000000000 dataport1 --value="Share me"
+
+# you can read the dataport from the non-owner
+$ exo read c2d4f30000000000000000000000000000000000 4775090000000000000000000000000000000000
+2013-12-13 11:34:13-06:00,Share me
+
+# ...but you can't write from a non-owner
+$ exo write c2d4f30000000000000000000000000000000000 4775090000000000000000000000000000000000 --value="Non-owner can't write"
+One Platform error: restricted
+
+# look up RID for a share code
+$ exo lookup c2d4f30000000000000000000000000000000000 --share e9a52a0000000000000000000000000000000000
+4775090000000000000000000000000000000000
+
+# the non-owner can deactivate a share code
+$ exo deactivate c2d4f30000000000000000000000000000000000 --share=e9a52a0000000000000000000000000000000000
+
+# now the share is gone
+$ exo tree wb
+Dev client cik: 5de0cf0000000000000000000000000000000000 (aliases: (see parent))
+  ├─client1 client cik: 0a35320000000000000000000000000000000000 (aliases: [u'client1'])
+  │   └─dataport1 string dataport rid: 4775090000000000000000000000000000000000 (aliases: [u'dataport1'])
+  └─client2 client cik: c2d4f30000000000000000000000000000000000 (aliases: [u'client2'])
+
+# the owner may also revoke the share code. This makes it unusable.
+$ exo revoke 0a35320000000000000000000000000000000000 --share=e9a52a0000000000000000000000000000000000
+ok
 ```
 
 
@@ -308,7 +378,7 @@ CIK Shortcuts
 
 Store your commonly used CIKs in a file:
 
-```bash
+```
 
 $ printf "keys:\n" > ~/.exoline
 $ printf "    foo: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> ~/.exoline
@@ -427,3 +497,4 @@ TODO
 - add windows executable to build and test
 - reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
 - command to generate spec from command line
+- differentiate shares in tree command

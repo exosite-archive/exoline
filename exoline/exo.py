@@ -264,7 +264,7 @@ Command options:
     #vendor model and serial number.\n\nUsage:
     #exo [options] activate <vendor> <model> <sn>'''),
     ('portals', '''Invalidate the Portals cache for a CIK by telling Portals
-a particular procedure was taken on client identified by <cik>.\n\nUsage:
+    a particular procedure was taken on client identified by <cik>.\n\nUsage:
     exo [options] portals clearcache <cik> [<procedure> ...]
 
     <procedure> may be any of:
