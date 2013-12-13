@@ -15,8 +15,8 @@ Options:
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
-  --debug              Show info like stack traces
-  --debughttp          Turn on debug level logging in pyonep
+  --debug              Show debug info (stack traces on exceptions)
+  -d --debughttp       Turn on debug level logging in pyonep
   --discreet           Obfuscate RIDs in stdout and stderr
   -c --clearcache     Invalidate Portals cache after running command
   --portals=<server>   Portals server [default: https://portals.exosite.com]
@@ -140,14 +140,22 @@ Details:
     If - is not present, creates a resource with common defaults.'''),
     ('listing',
         '''List the RIDs of a client's children.\n\nUsage:
-    exo [options] listing <cik> [(--type=client|dataport|datarule|dispatch) ...]
-
-    If --type is omitted, it defaults to:
-    --type=client --type=dataport --type=datarule --type=dispatch
+    exo [options] listing <cik>
 
 Command options:
-    --plain   show only the child RIDs
-    --pretty  pretty print output'''),
+    --types=<type1>,...  which resource types to list
+                         [default: client,dataport,datarule,dispatch]
+    --filters=<f1>,...   criteria for which resources to include
+                         [default: owned]
+                         activated  resources shared with and activated
+                                    by client (<cik>)
+                         aliased    resources aliased by client (<cik>)
+                         owned      resources owned by client (<cik>)
+                         public     public resources
+    --tagged=<tag1>,...  resources that have been tagged by any client, and
+                         that the client (<cik>) has read access to.
+    --plain              show only the child RIDs
+    --pretty             pretty print output'''),
     ('info',
         '''Get metadata for a resource in json format.\n\nUsage:
     exo [options] info <cik> [<rid>]
@@ -177,14 +185,16 @@ Command options:
         '''Look up a resource's RID based on its alias cik.\n\nUsage:
     exo [options] lookup <cik> [<alias>]
     exo [options] lookup <cik> --owner-of=<rid>
+    exo [options] lookup <cik> --share=<code>
     exo [options] lookup <cik> --cik=<cik-to-find>
+
+    If <alias> is omitted, the rid for <cik> is returned. This is equivalent to:
+    exo lookup <cik> ""
 
     The --owner-of variant returns the RID of the immediate parent (owner)
     of <rid>.
 
-    If <alias> is omitted, the rid for <cik> is returned. This is equivalent to:
-
-    exo lookup <cik> ""'''),
+    The --share variant returns the RID associated with a share code'''),
     ('drop',
         '''Drop (permanently delete) a resource.\n\nUsage:
     exo [options] drop <cik> [<rid> ...]
@@ -249,9 +259,10 @@ Command options:
     If only --read arguments are specified, the call is a read.
     If both --write and --read arguments are specified, the hybrid
         write/read API is used. Writes are executed before reads.'''),
-    ('activate', '''Activate a model-backed device, based on vendor name,
-    vendor model and serial number.\n\nUsage:
-    exo [options] activate <vendor> <model> <sn>'''),
+    # provision activate
+    #('activate', '''Activate a model-backed device, based on vendor name,
+    #vendor model and serial number.\n\nUsage:
+    #exo [options] activate <vendor> <model> <sn>'''),
     ('portals', '''Invalidate the Portals cache for a CIK by telling Portals
 a particular procedure was taken on client identified by <cik>.\n\nUsage:
     exo [options] portals clearcache <cik> [<procedure> ...]
@@ -260,7 +271,23 @@ a particular procedure was taken on client identified by <cik>.\n\nUsage:
     activate, create, deactivate, drop, map, revoke, share, unmap, update
 
     If no <procedure> is specified, Exoline tells Portals that all of the
-    procedures on the list were performed on the client.''')
+    procedures on the list were performed on the client.
+
+    Warning: drop does not invalidate the cache correctly. Instead, use create.
+    '''),
+    ('share', '''Generate a code that allows non-owners to access resources\n\nUsage:
+    exo [options] share <cik> <rid> [--meta=<string> [--share=<code-to-update>]]
+
+    Pass --meta to associate a metadata string with the share.
+    Pass --share to update metadata for an existing share.'''),
+    ('revoke', '''Revoke a share code or CIK\n\nUsage:
+    exo [options] revoke <cik> (--client=<cik> | --share=<code>)'''),
+    ('activate', '''Activate a share code or CIK\n\nUsage:
+    exo [options] activate <cik> (--client=<child-cik> | --share=<code>)'''),
+    ('deactivate', '''Deactivate a share code or expire a CIK\n\nUsage:
+    exo [options] deactivate <cik> (--client=<cik> | --share=<code>)'''),
+    #('tag', '''Add a tag to a resource\n\nUsage:
+    #exo [options] tag <cik> [<rid> ...] [--add=<tag1,tag2>]'''),
     ])
 
 # shared sections of documentation
@@ -650,8 +677,17 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def listing(self, cik, types):
-        isok, response = self.exo.listing(cik, types)
+    def lookup_shared(self, cik, code):
+        isok, response = self.exo.lookup(cik, 'shared', code)
+        self._raise_for_response(isok, response)
+        return response
+
+    def listing(self, cik, types, options=None):
+        if options is None:
+            # TODO: remove all uses of this deprecated listing variant
+            isok, response = self.exo.listing(cik, types)
+        else:
+            isok, response = self.exo.listing(cik, types, options)
         self._raise_for_response(isok, response)
         return response
 
@@ -724,6 +760,40 @@ class ExoRPC():
         for i, r in enumerate(responses):
             print("{0}:{1} {2}".format(
                   metrics[i], ' ' * (maxlen - len(metrics[i])), r))
+
+    def share(self, cik, rid, options):
+        isok, response = self.exo.share(cik,
+                                        rid,
+                                        options)
+        self._raise_for_response(isok, response)
+        return response
+
+    def revoke(self, cik, codetype, code):
+        isok, response = self.exo.revoke(cik, codetype, code)
+        self._raise_for_response(isok, response)
+        return response
+
+    def activate(self, cik, codetype, code):
+        isok, response = self.exo.activate(cik, codetype, code)
+        self._raise_for_response(isok, response)
+        return response
+
+    def deactivate(self, cik, codetype, code):
+        isok, response = self.exo.deactivate(cik, codetype, code)
+        self._raise_for_response(isok, response)
+        return response
+
+    #def tag(self, cik, rids, addtags=[], removetags=[]):
+    #    cmds = []
+    #    for c in itertools.chain(*[[['map', 'tag', rid, t]
+    #                               for t in addtags]
+    #                              for rid in rids]):
+    #        cmds.append(c)
+    #
+    #    if len(cmds) == 0:
+    #        raise ExoException('No tags to add specified')
+    #    pprint(cmds)
+    #    self._exomult(cik, cmds)
 
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast, max_name):
         typ = info['basic']['type']
@@ -800,11 +870,9 @@ class ExoRPC():
             # usage and counts are slow, so omit them if we don't need them
             exclude = ['usage']
             info_options = self.make_info_options(exclude=exclude)
-            #pprint(info_options)
-            # todo: combine these (maybe also the _listing_with_info function
-            # below?)
-            rid = self.lookup(cik, "")
-            info = self.info(cik, options=info_options)
+            rid, info = self._exomult(cik,
+                                      [['lookup', 'alias', ''],
+                                       ['info', {'alias': ''}, info_options]])
             # info doesn't contain key
             info['key'] = cik
             aliases = info['aliases']
@@ -1817,6 +1885,7 @@ def handle_args(cmd, args):
             # look up by cik or alias
             cik_to_find = args['--cik']
             owner_of = args['--owner-of']
+            share = args['--share']
             if cik_to_find is not None:
                 cik_to_find = er.lookup_shortcut(cik_to_find)
                 rid = er.lookup_rid(cik, cik_to_find)
@@ -1824,6 +1893,10 @@ def handle_args(cmd, args):
                     pr(rid)
             elif owner_of is not None:
                 rid = er.lookup_owner(cik, owner_of)
+                if rid is not None:
+                    pr(rid)
+            elif share is not None:
+                rid = er.lookup_shared(cik, share)
                 if rid is not None:
                     pr(rid)
             else:
@@ -1839,23 +1912,30 @@ def handle_args(cmd, args):
                     raise ExoException("<rid> is required")
                 er.drop(cik, rids)
         elif cmd == 'listing':
-            types = args['--type']
-            if len(types) == 0:
-                types = ['client', 'dataport', 'datarule', 'dispatch']
-            listing = er.listing(cik, types)
+            types = args['--types'].split(',')
+
+            options = {}
+            tags = args['--tagged']
+            if tags is not None:
+                options['tagged'] = tags.split(',')
+            filters = args['--filters']
+            if filters is not None:
+                for f in filters.split(','):
+                    options[f] = True
+            listing = er.listing(cik, types, options)
             if args['--plain']:
-                for l in listing:
-                    for rid in listing[0]:
+                for t in types:
+                    for rid in listing[t]:
                         print(rid)
             else:
                 pr(json.dumps(listing))
         elif cmd == 'info':
             include = args['--include']
             include = [] if include is None else [key.strip()
-                                                for key in include.split(',')]
+                for key in include.split(',')]
             exclude = args['--exclude']
             exclude = [] if exclude is None else [key.strip()
-                                                for key in exclude.split(',')]
+                for key in exclude.split(',')]
 
             options = er.make_info_options(include, exclude)
             info = er.info(cik,
@@ -1941,8 +2021,9 @@ def handle_args(cmd, args):
             elif len(writes) > 0:
                 alias_values = get_alias_values(writes)
                 ed.write(cik, alias_values)
-        elif cmd == 'activate':
-            pr(ep.activate(args['<vendor>'], args['<model>'], args['<sn>']))
+        # TODO: reenable provisioning API activate command
+        #elif cmd == 'activate':
+        #    pr(ep.activate(args['<vendor>'], args['<model>'], args['<sn>']))
         elif cmd == 'portals':
 
             procedures = args['<procedure>']
@@ -1954,10 +2035,56 @@ def handle_args(cmd, args):
                     if p not in ExoPortals.writeprocs:
                         unknownprocs.append(p)
                 if len(unknownprocs) > 0:
-                    raise ExoException('Unknown procedure(s) {0}'.format(','.join(unknownprocs)))
-            data = {'auth': {'cik': cik}, 'calls':[{'procedure': p, 'arguments': [], 'id': i} for i, p in enumerate(procedures)]}
+                    raise ExoException(
+                        'Unknown procedure(s) {0}'.format(','.join(unknownprocs)))
+            data = {'auth': {'cik': cik},
+                    'calls':[{'procedure': p, 'arguments': [], 'id': i}
+                             for i, p in enumerate(procedures)]}
             portals.invalidate(data)
-
+        elif cmd == 'share':
+            options = {}
+            share = args['--share']
+            if share is not None:
+                options['share'] = share
+            meta = args['--meta']
+            if meta is not None:
+                options['meta'] = meta
+            pr(er.share(cik,
+                        rids[0],
+                        options))
+        elif cmd == 'revoke':
+            if args['--share'] is not None:
+                typ = 'share'
+                code = args['--share']
+            else:
+                typ = 'client'
+                code = args['--client']
+            pr(er.revoke(cik, typ, code))
+        elif cmd == 'activate':
+            if args['--share'] is not None:
+                typ = 'share'
+                code = args['--share']
+            else:
+                typ = 'client'
+                code = args['--client']
+            er.activate(cik, typ, code)
+        elif cmd == 'deactivate':
+            if args['--share'] is not None:
+                typ = 'share'
+                code = args['--share']
+            else:
+                typ = 'client'
+                code = args['--client']
+            er.deactivate(cik, typ, code)
+        #elif cmd == 'tag':
+            # One Platform does not yet support removing tags.
+            #removetags = args['--remove']
+            #removetags = removetags.split(',') if removetags is not None else []
+        #    removetags = []
+        #    addtags = args['--add']
+        #    addtags = addtags.split(',') if addtags is not None else []
+            # TODO: if --add and --remove are not specified, list tags
+        #    er.tag(cik, rids, removetags=removetags, addtags=addtags)
         else:
             # search plugins
             handled = False

@@ -422,9 +422,8 @@ TODO
 - add --howmany option to create command
 - tab completion for commands and shortcuts
 - add create command shorthand: "exo create float foo" to create a dataport of format float with alias and name both set to foo
-- add create clone support
 - add test for --tz option
-- add support for Portals cache invalidation: --portals to turn on cache invalidation, --portals_host to set the portals host
-  per: https://i.exosite.com/display/DEVPORTALS/Portals+Cache+Invalidation+API
 - add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
 - add windows executable to build and test
+- reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
+- command to generate spec from command line

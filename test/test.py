@@ -266,13 +266,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.client = Resource(
             self.portalcik,
             'client',
-            {'limits': {'client': 'inherit',
-                        'dataport': 'inherit',
-                        'datarule': 'inherit',
-                        'dispatch': 'inherit',
-                        'disk': 'inherit',
-                        'io': 'inherit'},
-            'writeinterval': 'inherit',
+            {'writeinterval': 'inherit',
             'name': 'testclient',
             'visibility': 'parent'})
         self._createMultiple(self.portalcik, [self.client])
@@ -496,7 +490,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         for res in resources:
             self._create(res)
 
-        r = rpc('listing', client.cik(), '--type=dataport', '--plain')
+        r = rpc('listing', client.cik(), '--types=dataport', '--plain')
 
         lines = r.stdout.split()
         lines.sort()
@@ -506,7 +500,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertTrue(lines == rids, 'listing after create')
         r = rpc('drop', client.cik(), '--all-children')
         self.ok(r, 'drop --all-children succeeded')
-        r = rpc('listing', client.cik(), '--type=dataport', '--plain')
+        r = rpc('listing', client.cik(), '--types=dataport', '--plain')
         self.ok(r, 'no dataports after drop --all-children', match='')
         r = rpc('drop', self.portalcik, client.rid)
         self.ok(r, 'drop client succeeded')
@@ -705,7 +699,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'rid order reversed')
         self.assertTrue(r.stdout == '{0},0.3,3,'.format(tolocaltz('2013-07-20 03:00:08')), 'rid order reversed')
 
-        rids = [rid for rid in itertools.chain(*json.loads(rpc('listing', cik, '--type=dataport', '--type=datarule').stdout))]
+        rids = [r.strip() for r in rpc('listing', cik, '--types=dataport,datarule', '--plain').stdout.split('\n')]
 
         # this test could be better -- for now, just verify that the right
         # number of columns come out
@@ -1067,9 +1061,11 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'create dataports and scripts based on spec', match='')
 
         # test correct number of children of each type
-        r = rpc('listing', cik, '--type=dataport', '--type=datarule')
+        r = rpc('listing', cik, '--types=dataport,datarule')
         self.ok(r, 'get listing of client')
-        dataports, datarules = json.loads(r.stdout)
+        listing = json.loads(r.stdout)
+        dataports = listing['dataport']
+        datarules = listing['datarule']
         self.assertEqual(len(dataports), 5, 'created correct number of dataports')
         self.assertEqual(len(datarules), 3, 'created correct number of datarules')
 
@@ -1130,7 +1126,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         os.remove(example_spec)
 
     def portals_cache_test(self):
-        '''portals cache invalidation command'''
+        '''Portals clearcache command and option'''
         cik = self.client.cik()
 
         # just make sure the command doesnt throw an exception
@@ -1165,7 +1161,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.notok(r, 'invalid portals server specified')
 
     def lookup_owner_test(self):
-        '''test lookup --owner-of variant'''
+        '''Lookup --owner-of variant'''
         cik = self.client.cik()
 
         daughter = self._create(
@@ -1178,3 +1174,89 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         r = rpc('lookup', cik, '--owner-of=' + granddaughter.rid)
         self.ok(r, 'owner lookup succeeds', match=daughter.rid)
+
+    def share_test(self):
+        '''Sharing commands: share, revoke, lookup --share, deactivate, listing --filter=activated'''
+        cik = self.client.cik()
+
+        r = rpc('create', cik, '--type=client', '--cikonly')
+        self.ok(r, 'create child 1')
+        childcik1 = r.stdout
+
+        r = rpc('create', cik, '--type=client', '--cikonly')
+        self.ok(r, 'create child 2')
+        childcik2 = r.stdout
+
+        r = rpc('create', cik, '--type=client', '--cikonly')
+        self.ok(r, 'create child 3')
+        childcik3 = r.stdout
+
+        r = rpc('create', cik, '--type=client', '--cikonly')
+        self.ok(r, 'create child 4')
+        childcik4 = r.stdout
+
+        dataport_rid1, dataport_rid2 = self._createMultiple(
+            childcik1,
+            [Resource(childcik1, 'dataport', {'name': 'dataport1',
+                                              'format': 'string'}),
+             Resource(childcik1, 'dataport', {'name': 'dataport2',
+                                              'format': 'string'})])
+
+        # share the dataport with client2
+        r = rpc('share', childcik1, dataport_rid1)
+        self.ok(r, 'share dataport')
+        share_code = r.stdout
+
+        r = rpc('activate', childcik2, '--share=' + share_code)
+        self.ok(r, 'activate share', match='')
+
+        r = rpc('activate', childcik3, '--share=' + share_code)
+        self.notok(r, 'activate share again fails due to count')
+
+        value = 'shared value'
+        r = rpc('write', childcik1, dataport_rid1, '--value=' + value)
+        r = rpc('read', childcik2, dataport_rid1, '--format=raw')
+        self.ok(r, 'read value over share', match=value)
+
+        r = rpc('write', childcik2, dataport_rid1, '--value=' + value)
+        self.notok(r, 'write to activated share from non-owner')
+
+        r = rpc('listing', childcik2, '--plain')
+        self.ok(r, 'no owned items in listing', match='')
+
+        r = rpc('listing', childcik2, '--filters=activated', '--plain')
+        self.ok(r, 'one share in activated listing', match=dataport_rid1)
+
+        r = rpc('deactivate', childcik2, '--share=' + share_code)
+        self.ok(r, 'deactivate share from client that activated')
+
+        # test revoke
+        r = rpc('share', childcik1, dataport_rid1)
+        self.ok(r, 'get another share code')
+        share_code=r.stdout
+
+        r = rpc('revoke', childcik1, '--share=' + share_code)
+        self.ok(r, 'revoke share code')
+
+        r = rpc('activate', childcik3, '--share=' + share_code)
+        self.notok(r, 'activate a code that has been revoked')
+
+        # test --meta
+        r = rpc('share',
+                childcik1,
+                dataport_rid1,
+                '--meta="This is share metadata"')
+        self.ok(r, 'get a share code and set metadata')
+        share_code=r.stdout
+
+        r = rpc('share',
+                childcik1,
+                dataport_rid1,
+                '--meta="This is updated share metadata"',
+                '--share=' + share_code)
+        self.ok(r, 'update share metadata')
+
+        r = rpc('lookup',
+                childcik1,
+                '--share=' + share_code)
+        self.ok(r, 'look up RID for share_code', match=dataport_rid1)

@@ -1,6 +1,13 @@
 History
 =======
 
+0.7.0 (2013-12-13)
+------------------
+
+- add share, activate, deactivate, and lookup --share commands
+- listing command now accepts filtering options and clearer JSON 
+  output (non-backward compatible)
+
 0.6.1 (2013-12-10)
 ------------------
 
