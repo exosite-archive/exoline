@@ -300,7 +300,7 @@ Body: [{"id":70,"status":"ok","result":[[1376819736,24.1]]}]
 2013-08-18 04:55:36,24.1
 ```
 
-<p id="shareexample">Create a share code that another client can use to get read-only access to a dataport it doesn't own.</p>
+Share a dataport with another client.
 
 ```
 # we want to share client1/dataport1 with client2
