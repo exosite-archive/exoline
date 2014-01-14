@@ -1,6 +1,13 @@
 History
 =======
 
+0.7.1 (2014-01-13)
+------------------
+
+- handle unicode in csv output
+- fix error when piping tree output to file 
+- remove binary and boolean dataport formats
+
 0.7.0 (2013-12-13)
 ------------------
 
@@ -8,7 +15,6 @@ History
 - listing command now accepts filtering options and clearer JSON 
   output (non-backward compatible)
 - updates for incorrect timezone setting
-
 
 0.6.1 (2013-12-10)
 ------------------

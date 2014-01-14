@@ -497,4 +497,5 @@ TODO
 - add windows executable to build and test
 - reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
 - command to generate spec from command line
-- differentiate shares in tree command
+- differentiate dataport and client shares in tree command
+- handle unicode characters when reading string dataports

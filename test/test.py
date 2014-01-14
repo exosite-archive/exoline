@@ -238,10 +238,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             cik, 'dataport', {'format': 'integer', 'name': 'int_port'},
             write=['-1', '0', '100000000'],
             record=[[665366400, '42']])
-        stdports['boolean'] = Resource(
-            cik, 'dataport', {'format': 'boolean', 'name': 'boolean_port'},
-            write=['false', 'true', 'false'],
-            record=[[-100, 'true'], [-200, 'false'], [-300, 'true']])
         stdports['string'] = Resource(
             cik, 'dataport', {'format': 'string', 'name': 'string_port'},
             alias='string_port_alias',
@@ -252,7 +248,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             write=['-0.1234567', '0', '3.5', '100000000.1'],
             record=[[-100, '-0.1234567'], [-200, '0'], [-300, '3.5'], [-400, '10000000.1']])
             # TODO: handle scientific notation from OneP '-0.00001'
-        # TODO: handle binary dataport
 
         self._createMultiple(cik, list(stdports.values()))
 
@@ -414,25 +409,26 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # call did not fail
         self.ok(r, 'tree shouldn\'t fail')
         # starts with cik
-        self.l(r.stdout)
         self.assertTrue(
             re.match(".* cik: {0}.*".format(cik), r.stdout) is not None)
 
+        delim = '\n'.encode('utf-8')
         # has correct number of lines
-        self.assertTrue(len(r.stdout.split('\n')) == len(stdports) + 1 + 1)
+        tmp2 = r.stdout.split(delim)
+        self.assertTrue(len(tmp2) == len(stdports) + 1 + 1)
 
         r = rpc('tree', cik, '--level=0')
         self.ok(r, 'tree with --level=0 shouldn\'t fail')
         self.ok(r)
-        self.assertTrue(len(r.stdout.split('\n')) == 1)
+        self.assertTrue(len(r.stdout.split(delim)) == 1)
 
         r = rpc('tree', cik, '--level=1')
         self.ok(r, 'tree with --level=1 shouldn\'t fail')
-        self.assertTrue(len(r.stdout.split('\n')) == 2)
+        self.assertTrue(len(r.stdout.split(delim)) == 2)
 
         r = rpc('tree', cik, '--level=2')
         self.ok(r, 'tree with --level=2 shouldn\'t fail')
-        self.assertTrue(len(r.stdout.split('\n')) == len(stdports) + 1 + 1)
+        self.assertTrue(len(r.stdout.split(delim)) == len(stdports) + 1 + 1)
 
     def map_test(self):
         '''Map/unmap commands'''

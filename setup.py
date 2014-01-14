@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 from setuptools import setup
+import sys
+
 from exoline import __version__ as version
 
 with open('requirements.txt') as f:
@@ -15,6 +17,10 @@ try:
     import importlib
 except ImportError:
     required.append('importlib>=1.0.2')
+
+if sys.version_info < (3, 0):
+    required.append('unicodecsv==0.9.4')
+
 
 setup(
     name='exoline',

@@ -3,6 +3,7 @@
 
 Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>]
+    exo [options] spec <cik> --generate
     exo [options] spec --example
 
 Command options:
@@ -80,6 +81,9 @@ scripts:
       alias: convert<% id %>.lua
 ''')
             return
+        elif args['--generate']:
+            # generate spec file, download scripts
+            pass
 
         cik = options['cik']
         rpc = options['rpc']

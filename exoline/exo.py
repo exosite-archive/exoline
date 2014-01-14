@@ -32,7 +32,10 @@ from __future__ import unicode_literals
 import sys
 import os
 import json
-import csv
+if sys.version_info < (3, 0):
+    import unicodecsv as csv
+else:
+    import csv
 import re
 from datetime import datetime
 from datetime import timedelta
@@ -123,7 +126,7 @@ Command options:
     or using command line shorthand (other variants).\n\nUsage:
     exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
     exo [options] create <cik> --type=client
-    exo [options] create <cik> --type=dataport (--format=binary|boolean|float|integer|string)
+    exo [options] create <cik> --type=dataport (--format=float|integer|string)
 
 Command options:
     --name=<name     set a resource name (overwriting the one in stdin if present)
@@ -859,7 +862,7 @@ class ExoRPC():
             ' ' * (max_name - len(name)),
             desc,
             '' if len(opt) == 0 else '({0})'.format(', '.join(
-                ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
+                ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))).encode('utf-8'))
 
     def tree(self, cik, aliases=None, cli_args={}, spacer='', level=0, info_options={}):
         '''Print a tree of entities in OneP'''
@@ -896,7 +899,8 @@ class ExoRPC():
             # _listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
             #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
         except pyonep.exceptions.OnePlatformException:
-            print(spacer + "  └─listing for {0} failed. info['basic']['status'] is probably not valid.".format(cik))
+            v = spacer + "  └─listing for {0} failed. info['basic']['status'] is probably not valid.".format(cik)
+            print(v.encode('utf-8'))
         else:
             # calculate the maximum length name of all children
             lengths = [len(l[1]['description']['name']) for i in range(len(types)) for l in iteritems(listing[i])]
