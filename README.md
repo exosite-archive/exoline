@@ -487,9 +487,9 @@ TODO
 - delete serial number when dropping device
 - add --howmany option to create command
 - tab completion for commands and shortcuts
-- add create command shorthand: "exo create float foo" to create a dataport of format float with alias and name both set to foo
+- add dataport creation shorthand: "exo create <cik> <alias and name> [datatype]". `exo create mydevice foo` would create a dataport of format string with alias and name both set to foo. `exo create mydevice bar float` would create a float-valued dataport.
 - add test for --tz option
 - add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
-- add windows executable to build and test
+- create executable and installer for Windows users
 - reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
 - differentiate dataport and client shares in tree command
