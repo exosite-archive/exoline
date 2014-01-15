@@ -413,22 +413,27 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             re.match(".* cik: {0}.*".format(cik), r.stdout) is not None)
 
         delim = '\n'.encode('utf-8')
-        # has correct number of lines
-        tmp2 = r.stdout.split(delim)
-        self.assertTrue(len(tmp2) == len(stdports) + 1 + 1)
+        def get_lines(stdout):
+            # has correct number of lines
+            if sys.version_info < (3, 0):
+                so = stdout
+            else:
+                so = stdout.encode('utf-8')
+            return so.split(delim)
+
+        self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
 
         r = rpc('tree', cik, '--level=0')
         self.ok(r, 'tree with --level=0 shouldn\'t fail')
-        self.ok(r)
-        self.assertTrue(len(r.stdout.split(delim)) == 1)
+        self.assertTrue(len(get_lines(r.stdout)) == 1)
 
         r = rpc('tree', cik, '--level=1')
         self.ok(r, 'tree with --level=1 shouldn\'t fail')
-        self.assertTrue(len(r.stdout.split(delim)) == 2)
+        self.assertTrue(len(get_lines(r.stdout)) == 2)
 
         r = rpc('tree', cik, '--level=2')
         self.ok(r, 'tree with --level=2 shouldn\'t fail')
-        self.assertTrue(len(r.stdout.split(delim)) == len(stdports) + 1 + 1)
+        self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
 
     def map_test(self):
         '''Map/unmap commands'''

@@ -798,6 +798,12 @@ class ExoRPC():
     #    pprint(cmds)
     #    self._exomult(cik, cmds)
 
+    def _print_tree_line(self, line):
+        if sys.version_info < (3, 0):
+            print(line.encode('utf-8'))
+        else:
+            print(line)
+
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast, max_name):
         typ = info['basic']['type']
         if typ == 'client':
@@ -856,13 +862,13 @@ class ExoRPC():
         else:
             desc = typ + ' ' + id
 
-        print('{0}{1}{2} {3} {4}'.format(
+        self._print_tree_line('{0}{1}{2} {3} {4}'.format(
             spacer,
             name,
             ' ' * (max_name - len(name)),
             desc,
             '' if len(opt) == 0 else '({0})'.format(', '.join(
-                ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))).encode('utf-8'))
+                ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
 
     def tree(self, cik, aliases=None, cli_args={}, spacer='', level=0, info_options={}):
         '''Print a tree of entities in OneP'''
@@ -899,8 +905,8 @@ class ExoRPC():
             # _listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
             #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
         except pyonep.exceptions.OnePlatformException:
-            v = spacer + "  └─listing for {0} failed. info['basic']['status'] is probably not valid.".format(cik)
-            print(v.encode('utf-8'))
+            self._print_tree_line(spacer +
+                                  "  └─listing for {0} failed. info['basic']['status'] is probably not valid.".format(cik))
         else:
             # calculate the maximum length name of all children
             lengths = [len(l[1]['description']['name']) for i in range(len(types)) for l in iteritems(listing[i])]

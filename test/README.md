@@ -18,11 +18,22 @@ To run a specific test:
 ```bash
 
     $ nosetests test.py:TestRPC.record_test
+    $ # or
+    $ ./testone.sh record_test
 ```
+
+
 
 To run full tests against multiple python distributions:
 
 ```bash
 
     $ source test.sh full
+```
+
+If the PyYAML build warnings drive you crazy (as they do me), you can do this:
+
+```bash
+
+    $ source test.sh full --quiet
 ```

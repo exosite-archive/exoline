@@ -472,8 +472,8 @@ To run the tests the packages in test/requirements.txt, and then type:
 For more on testing (including running individual tests), see [test/README.md](test/README.md).
 
 
-Version History
----------------
+What's New?
+-----------
 
 For information about what features are in what Exoline versions look [here](HISTORY.md).
 
@@ -496,6 +496,5 @@ TODO
 - add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
 - add windows executable to build and test
 - reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
-- command to generate spec from command line
 - differentiate dataport and client shares in tree command
 - handle unicode characters when reading string dataports

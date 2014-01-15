@@ -1,6 +1,13 @@
 History
 =======
 
+0.7.2 (2014-01-14)
+------------------
+
+- add --generate option for spec command (beta)
+- fix regression in tree command on python 3.2
+- remove wsgiref to fix nose for python 3.3
+
 0.7.1 (2014-01-13)
 ------------------
 

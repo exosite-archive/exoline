@@ -3,8 +3,10 @@
 
 Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>]
-    exo [options] spec <cik> --generate
+    exo [options] spec <cik> --generate=<filename> [--scripts=<dir>]
     exo [options] spec --example
+
+The --generate form creates spec YAML and scripts from a CIK.
 
 Command options:
     --update-scripts  Update any scripts that do not match what's
@@ -18,6 +20,7 @@ from __future__ import unicode_literals
 import re
 import os
 import json
+from pprint import pprint
 
 import yaml
 
@@ -81,14 +84,77 @@ scripts:
       alias: convert<% id %>.lua
 ''')
             return
-        elif args['--generate']:
-            # generate spec file, download scripts
-            pass
+
+
 
         cik = options['cik']
         rpc = options['rpc']
         ExoException = options['exception']
         if cmd == 'spec':
+            if args['--generate'] is not None:
+                spec_file = args['--generate']
+                if args['--scripts'] is not None:
+                    script_dir = args['--scripts']
+                else:
+                    script_dir = 'scripts'
+                print('Generating spec for {0}.'.format(cik))
+                print('spec file: {0}, scripts directory: {1}'.format(spec_file, script_dir))
+
+                # generate spec file, download scripts
+                spec = {}
+                info, listing = rpc._exomult(cik,
+                    [['info', {'alias': ''}, {'basic': True,
+                                              'description': True,
+                                              'aliases': True}],
+                     ['listing', ['dataport', 'datarule', 'dispatch'], {}]])
+                rids = listing['dataport'] + listing['datarule']
+                if len(rids) > 0:
+                    child_info = rpc._exomult(cik, [['info', rid, {'basic': True, 'description': True}] for rid in rids])
+                    for idx, rid in enumerate(rids):
+                        myinfo = child_info[idx]
+                        name = myinfo['description']['name']
+                        def skip_msg(msg):
+                            print('Skipping {0} (name: {1}). {2}'.format(rid, name, msg))
+                        if rid not in info['aliases']:
+                            skip_msg('It needs an alias.')
+                            continue
+                        typ = myinfo['basic']['type']
+                        if typ == 'dataport':
+                            dp = {'name': myinfo['description']['name'],
+                                  'alias': info['aliases'][rid][0],
+                                  'format': myinfo['description']['format']}
+
+                            meta_string = myinfo['description']['meta']
+                            try:
+                                meta = json.loads(meta_string)
+                                unit = meta['datasource']['unit']
+                                if len(unit) > 0:
+                                    dp['unit'] = unit
+                            except:
+                                # assume unit is not present in metadata
+                                pass
+                            spec.setdefault('dataports', []).append(dp)
+
+                        elif typ == 'datarule':
+                            desc = myinfo['description']
+                            is_script = desc['format'] == 'string' and 'rule' in desc and 'script' in desc['rule']
+                            if not is_script:
+                                skip_msg('Datarules that are not scripts are not supported.')
+                                continue
+                            filename = os.path.join(script_dir, info['aliases'][rid][0])
+                            spec.setdefault('scripts', []).append({'file': filename})
+                            with open(filename, 'w') as f:
+                                print('Writing {0}...'.format(filename))
+                                f.write(desc['rule']['script'])
+                        elif typ == 'dispatch':
+                            skip_msg('dispatch type is not yet supported by spec command.')
+                            continue
+
+                with open(spec_file, 'w') as f:
+                    print('Writing {0}...'.format(spec_file))
+                    yaml.safe_dump(spec, f, encoding='utf-8', indent=4, default_flow_style=False, allow_unicode=True)
+                return
+
             updatescripts = args['--update-scripts']
             create = args['--create']
             def generate_aliases_and_data(res, args):
