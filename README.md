@@ -481,11 +481,7 @@ For information about what features are in what Exoline versions look [here](HIS
 TODO
 ----
 
-- copy command should support taking input from stdin (which would be the ouput of info --recursive)
-- investigate copying resources with public: True to destination with public: False (One Platform error: restricted)
-- clarify what the first and second parameter to copy need to be. Maybe require explicit --device= and --portal= They could be anything, but 95% of the time the first param will be a device CIK, the second a portal CIK.
 - --name parameter to copy command so names don't conflict
-- --desconly parameter for info command, to show info as json so it can be piped to create
 - add raw command, taking full RPC json from stdin
 - Make the info command take multiple rids (or stdin)
 - delete serial number when dropping device
@@ -497,4 +493,3 @@ TODO
 - add windows executable to build and test
 - reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
 - differentiate dataport and client shares in tree command
-- handle unicode characters when reading string dataports
