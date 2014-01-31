@@ -64,7 +64,7 @@ Commands:
   unmap       Remove an alias from a resource.
   lookup      Look up a resource's RID based on its alias cik.
   drop        Drop (permanently delete) a resource.
-  flush       Remove all time series data from a resource.
+  flush       Remove time series data from a resource.
   usage       Display usage of One Platform resources over a time period.
   tree        Display a resource's descendants.
   script      Upload a Lua script
