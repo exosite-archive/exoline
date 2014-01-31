@@ -1261,3 +1261,44 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 childcik1,
                 '--share=' + share_code)
         self.ok(r, 'look up RID for share_code', match=dataport_rid1)
+
+
+    def flush_test(self):
+        '''Flush command'''
+        cik = self.client.cik()
+
+        dp1 = self._createMultiple(
+            cik,
+            [Resource(cik, 'dataport',
+                      {'name': 'dp1',
+                       'format': 'string'},
+                      alias='dp1')])
+
+        r = rpc('record', cik, 'dp1', '--value=1391205573,str1', '--value=1391206208,str2', '--value=1391206232,str3')
+        self.ok(r, 'record some values')
+        r = rpc('flush', cik, 'dp1')
+        self.ok(r, 'flush all points')
+        r = rpc('read', cik, 'dp1', '--limit=3', '--sort=asc')
+        self.ok(r, 'points were flushed', match='')
+
+        r = rpc('record', cik, 'dp1', '--value=1391205573,str1', '--value=1391206208,str2', '--value=1391206232,str3')
+        self.ok(r, 'record values')
+        r = rpc('flush', cik, 'dp1', '--start=1391206208')
+        self.ok(r, 'flush with a start time')
+        r = rpc('read', cik, 'dp1', '--limit=3', '--format=raw', '--sort=asc')
+        self.ok(r, 'points were flushed', match='str1\nstr2')
+
+        r = rpc('record', cik, 'dp1', '--value=1391206232,str3')
+        self.ok(r, 'record values')
+        r = rpc('flush', cik, 'dp1', '--end=1391206208')
+        self.ok(r, 'flush with a end time')
+        r = rpc('read', cik, 'dp1', '--limit=3', '--format=raw', '--sort=asc')
+        self.ok(r, 'points were flushed', match='str2\nstr3')
+
+        r = rpc('record', cik, 'dp1', '--value=1391205573,str1')
+        self.ok(r, 'record values')
+        r = rpc('flush', cik, 'dp1', '--start=1391206207', '--end=1391206233')
+        self.ok(r, 'flush with both start and end time')
+        r = rpc('read', cik, 'dp1', '--limit=3', '--format=raw', '--sort=asc')
+        self.ok(r, 'points were flushed', match='str1')
+

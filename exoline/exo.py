@@ -206,8 +206,14 @@ Command options:
     --all-children  drop all children of the resource.
     {{ helpoption }}'''),
     ('flush',
-        '''Remove all time series data from a resource.\n\nUsage:
-    exo [options] flush <cik> [<rid>]'''),
+        '''Remove time series data from a resource.\n\nUsage:
+    exo [options] flush <cik> [<rid>]
+
+Command options:
+    --start=<time>  flush all points newer than <time> (exclusive)
+    --end=<time>    flush all points older than <time> (exclusive)
+
+    If --start and --end are both omitted, all points are flushed.'''),
     ('usage',
         '''Display usage of One Platform resources over a time period.\n\nUsage:
     exo [options] usage <cik> [<rid>] --start=<time> [--end=<time>]
@@ -746,11 +752,16 @@ class ExoRPC():
         else:
             return response
 
-    def flush(self, cik, rids):
-        for rid in rids:
-            self.exo.flush(cik, rid, defer=True)
-        if self.exo.has_deferred(cik):
-            self._raise_for_deferred(self.exo.send_deferred(cik))
+    def flush(self, cik, rids, newerthan=None, olderthan=None):
+        args=[]
+        options = {}
+        if newerthan is not None: options['newerthan'] = newerthan
+        if olderthan is not None: options['olderthan'] = olderthan
+        if len(options) > 0:
+            args.append(options)
+        cmds = [['flush', rid] + args for rid in rids]
+        pprint(cmds)
+        self._exomult(cik, cmds)
 
     def usage(self, cik, rid, metrics, start, end):
         for metric in metrics:
@@ -1954,7 +1965,8 @@ def handle_args(cmd, args):
                 # output json
                 pr(json.dumps(info))
         elif cmd == 'flush':
-            er.flush(cik, rids)
+            start, end = get_startend(args)
+            er.flush(cik, rids, newerthan=start, olderthan=end)
         elif cmd == 'usage':
             allmetrics = ['client',
                         'dataport',
