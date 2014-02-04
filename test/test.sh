@@ -38,6 +38,11 @@ then
         if [ ! -f "$PYTHON" ]; then
             PYTHON=/usr/local/bin/$i
         fi
+
+        if [ ! -f "$PYTHON" ]; then
+            echo $PYTHON not found, skipping it...
+            continue
+        fi
         virtualenv --quiet -p $PYTHON ve$i || exit 1
         source ve$i/bin/activate 
         pushd ..
