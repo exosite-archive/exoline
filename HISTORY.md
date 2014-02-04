@@ -1,6 +1,14 @@
 History
 =======
 
+0.7.4 (2014-02-04)
+------------------
+
+- if --start and --end are omitted to read, flush
+  or usage, they are omitted from the RPC call. This 
+  fixes an issue with read if clock is out of sync
+  with One Platform.
+
 0.7.3 (2014-01-31)
 ------------------
 

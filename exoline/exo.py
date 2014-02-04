@@ -1439,26 +1439,24 @@ class ExoPortals():
 
 
 def parse_ts(s):
-    return parse_ts_tuple(parser.parse(s).timetuple())
+    return None if s is None else parse_ts_tuple(parser.parse(s).timetuple())
 
 def parse_ts_tuple(t):
     return int(time.mktime(t))
 
 def is_ts(s):
-    return re.match('^[0-9]+$', s) is not None
+    return s is not None and re.match('^[0-9]+$', s) is not None
 
 def get_startend(args):
     '''Get start and end timestamps based on standard arguments'''
     start = args.get('--start', None)
     end = args.get('--end', None)
-    if start is None:
-        start = 1
-    elif is_ts(start):
+    if is_ts(start):
         start = int(start)
     else:
         start = parse_ts(start)
-    if end is None or end == 'now':
-        end = int(parse_ts_tuple(datetime.now().timetuple()))
+    if end == 'now':
+        end = None
     elif is_ts(end):
         end = int(end)
     else:

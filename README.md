@@ -493,3 +493,4 @@ TODO
 - create executable and installer for Windows users
 - reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
 - differentiate dataport and client shares in tree command
+- resource ancestry lookup 
