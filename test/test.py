@@ -609,7 +609,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertEqual(readscript(childcik3, lua1['name']), lua2['content'], "grandchild updated")
 
 
-    def usage_test(self):
+    def usage_t(self):
         '''Get resource usage'''
         # This test passes inconsistently due to time passing between calls to
         # usage. Mainly all it was testing was date parsing, though.
