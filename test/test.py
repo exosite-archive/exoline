@@ -484,7 +484,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         dataports = {}
         resources = [
             Resource(cik, 'dataport', {'format': 'integer', 'name': 'int_port'}),
-            Resource(cik, 'dataport', {'format': 'boolean', 'name': 'boolean_port'}),
             Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'}),
             Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port'}),
         ]
