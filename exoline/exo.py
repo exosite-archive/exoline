@@ -393,7 +393,6 @@ class ExoRPC():
            messages.'''
         self._raise_for_response(isok, response)
         if type(response) is list:
-            # TODO: does this always indicate an error condition?
             raise ExoRPC.RPCException(', '.join(['{0}: {1}'.format(msg, t) for msg, t in response]))
 
     def _raise_for_deferred(self, responses):
@@ -691,50 +690,48 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def listing(self, cik, types, options=None):
-        if options is None:
-            # TODO: remove all uses of this deprecated listing variant
-            isok, response = self.exo.listing(cik, types)
-        else:
-            isok, response = self.exo.listing(cik, types, options)
+    def listing(self, cik, types, options={}):
+        isok, response = self.exo.listing(cik, types, options)
         self._raise_for_response(isok, response)
         return response
 
-    def _listing_with_info(self, cik, types, options={}):
-        '''Return a list of dicts for each type containing mappings between rids and
-        info for that RID. E.g.:
-        [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]'''
+    def _listing_with_info(self, cik, types, info_options={}):
+        '''Return a dict mapping types to dicts mapping RID to info for that
+        RID. E.g.:
+            {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
+             'dataport': {'<rid2>':<info2>, '<rid3>':<info3>}}'''
 
         assert(len(types) > 0)
 
-        listing = self._exomult(cik,
-                                [['listing', types]])[0]
+        listing = self._exomult(cik, [['listing', types, {}]])[0]
 
-        # listing is a list of lists per type, like: [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']]
+        # listing is a dictionary mapping types to lists of RIDs, like this:
+        # {'client': ['<rid0>', '<rid1>'], 'dataport': ['<rid2>', '<rid3>']}
 
         # request info for each rid
         # (rids is a flattened version of listing)
-        rids = list(itertools.chain(*listing))
-        responses = self._exomult(cik, [['info', rid, options] for rid in rids])
+        rids = []
+        for typ in types:
+            rids += listing[typ]
 
-        # From the return values make a list of dicts like this:
-        # [{'<rid0>':<info0>, '<rid1>':<info1>}, {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
-        # use ordered dicts in case someone cares about order in the output (?)
+        responses = self._exomult(cik, [['info', rid, info_options] for rid in rids])
+
+        # From the return values make a dict of dicts
+        # use ordered dicts in case someone cares about order in the output
         response_index = 0
-        listing_with_info = []
-        for type_list in listing:
+        listing_with_info = OrderedDict()
+        for typ in types:
             type_response = OrderedDict()
-            for rid in type_list:
+            for rid in listing[typ]:
                 type_response[rid] = responses[response_index]
                 response_index += 1
-            listing_with_info.append(type_response)
+            listing_with_info[typ] = type_response
 
         return listing_with_info
 
     def info(self,
              cik,
              rid={'alias': ''},
-             #options={"usage": False, "counts": False},
              options={},
              cikonly=False,
              recursive=False):
@@ -897,7 +894,6 @@ class ExoRPC():
             info['key'] = cik
             aliases = info['aliases']
             root_aliases = '(see parent)'
-            # todo: can I get aliases for cik? For now, pass []
             self._print_node(rid,
                              info,
                              root_aliases,
@@ -911,22 +907,23 @@ class ExoRPC():
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
         try:
-            listing = self._listing_with_info(cik, types=types, options=info_options)
-            # listing(): [['<rid0>', '<rid1>'], ['<rid2>'], [], ['<rid3>']]
-            # _listing_with_info(): [{'<rid0>':<info0>, '<rid1>':<info1>},
-            #                       {'<rid2>':<info2>}, [], {'<rid3>': <info3>}]
+            listing = self._listing_with_info(cik, types=types, info_options=info_options)
+            # _listing_with_info(): {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
+            #                        'dataport': {'<rid2>':<info2>}}
         except pyonep.exceptions.OnePlatformException:
-            self._print_tree_line(spacer +
-                                  "  └─listing for {0} failed. info['basic']['status'] is probably not valid.".format(cik))
+            self._print_tree_line(
+                spacer +
+                "  └─listing for {0} failed. info['basic']['status'] is \
+probably not valid.".format(cik))
         else:
             # calculate the maximum length name of all children
-            lengths = [len(l[1]['description']['name']) for i in range(len(types)) for l in iteritems(listing[i])]
+            lengths = [len(l[1]['description']['name']) for typ in types for l in iteritems(listing[typ])]
             max_name = 0 if len(lengths) == 0 else max(lengths)
 
             # print everything
             for t_idx, t in enumerate(types):
-                typelisting = OrderedDict(sorted(iteritems(listing[t_idx]), key=lambda x: x[1]['description']['name'].lower()))
-                islast_nonempty_type = (t_idx == len(types) - 1) or (all(len(x) == 0 for x in listing[t_idx + 1:]))
+                typelisting = OrderedDict(sorted(iteritems(listing[t]), key=lambda x: x[1]['description']['name'].lower()))
+                islast_nonempty_type = (t_idx == len(types) - 1) or (all(len(listing[typ]) == 0 for typ in types[t_idx + 1:]))
                 for rid_idx, rid in enumerate(typelisting):
                     info = typelisting[rid]
                     islastoftype = rid_idx == len(typelisting) - 1
@@ -947,23 +944,25 @@ class ExoRPC():
                         self._print_node(rid, info, aliases, cli_args, own_spacer, islast, max_name)
 
     def drop_all_children(self, cik):
-        isok, listing = self.exo.listing(cik,
-            types=['client', 'dataport', 'datarule', 'dispatch'])
+        isok, listing = self.exo.listing(
+            cik,
+            types=['client', 'dataport', 'datarule', 'dispatch'],
+            options={})
         self._raise_for_response(isok, listing)
-
-        for l in listing:
-            self.drop(cik, l)
+        pprint(listing)
+        rids = itertools.chain(*[listing[t] for t in listing.keys()])
+        self._exomult(cik, [['drop', rid] for rid in rids])
 
     def _lookup_rid_by_name(self, cik, name, types=['datarule']):
         '''Look up RID by name. We use name rather than alias to identify
-        scripts created in Portals, which only shows names, not aliases.
-        Note that if multiple scripts have the same name, the first one
-        in the listing is returned.'''
+        scripts created in Portals because it only displays names to the
+        user, not aliases. Note that if multiple scripts have the same
+        name the first one in the listing is returned.'''
         found_rid = None
         listing = self._listing_with_info(cik, types)
-        for type_listing in listing:
-            for rid in type_listing:
-                if type_listing[rid]['description']['name'] == name:
+        for typ in listing:
+            for rid in listing[typ]:
+                if listing[typ][rid]['description']['name'] == name:
                     # return first match
                     return rid
         return None
@@ -1008,10 +1007,10 @@ class ExoRPC():
         fn(cik)
         lwi = self._listing_with_info(cik,
                                       ['client'],
-                                      {'key': True})
-        # [{'<rid0>':<info0>, '<rid1>':<info1>}]
-        for rid in lwi[0]:
-            self.cik_recursive(lwi[0][rid]['key'], fn)
+                                      info_options={'key': True})
+        # {'client': {'<rid0>':<info0>, '<rid1>':<info1>}]
+        for rid in lwi['client']:
+            self.cik_recursive(lwi['client'][rid]['key'], fn)
 
     def upload_script(self,
                       ciks,
@@ -1047,10 +1046,10 @@ class ExoRPC():
                         up(cik)
 
     def lookup_rid(self, cik, cik_to_find):
-        isok, listing = self.exo.listing(cik, types=['client'])
+        isok, listing = self.exo.listing(cik, types=['client'], options={})
         self._raise_for_response(isok, listing)
 
-        for rid in listing[0]:
+        for rid in listing['client']:
             self.exo.info(cik, rid, {'key': True}, defer=True)
 
         if self.exo.has_deferred(cik):
@@ -1060,7 +1059,7 @@ class ExoRPC():
                 self._raise_for_response(isok, response)
 
                 if response['key'] == cik_to_find:
-                    return listing[0][idx]
+                    return listing['client'][idx]
 
     def record_backdate(self, cik, rid, interval_seconds, values):
         '''Record a list of values and record them as if they happened in
@@ -1205,7 +1204,7 @@ class ExoRPC():
         types = ['client', 'dataport', 'datarule', 'dispatch']
         #print(cik, rid)
         # TODO: make exactly one HTTP request per node
-        listing = []
+        listing = {}
         norid = rid is None
         if norid:
             rid = self._exomult(cik, [['lookup', 'aliased', '']])[0]
@@ -1217,15 +1216,17 @@ class ExoRPC():
                 # key is only available to owner (not the resource itself)
                 cik = info['key']
             listing = self._exomult(cik,
-                                    [['listing', types]])[0]
+                                    [['listing', types, {}]])[0]
 
         myid = nodeidfn(rid, info)
 
         info['children'] = []
-        for typ, ridlist in zip(types, listing):
-            for childrid in ridlist:
-                tr = self._infotree(cik, childrid, nodeidfn=nodeidfn, options=options)
-                info['children'].append(tr)
+        for typ in types:
+            if typ in listing:
+                ridlist = listing[typ]
+                for childrid in ridlist:
+                    tr = self._infotree(cik, childrid, nodeidfn=nodeidfn, options=options)
+                    info['children'].append(tr)
         info['children'].sort(key=itemgetter('rid'))
 
         return {'rid': myid, 'info': info}
@@ -1600,8 +1601,8 @@ def read_cmd(er, cik, rids, args):
     if len(rids) == 0:
         # if only a CIK was passed, include all dataports and datarules
         # by default.
-        listing = er.listing(cik, ['dataport', 'datarule'])
-        rids = [rid for rid in itertools.chain(*listing)]
+        listing = er.listing(cik, ['dataport', 'datarule'], {})
+        rids = listing['dataport'] + listing['datarule']
         aliases = er.info(cik, options={'aliases': True})['aliases']
         # look up aliases for column headers
         cmdline_rids = [aliases[rid][0] if rid in aliases else rid for rid in rids]
