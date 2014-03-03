@@ -15,6 +15,7 @@ Options:
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
+  --useragent=<ua>     Set User-Agent Header for outgoing requests
   --debug              Show debug info (stack traces on exceptions)
   -d --debughttp       Turn on debug level logging in pyonep
   --discreet           Obfuscate RIDs in stdout and stderr
@@ -367,15 +368,18 @@ class ExoRPC():
                  httptimeout=60,
                  https=False,
                  verbose=True,
-                 logrequests=False):
+                 logrequests=False,
+                 user_agent=None):
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
+        if user_agent is None:
+            user_agent = "Exoline {0}".format(__version__)
         self.exo = ExolineOnepV1(host=host,
                                port=port,
                                httptimeout=httptimeout,
                                https=https,
-                               agent="Exoline {0}".format(__version__),
+                               agent=user_agent,
                                reuseconnection=True,
                                logrequests=logrequests)
 
@@ -1749,7 +1753,8 @@ def handle_args(cmd, args):
                 port=args['--port'],
                 https=use_https,
                 httptimeout=args['--httptimeout'],
-                logrequests=args['--clearcache'])
+                logrequests=args['--clearcache'],
+                user_agent=args['--useragent'])
     if cmd in ['ip', 'data']:
         if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
             # TODO: support these
