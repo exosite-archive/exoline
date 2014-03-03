@@ -494,3 +494,4 @@ TODO
 - reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
 - differentiate dataport and client shares in tree command
 - resource ancestry lookup 
+- add support for https://github.com/exosite/api/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
