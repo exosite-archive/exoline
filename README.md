@@ -490,8 +490,9 @@ TODO
 - add dataport creation shorthand: "exo create <cik> <alias and name> [datatype]". `exo create mydevice foo` would create a dataport of format string with alias and name both set to foo. `exo create mydevice bar float` would create a float-valued dataport.
 - add test for --tz option
 - add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
-- create executable and installer for Windows users
-- reimplement copy using OneP's create clone command https://github.com/exosite/api/tree/master/rpc#create-clone
+- create executable and installer for a better Windows experience
+- support datasources with subscribe
 - differentiate dataport and client shares in tree command
 - resource ancestry lookup 
+- add a --monitor (or --follow) option to script command
 - add support for https://github.com/exosite/api/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1

@@ -1,6 +1,12 @@
 History
 =======
 
+0.7.6 (2014-03-04)
+------------------
+
+- add clone command
+- avoid partial copy when dataport subscribe is set
+
 0.7.5 (2014-03-03)
 ------------------
 

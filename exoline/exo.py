@@ -296,6 +296,23 @@ Command options:
     exo [options] activate <cik> (--client=<child-cik> | --share=<code>)'''),
     ('deactivate', '''Deactivate a share code or expire a CIK\n\nUsage:
     exo [options] deactivate <cik> (--client=<cik> | --share=<code>)'''),
+    ('clone', '''Create a clone of a client\n\nUsage:
+    exo [options] clone <cik> (--rid=<rid> | --share=<code>)
+
+Command options:
+     --noaliases     don't copy aliases
+     --nohistorical  don't copy time series data
+     --noactivate    don't activate CIK of clone (client only)
+
+     The clone command copies the client resource specified by --rid or --share
+     into the client specified by <cik>. For example, to clone a portals device,
+     pass the portal CIK as <cik> and the device RID as <rid>.
+
+     The clone and copy commands do similar things, but clone uses the RPC's
+     create (clone) functionality, which is more full featured.
+     https://github.com/exosite/api/tree/master/rpc#create-clone
+
+     Use the clone command except if you need to copy a device to another portal.'''),
     #('tag', '''Add a tag to a resource\n\nUsage:
     #exo [options] tag <cik> [<rid> ...] [--add=<tag1,tag2>]'''),
     ])
@@ -761,7 +778,6 @@ class ExoRPC():
         if len(options) > 0:
             args.append(options)
         cmds = [['flush', rid] + args for rid in rids]
-        pprint(cmds)
         self._exomult(cik, cmds)
 
     def usage(self, cik, rid, metrics, start, end):
@@ -795,6 +811,11 @@ class ExoRPC():
 
     def deactivate(self, cik, codetype, code):
         isok, response = self.exo.deactivate(cik, codetype, code)
+        self._raise_for_response(isok, response)
+        return response
+
+    def clone(self, cik, options):
+        isok, response = self.exo.create(cik, 'clone', options)
         self._raise_for_response(isok, response)
         return response
 
@@ -1124,10 +1145,16 @@ probably not valid.".format(cik))
         '''Make a copy of cik and its non-client children to destcik and
         return the cik of the copy.'''
 
+
         # read in the whole client to copy at once
         if infotree is None:
+            def check_for_unsupported(rid, info):
+                desc = info['description']
+                if 'subscribe' in desc and desc['subscribe'] is not None and len(desc['subscribe']) > 0:
+                    raise ExoException('''Copy does not yet support resources that use the "subscribe" feature, as RID {0} in the source client does.\nIf you're just copying a device into the same portal consider using the clone command.'''.format(rid));
+                return rid
             destcik = self.lookup_shortcut(destcik)
-            infotree = self._infotree(cik, options={})
+            infotree = self._infotree(cik, options={}, nodeidfn=check_for_unsupported)
 
         # check counts
         counts = self._counttypes(infotree)
@@ -2097,6 +2124,32 @@ def handle_args(cmd, args):
                 typ = 'client'
                 code = args['--client']
             er.deactivate(cik, typ, code)
+        elif cmd == 'clone':
+            options = {}
+            if args['--share'] is not None:
+                options['code'] = args['--share']
+            if args['--rid'] is not None:
+                rid_to_clone = args['--rid']
+                if er.regex_rid.match(rid_to_clone) is None:
+                    # try to look up RID for an alias
+                    alias = rid_to_clone
+                    rid_to_clone = er.lookup(cik, alias)
+                options['rid'] = rid_to_clone
+
+            options['noaliases'] = args['--noaliases']
+            options['nohistorical'] = args['--nohistorical']
+
+            rid = er.clone(cik, options)
+            pr('rid: {0}'.format(rid))
+            info = er.info(cik, rid, {'basic': True, 'key': True})
+            typ = info['basic']['type']
+            copycik = info['key']
+            if typ == 'client':
+                if not args['--noactivate']:
+                    er.activate(cik, 'client', copycik)
+                # for convenience, look up the cik
+                pr('cik: {0}'.format(copycik))
+
         #elif cmd == 'tag':
             # One Platform does not yet support removing tags.
             #removetags = args['--remove']
@@ -2136,11 +2189,15 @@ class DiscreetFilter(object):
        an RID'''
     def __init__(self, out):
         self.out = out
+        # match the two halves of an RID/CIK
         self.ridre = re.compile('([a-fA-F0-9]{20})([a-fA-F0-9]{20})')
 
     def write(self, message):
-        self.out.write(self.ridre.sub(r'\g<1>01234567890123456789',
-                                      message))
+        # hide the second half
+        message = message.decode('utf-8')
+        s = self.ridre.sub(u'\g<1>01234567890123456789', message)
+        s = s.encode('utf-8')
+        self.out.write(s)
 
 def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     '''Wrap the command line interface. Globally redirects args

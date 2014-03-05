@@ -706,6 +706,71 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', '--start=2013-07-20T3:00:08', '--end=2013-07-20T3:00:08', '--timeformat=unix', cik)
         self.ok(r, 'read all RIDs', match='timestamp,' + ','.join(['.*' for rid in rids]) + '\n[0-9]+' + ','.join(['.*' for rid in rids]))
 
+    def clone_test(self):
+        '''Clone command'''
+        stdports = self._createDataports()
+        cik = self.client.cik()
+
+        r = rpc('create', cik, '--type=dataport', '--format=string', '--alias=foo')
+        self.ok(r, 'create dataport succeeds')
+        r = rpc('write', cik, 'foo', '--value=testvalue')
+
+        def clone_helper(cik, rid, nohistorical=False):
+            if nohistorical:
+                r = rpc('clone', cik, '--rid=' + rid, '--nohistorical')
+            else:
+                r = rpc('clone', cik, '--rid=' + rid)
+            self.ok(r, 'clone succeeds')
+            if 'cik' in r.stdout:
+                copyrid, copycik = self._ridcik(r.stdout)
+                return copyrid, copycik
+            else:
+                return copyrid
+
+        # clone client
+        copyrid, copycik = clone_helper(self.portalcik, self.client.rid)
+
+        r = rpc('diff', cik, copycik)
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff with clone, no differences', match='')
+
+        r = rpc('read', copycik, 'foo', '--format=raw')
+        self.ok(r, 'time series data was copied', match='testvalue')
+
+        copyrid, copycik = clone_helper(self.portalcik, self.client.rid, nohistorical=True)
+
+        r = rpc('diff', cik, copycik)
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff with clone, no differences', match='')
+
+        r = rpc('read', copycik, 'foo', '--format=raw')
+        self.ok(r, 'time series data was not copied when --nohistorical was specified', match='')
+
+        # clone dataport
+        '''copyrid = clone_helper(cik, 'foo')
+        self.ok(r, 'copy a dataport')
+
+        r = rpc('diff', cik, copycik)
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff after cloning dataport in only one of two clones, notices differences', match='.+')
+
+        copyrid = clone_helper(copycik, 'foo')
+        self.ok(r, 'copy another dataport')
+
+        r = rpc('diff', cik, copycik)
+        if sys.version_info < (2, 7):
+            self.notok(r, 'diff not supported with Python <2.7')
+        else:
+            self.ok(r, 'diff after cloning dataport in two clones, no differences', match='')'''
+
+        # TODO: test --noaliases
+
     def copy_diff_test(self):
         '''Copy and diff commands'''
         stdports = self._createDataports()
