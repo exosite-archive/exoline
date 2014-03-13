@@ -79,6 +79,7 @@ Commands:
   revoke      Revoke a share code or CIK
   activate    Activate a share code or CIK
   deactivate  Deactivate a share code or expire a CIK
+  clone       Create a clone of a client
   spec        Determine whether a client matches a specification (beta)
 
 Options:
@@ -87,6 +88,7 @@ Options:
   --httptimeout=<sec>  HTTP timeout [default: 60]
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
+  --useragent=<ua>     Set User-Agent Header for outgoing requests
   --debug              Show debug info (stack traces on exceptions)
   -d --debughttp       Turn on debug level logging in pyonep
   --discreet           Obfuscate RIDs in stdout and stderr
@@ -160,20 +162,37 @@ Dump data from multiple dataports to CSV
       316705 alldata.csv
 ```
 
-Make a copy of a device
+Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
+
+```
+
+    $ exo clone e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa --rid=ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
+    cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
+    rid: 9635aa74053b3ab681e6ae0fb8187a0000000000
+```
+
+Copy a device with CIK e469e3... to a different portal with CIK ed6c3f... Note that whereas clone can clone all types of devices and device data within the same portal, copy is somewhat limited in the types of devices it supports but can do inter-portal copies.
 
 ```
 
     $ exo copy e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
     cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
+    rid: 9635aa74053b3ab681e6ae0fb8187a0000000000
 ```
 
 Create a new client or resource
 
 ```
 
-    $ ../exoline/exo.py create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --name=NewString
+    $ exo create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --name="Original Name"
     rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
+```
+
+Update a the name of a resource
+
+```
+
+    $ echo '{"name":"New Name"}' | exo update ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa 34eaae237988167d90bfc2ffeb666daaaaaaaaaa -
 ```
 
 Show differences between two clients
