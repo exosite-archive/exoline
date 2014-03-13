@@ -184,7 +184,7 @@ Create a new client or resource
 
 ```
 
-    $ exo create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --name="Original Name"
+    $ exo create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --alias=stringport --name="Original Name"
     rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 ```
 
@@ -192,7 +192,15 @@ Update a the name of a resource
 
 ```
 
-    $ echo '{"name":"New Name"}' | exo update ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa 34eaae237988167d90bfc2ffeb666daaaaaaaaaa -
+    $ echo '{"name":"New Name"}' | exo update ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa stringport -
+```
+
+Get the RID for CIK ad0282...
+
+```
+
+    $ exo lookup ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa
+    34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 ```
 
 Show differences between two clients
