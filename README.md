@@ -523,3 +523,4 @@ TODO
 - resource ancestry lookup 
 - add a --monitor (or --follow) option to script command
 - add support for https://github.com/exosite/api/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
+- add --timeformat=excel option for Excel import. Instead of "2014-03-13 15:53:20-05:00,<value>" it would output "2014-03-13 15:53:20,-05:00,<value>"

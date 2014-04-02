@@ -1,6 +1,12 @@
 History
 =======
 
+0.7.7 (2014-04-02)
+------------------
+
+- update to latest pyonep
+- fix RID regular expression
+
 0.7.6 (2014-03-04)
 ------------------
 

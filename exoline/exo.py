@@ -374,7 +374,7 @@ class ExolineOnepV1(onep.OnepV1):
 class ExoRPC():
     '''Wrapper for pyonep RPC API.
     Raises exceptions on error and provides some reasonable defaults.'''
-    regex_rid = re.compile("[0-9a-zA-Z]{40}")
+    regex_rid = re.compile("[0-9a-fA-F]{40}")
 
     class RPCException(Exception):
         pass
