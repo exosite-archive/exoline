@@ -46,7 +46,7 @@ Usage
 $ exo -h
 Exosite RPC API Command Line Interface
    Provides command line access to the Remote Procedure Call API:
-   https://github.com/exosite/api/tree/master/rpc
+   https://github.com/exosite/docs/tree/master/rpc
 
 Usage:
   exo [--help] [options] <command> [<args> ...]
@@ -522,5 +522,5 @@ TODO
 - differentiate dataport and client shares in tree command
 - resource ancestry lookup 
 - add a --monitor (or --follow) option to script command
-- add support for https://github.com/exosite/api/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
+- add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
 - add --timeformat=excel option for Excel import. Instead of "2014-03-13 15:53:20-05:00,<value>" it would output "2014-03-13 15:53:20,-05:00,<value>"

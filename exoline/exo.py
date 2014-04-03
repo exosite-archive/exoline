@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Exosite RPC API Command Line Interface
    Provides command line access to the Remote Procedure Call API:
-   https://github.com/exosite/api/tree/master/rpc
+   https://github.com/exosite/docs/tree/master/rpc
 
 Usage:
   exo [--help] [options] <command> [<args> ...]
@@ -139,7 +139,9 @@ Command options:
 Details:
     Pass - and a json description object on stdin, or leave it off to use defaults.
     Description is documented here:
-    http://developers.exosite.com/display/OP/Remote+Procedure+Call+API#RemoteProcedureCallAPI-create
+    https://github.com/exosite/docs/tree/master/rpc#create-client
+    https://github.com/exosite/docs/tree/master/rpc#create-dataport
+    https://github.com/exosite/docs/tree/master/rpc#create-datarule
 
     If - is not present, creates a resource with common defaults.'''),
     ('listing',
@@ -178,7 +180,7 @@ Command options:
         '''Update a resource from a json description passed on stdin.\n\nUsage:
     exo [options] update <cik> (<rid> - | -)
 
-    For details see https://github.com/exosite/api/tree/master/rpc#update'''),
+    For details see https://github.com/exosite/docs/tree/master/rpc#update'''),
     ('map',
         '''Add an alias to a resource.\n\nUsage:
     exo [options] map <cik> <rid> <alias>'''),
@@ -310,7 +312,7 @@ Command options:
 
      The clone and copy commands do similar things, but clone uses the RPC's
      create (clone) functionality, which is more full featured.
-     https://github.com/exosite/api/tree/master/rpc#create-clone
+     https://github.com/exosite/docs/tree/master/rpc#create-clone
 
      Use the clone command except if you need to copy a device to another portal.'''),
     #('tag', '''Add a tag to a resource\n\nUsage:
@@ -1373,7 +1375,7 @@ probably not valid.".format(cik))
 
 class ExoData():
     '''Implements the Data Interface API
-    https://github.com/exosite/api/tree/master/data'''
+    https://github.com/exosite/docs/tree/master/data'''
 
     def __init__(self, url='http://m2.exosite.com'):
         self.url = url
@@ -1417,7 +1419,7 @@ class ExoData():
 
 class ExoProvision():
     '''Implements the Provision API
-    https://github.com/exosite/api/tree/master/provision'''
+    https://github.com/exosite/docs/tree/master/provision'''
 
     def __init__(self, url='http://m2.exosite.com'):
         self.url = url
