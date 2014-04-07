@@ -976,7 +976,6 @@ probably not valid.".format(cik))
             types=['client', 'dataport', 'datarule', 'dispatch'],
             options={})
         self._raise_for_response(isok, listing)
-        pprint(listing)
         rids = itertools.chain(*[listing[t] for t in listing.keys()])
         self._exomult(cik, [['drop', rid] for rid in rids])
 

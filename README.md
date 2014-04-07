@@ -508,6 +508,7 @@ For information about what features are in what Exoline versions look [here](HIS
 TODO
 ----
 
+- differentiate dataport and client shares in tree command (this is important now that I'm using non-deprecated form of listing command)
 - --name parameter to copy command so names don't conflict
 - add raw command, taking full RPC json from stdin
 - Make the info command take multiple rids (or stdin)
@@ -519,7 +520,6 @@ TODO
 - add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
 - create executable and installer for a better Windows experience
 - support datasources with subscribe
-- differentiate dataport and client shares in tree command
 - resource ancestry lookup 
 - add a --monitor (or --follow) option to script command
 - add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
