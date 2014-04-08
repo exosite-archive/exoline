@@ -18,6 +18,7 @@ import itertools
 import os
 
 import six
+import yaml
 from six import iteritems
 from dateutil import parser
 
@@ -1116,6 +1117,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Spec command'''
         cik = self.client.cik()
         spec = 'files/spec.yaml'
+        spec_schema = 'files/spec_schema.yaml'
         r = rpc('spec', cik, spec)
         self.notok(r, 'no ids specified')
         r = rpc('spec', cik, spec, '--ids=1,2')
@@ -1126,13 +1128,23 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'create dataports and scripts based on spec', match='')
 
         # test correct number of children of each type
+        r = rpc('drop', cik, '--all-children')
+        self.ok(r, 'drop children from client')
+        # just one id so numbers work out
+        r = rpc('spec', cik, spec, '--ids=1', '--create')
+        self.ok(r, 'create dataports and scripts based on spec')
+
         r = rpc('listing', cik, '--types=dataport,datarule')
         self.ok(r, 'get listing of client')
         listing = json.loads(r.stdout)
         dataports = listing['dataport']
         datarules = listing['datarule']
-        self.assertEqual(len(dataports), 5, 'created correct number of dataports')
-        self.assertEqual(len(datarules), 3, 'created correct number of datarules')
+
+        specobj = yaml.safe_load(open(spec))
+        spec_numdataports = len(specobj['dataports'])
+        self.assertEqual(len(dataports), spec_numdataports, 'created correct number of dataports')
+        spec_numscripts= len(specobj['scripts'])
+        self.assertEqual(len(datarules), spec_numscripts, 'created correct number of scripts')
 
         # test initial value
         r = rpc('read', cik, 'teststring_set1', '--format=raw')
@@ -1163,6 +1175,24 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # test format content
         r = rpc('read', cik, 'testjson', '--format=raw')
         self.ok(r, 'read testjson initial value', match='{}')
+
+        # test json schema validation
+        r = rpc('drop', cik, '--all-children')
+        self.ok(r, 'drop children from test client')
+        r = rpc('create', cik, '--type=dataport', '--format=string', '--alias=testschema')
+        r = rpc('write', cik, 'testschema', "--value={\"foo\":\"bar\"}")
+        self.ok(r, 'write valid json')
+        r = rpc('read', cik, 'testschema')
+        self.l('stdout: ' + r.stdout)
+        r = rpc('spec', cik, spec_schema)
+        self.ok(r, 'jsonschema is valid', match='')
+
+        r = rpc('write', cik, 'testschema', "--value={\"bar\":1}")
+        self.ok(r, 'write invalid json')
+        r = rpc('read', cik, 'testschema')
+        self.l('stdout: ' + r.stdout)
+        r = rpc('spec', cik, spec_schema)
+        self.ok(r, 'jsonschema is not valid', search='is a required property')
 
         # TODO: test lua script templating
         # TODO: test that correct differences are reported. Change one thing

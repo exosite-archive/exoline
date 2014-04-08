@@ -1,6 +1,12 @@
 History
 =======
 
+0.7.8 (2014-04-08)
+------------------
+
+- add support for JSON schema in spec command
+- remove extraneous output from drop --all-children
+
 0.7.7 (2014-04-02)
 ------------------
 

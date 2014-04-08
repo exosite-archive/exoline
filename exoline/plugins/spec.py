@@ -20,9 +20,12 @@ from __future__ import unicode_literals
 import re
 import os
 import json
+import six
 from pprint import pprint
 
 import yaml
+import jsonschema
+
 
 class Plugin():
     def command(self):
@@ -56,6 +59,17 @@ dataports:
       format: string/json
       # initial value (if no other value is read back)
       initial: '{"text": "555-555-1234", "email": "jeff@555.com"}'
+    - alias: person
+      format: string/json
+      # JSON schema specified inline (http://json-schema.org/)
+      # format must be string/json to do validate
+      # you may also specify a string to reference schema in an
+      # external file. E.g. jsonschema: personschema.json
+      jsonschema: {"title": "Person Schema",
+                   "type": "object",
+                   "properties": {"name": {"type": "string"}},
+                   "required": ["name"]}
+      initial: '{"name":"John Doe"}'
 
     # any dataports not listed but found in the client
     # are ignored. The spec command does not delete things.
@@ -260,10 +274,24 @@ scripts:
                                         if len(val) == 0:
                                             print('Spec requires {0} be in JSON format, but it is empty.'.format(alias))
                                         else:
+                                            obj = None
                                             try:
                                                 obj = json.loads(val[0][1])
                                             except:
-                                                print('Spec requires {0} be in JSON format, but it does not parse as JSON.'.format(alias))
+                                                print('Spec requires {0} be in JSON format, but it does not parse as JSON. Value: {1}'.format(
+                                                    alias,
+                                                    val[0][1]))
+
+                                            if obj is not None and 'jsonschema' in res:
+                                                schema = res['jsonschema']
+                                                if isinstance(schema, six.string_types):
+                                                    schema = json.loads(open(schema).read())
+                                                try:
+                                                    jsonschema.validate(obj, schema)
+                                                except Exception as ex:
+                                                    print("{0} failed jsonschema validation.".format(alias))
+                                                    print(ex)
+
                                     elif format_content is not None:
                                         raise ExoException(
                                             'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))

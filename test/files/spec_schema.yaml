@@ -1,0 +1,8 @@
+# Test spec
+dataports:
+    - alias: testschema
+      format: string/json
+      jsonschema: {"title": "Foo Schema",
+                   "type": "object",
+                   "properties": {"foo": {"type": "string"}},
+                   "required": ["foo"]} 
