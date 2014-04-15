@@ -120,7 +120,8 @@ Command options:
     exo [options] record <cik> [<rid>] ((--value=<timestamp,value> ...) | -)
     exo [options] record <cik> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
 
-    - reads data from stdin.
+    - reads data from stdin. Data should be in CSV format (no headers) with rows
+      like this: <unix timestamp>,<value>
     --interval generates timestamps at a regular interval into the past.'''),
     ('create',
         '''Create a resource from a json description passed on stdin (with -),
@@ -839,7 +840,7 @@ class ExoRPC():
         else:
             print(line)
 
-    def _print_node(self, rid, info, aliases, cli_args, spacer, islast, max_name):
+    def _print_node(self, rid, info, aliases, cli_args, spacer, islast, maxlen=None):
         typ = info['basic']['type']
         if typ == 'client':
             id = 'cik: ' + info['key']
@@ -881,7 +882,10 @@ class ExoRPC():
 
         has_alias = aliases is not None and len(aliases) > 0
         if has_alias:
-            add_opt(True, 'aliases', str(aliases))
+            if type(aliases) is list:
+                add_opt(True, 'aliases', json.dumps(aliases))
+            else:
+                add_opt(True, 'aliases', aliases)
         # show RID for clients with no alias, or if --verbose was passed
         ridopt = False
         if typ == 'client':
@@ -892,15 +896,26 @@ class ExoRPC():
         add_opt(ridopt, 'rid', rid)
         add_opt('--verbose', 'unit', units)
 
+
+        if maxlen == None:
+            maxlen = {}
+            maxlen['type'] = len(typ)
+            maxlen['name'] = len(name)
+            maxlen['format'] = 0 if 'format' not in info['description'] else len(info['description']['format'])
+
         if 'format' in info['description']:
-            desc = info['description']['format'] + ' ' + typ + ' ' + id
+            fmt = info['description']['format']
+            desc = fmt + ' ' * (maxlen['format'] + 1 - len(fmt))
+            desc += typ + ' ' * (maxlen['type'] + 1 - len(typ))
+            desc += id
         else:
-            desc = typ + ' ' + id
+            desc = typ + ' ' * (maxlen['type'] + 1 - len(typ))
+            desc += id
 
         self._print_tree_line('{0}{1}{2} {3} {4}'.format(
             spacer,
             name,
-            ' ' * (max_name - len(name)),
+            ' ' * (maxlen['name'] + 1 - len(name)),
             desc,
             '' if len(opt) == 0 else '({0})'.format(', '.join(
                 ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
@@ -920,14 +935,13 @@ class ExoRPC():
             # info doesn't contain key
             info['key'] = cik
             aliases = info['aliases']
-            root_aliases = '(see parent)'
+            root_aliases = 'see parent'
             self._print_node(rid,
                              info,
                              root_aliases,
                              cli_args,
                              spacer,
-                             True,
-                             len(info['description']['name']))
+                             True)
             if max_level == 0:
                 return
             level += 1
@@ -943,9 +957,20 @@ class ExoRPC():
                 "  └─listing for {0} failed. info['basic']['status'] is \
 probably not valid.".format(cik))
         else:
-            # calculate the maximum length name of all children
-            lengths = [len(l[1]['description']['name']) for typ in types for l in iteritems(listing[typ])]
-            max_name = 0 if len(lengths) == 0 else max(lengths)
+            # calculate the maximum length of various things for all children,
+            # so we can make things line up in the output.
+            maxlen = {}
+            namelengths = [len(l[1]['description']['name']) for typ in types for l in iteritems(listing[typ])]
+            maxlen['name'] = 0 if len(namelengths) == 0 else max(namelengths)
+
+            typelengths = [len(l[1]['basic']['type']) for typ in types for l in iteritems(listing[typ])]
+            maxlen['type'] = 0 if len(typelengths) == 0 else max(typelengths)
+
+            formatlengths = [len(l[1]['description']['format'])
+                             for typ in types
+                             for l in iteritems(listing[typ])
+                             if 'format' in l[1]['description']]
+            maxlen['format'] = 0 if len(formatlengths) == 0 else max(formatlengths)
 
             # print everything
             for t_idx, t in enumerate(types):
@@ -964,11 +989,11 @@ probably not valid.".format(cik))
 
                     if t == 'client':
                         next_cik = info['key']
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, max_name)
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen)
                         if max_level == -1 or level < max_level:
                             self.tree(next_cik, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
                     else:
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, max_name)
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen)
 
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(

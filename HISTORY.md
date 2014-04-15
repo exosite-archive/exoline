@@ -1,6 +1,13 @@
 History
 =======
 
+0.7.9 (2014-04-15)
+------------------
+
+- tweak to tree output formatting
+- better documentation for record - input
+- upgrade pyonep
+
 0.7.8 (2014-04-08)
 ------------------
 
