@@ -1,7 +1,7 @@
 Exoline
 =======
 
-Exoline is command line tool for working with the Exosite [One Platform](http://exosite.com/products/onep).
+Exoline is a command line interface for the Exosite [One Platform](http://exosite.com/products/onep).
 
 Installation 
 ------------
