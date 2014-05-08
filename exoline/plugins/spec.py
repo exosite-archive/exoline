@@ -2,7 +2,7 @@
 '''Determine whether a client matches a specification (beta)
 
 Usage:
-    exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>]
+    exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>] [--portal] [-f]
     exo [options] spec <cik> --generate=<filename> [--scripts=<dir>]
     exo [options] spec --example
 
@@ -14,6 +14,11 @@ Command options:
     --create          Create any resources that do not exist
     --ids substitutes values for <% id %> when matching alias
     --example         Show an annotated example spec YAML file
+    --portal          Will apply the spec command to all devices in a portal
+                      that match the vendor/model in the given spec file
+    -f                Used with the `--portal` flag to override the prompt when
+                      updating multiple devices.
+    --no-diff         Do not show diff output on scripts.
 '''
 
 from __future__ import unicode_literals
@@ -22,6 +27,7 @@ import os
 import json
 import six
 from pprint import pprint
+import sys
 
 import yaml
 import jsonschema
@@ -38,6 +44,11 @@ class Plugin():
 # with more readable syntax and support for comments) and
 # look like this. They may contain comments that begin
 # with a # sign.
+
+# Device client model information
+device:
+    model: "myModel"
+    vendor: "myVendor"
 
 # list of dataports that must exist
 dataports:
@@ -101,29 +112,30 @@ scripts:
 
 
 
-        cik = options['cik']
+        input_cik = options['cik']
         rpc = options['rpc']
         ExoException = options['exception']
         if cmd == 'spec':
+
             if args['--generate'] is not None:
                 spec_file = args['--generate']
                 if args['--scripts'] is not None:
                     script_dir = args['--scripts']
                 else:
                     script_dir = 'scripts'
-                print('Generating spec for {0}.'.format(cik))
+                print('Generating spec for {0}.'.format(input_cik))
                 print('spec file: {0}, scripts directory: {1}'.format(spec_file, script_dir))
 
                 # generate spec file, download scripts
                 spec = {}
-                info, listing = rpc._exomult(cik,
+                info, listing = rpc._exomult(input_cik,
                     [['info', {'alias': ''}, {'basic': True,
                                               'description': True,
                                               'aliases': True}],
                      ['listing', ['dataport', 'datarule', 'dispatch'], {}]])
                 rids = listing['dataport'] + listing['datarule']
                 if len(rids) > 0:
-                    child_info = rpc._exomult(cik, [['info', rid, {'basic': True, 'description': True}] for rid in rids])
+                    child_info = rpc._exomult(input_cik, [['info', rid, {'basic': True, 'description': True}] for rid in rids])
                     for idx, rid in enumerate(rids):
                         myinfo = child_info[idx]
                         name = myinfo['description']['name']
@@ -171,6 +183,39 @@ scripts:
 
             updatescripts = args['--update-scripts']
             create = args['--create']
+            
+            def query_yes_no(question, default="yes"):
+                """Ask a yes/no question via raw_input() and return their answer.
+
+                "question" is a string that is presented to the user.
+                "default" is the presumed answer if the user just hits <Enter>.
+                    It must be "yes" (the default), "no" or None (meaning
+                    an answer is required of the user).
+
+                The "answer" return value is one of "yes" or "no".
+                """
+                valid = {"yes":True,   "y":True,  "ye":True,
+                         "no":False,     "n":False}
+                if default == None:
+                    prompt = " [y/n] "
+                elif default == "yes":
+                    prompt = " [Y/n] "
+                elif default == "no":
+                    prompt = " [y/N] "
+                else:
+                    raise ValueError("invalid default answer: '%s'" % default)
+
+                while True:
+                    sys.stdout.write(question + prompt)
+                    choice = raw_input().lower()
+                    if default is not None and choice == '':
+                        return valid[default]
+                    elif choice in valid:
+                        return valid[choice]
+                    else:
+                        sys.stdout.write("Please respond with 'yes' or 'no' "\
+                                         "(or 'y' or 'n').\n")
+                        
             def generate_aliases_and_data(res, args):
                 ids = args['--ids']
                 if 'alias' in res:
@@ -193,15 +238,74 @@ scripts:
 
             reid = re.compile('<% *id *%>')
 
-            def infoval(cik, alias):
+            def infoval(input_cik, alias):
                 '''Get info and latest value for a resource'''
                 return rpc._exomult(
-                    cik,
+                    input_cik,
                     [['info', {'alias': alias}, {'description': True, 'basic': True}],
                     ['read', {'alias': alias}, {'limit': 1}]])
 
+                    
             with open(args['<spec-yaml>']) as f:
                 spec = yaml.safe_load(f)
+            
+            ciks = []
+            
+            
+            if args['--portal'] == True:
+                # If user passed in the portal flag, but the spec doesn't have
+                # a vendor/model, exit
+                if (not 'device' in spec) or (not 'model' in spec['device']) or (not 'vendor' in spec['device']):
+                    print("With --portal option, spec file requires a\r\n"
+                          "device model and vendor field:\r\n"
+                          "e.g.\r\n"
+                          "device:\r\n"
+                          "    model: modelName\r\n"
+                          "    vendor: vendorName\r\n")
+                    raise ExoException('--portal flag requires a device model/vendor in spec file')
+                else:
+                    # get device vendor and model
+                    modelName = spec['device']['model']
+                    vendorName = spec['device']['vendor']
+                    
+                    # Get all clients in the portal
+                    clients = rpc._listing_with_info(input_cik, ['client'])
+                    # for each client
+                    for k,v in clients.items()[0][1].items():
+                        # Get meta field
+                        validJson = False
+                        meta = None
+                        try:
+                            meta = json.loads(v['description']['meta'])
+                            validJson = True
+                        except ValueError, e:
+                            # no json in this meat field
+                            validJson = False
+                        if validJson == True:
+                            # get device type (only vendor types have a model and vendor
+                            type = meta['device']['type']
+                            
+                            # if the device type is 'vendor'
+                            if type == 'vendor':
+                                # and it matches our vendor/model in the spec file
+                                if meta['device']['vendor'] == vendorName:
+                                    if meta['device']['model'] == modelName:
+                                        # Append the cik to our list
+                                        ciks.append(v['key'])
+            else:
+                # only for single client
+                ciks.append(input_cik)
+            
+            # Make sure user knows they are about to update multiple devices
+            # unless the `-f` flag is passed
+            if (args['--portal'] and args['--create']) and not args['-f']:
+                res = query_yes_no("You are about to update " + str(len(ciks)) + " devices, are you sure?")
+                if res == False:
+                    print('exiting')
+                    return
+            # for each device in our list of ciks
+            for cik in ciks:
+                #   apply spec [--create]
                 for typ in ['dataport', 'client', 'script']:
                     if typ + 's' in spec:
                         for res in spec[typ + 's']:
@@ -348,7 +452,7 @@ scripts:
                                             if updatescripts:
                                                 print('Uploading script to {0}...'.format(alias))
                                                 rpc.upload_script([cik], res['file'], name=name, create=False, filterfn=template)
-                                            else:
+                                            elif not args['--no-diff']:
                                                 # show diff
                                                 import difflib
                                                 differ = difflib.Differ()
