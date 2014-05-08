@@ -25,13 +25,13 @@ from __future__ import unicode_literals
 import re
 import os
 import json
-import six
 from pprint import pprint
 import sys
 
 import yaml
 import jsonschema
-
+import six
+from six import iteritems
 
 class Plugin():
     def command(self):
@@ -183,7 +183,7 @@ scripts:
 
             updatescripts = args['--update-scripts']
             create = args['--create']
-            
+
             def query_yes_no(question, default="yes"):
                 """Ask a yes/no question via raw_input() and return their answer.
 
@@ -215,7 +215,7 @@ scripts:
                     else:
                         sys.stdout.write("Please respond with 'yes' or 'no' "\
                                          "(or 'y' or 'n').\n")
-                        
+
             def generate_aliases_and_data(res, args):
                 ids = args['--ids']
                 if 'alias' in res:
@@ -245,13 +245,13 @@ scripts:
                     [['info', {'alias': alias}, {'description': True, 'basic': True}],
                     ['read', {'alias': alias}, {'limit': 1}]])
 
-                    
+
             with open(args['<spec-yaml>']) as f:
                 spec = yaml.safe_load(f)
-            
+
             ciks = []
-            
-            
+
+
             if args['--portal'] == True:
                 # If user passed in the portal flag, but the spec doesn't have
                 # a vendor/model, exit
@@ -267,24 +267,24 @@ scripts:
                     # get device vendor and model
                     modelName = spec['device']['model']
                     vendorName = spec['device']['vendor']
-                    
+
                     # Get all clients in the portal
                     clients = rpc._listing_with_info(input_cik, ['client'])
                     # for each client
-                    for k,v in clients.items()[0][1].items():
+                    for k,v in iteritems(list(iteritems(clients))[0][1]):
                         # Get meta field
                         validJson = False
                         meta = None
                         try:
                             meta = json.loads(v['description']['meta'])
                             validJson = True
-                        except ValueError, e:
+                        except ValueError as e:
                             # no json in this meat field
                             validJson = False
                         if validJson == True:
                             # get device type (only vendor types have a model and vendor
                             type = meta['device']['type']
-                            
+
                             # if the device type is 'vendor'
                             if type == 'vendor':
                                 # and it matches our vendor/model in the spec file
@@ -295,7 +295,7 @@ scripts:
             else:
                 # only for single client
                 ciks.append(input_cik)
-            
+
             # Make sure user knows they are about to update multiple devices
             # unless the `-f` flag is passed
             if (args['--portal'] and args['--create']) and not args['-f']:

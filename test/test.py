@@ -1221,10 +1221,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         os.remove(example_spec)
 
     def spec_multi_test(self):
-        '''
-            Tests the ability to update multiple device of the same clientmodel
-            under a single portal.  
-        '''
+        '''Test spec --portal for updating multiple devices'''
         # Get example spec
         r = rpc('spec', '--example')
         example_spec = 'files/tmp_examplespec.yaml'
@@ -1235,48 +1232,48 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             else:
                 out = r.stdout.encode('utf8')
             f.write(out)
-        
-        
+
+
         cik = self.client.cik()
-        
+
         # meta fields for test devices
         metaMyModel = "{\"device\":{\"type\":\"vendor\",\"model\":\"myModel\",\"vendor\":\"myVendor\"}}"
         metaNotMyModel = "{\"device\":{\"type\":\"vendor\",\"model\":\"NotMyModel\",\"vendor\":\"myVendor\"}}"
 
-        
+
         # Create two devices of myModel type,
         myDev1_r = Resource(
             cik,
             'client',
             {"name": "myDev1",
             "meta":metaMyModel})
-            
+
         myDev2_r = Resource(
             cik,
             'client',
             {"name": "myDev2",
             "meta":metaMyModel})
-            
+
         # Create one device of notMyModel type
         notMyDev_r = Resource(
             cik,
             'client',
             {"name": "notMyDev",
             "meta":metaNotMyModel})
-        
+
         # Create once device without a model type
         genericDev_r = Resource(
             cik,
             'client',
             {"name": "genericDev"})
-            
+
 
         # Create devices
         myDev1 = self._create(myDev1_r)
         myDev2 = self._create(myDev2_r)
         notMyDev = self._create(notMyDev_r)
         genericDev = self._create(genericDev_r)
-        
+
         # Attempt to apply spec to myModel types
         r = rpc('spec', cik, example_spec, '--portal', '-f', '--create', '--update-scripts', '--ids=A,B')
         self.ok(r, 'applying spec to portal')
@@ -1284,19 +1281,19 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # make sure that both myDevs now meet spec
         r = rpc('spec', myDev1.cik(), example_spec, '--ids=A,B')
         self.ok(r, "Device 1 didn't match spec", search='')
-        
+
         r = rpc('spec', myDev2.cik(), example_spec, '--ids=A,B')
         self.ok(r, "Device 2 didn't match spec", search='')
-        
-        # and that both the non-example or the one that didn't have 
+
+        # and that both the non-example or the one that didn't have
         # a type don't meet the spec.
         r = rpc('spec', notMyDev.cik(), example_spec, '--ids=A,B')
         self.ok(r, "Device didn't match spec", search='not found')
 
         r = rpc('spec', genericDev.cik(), example_spec, '--ids=A,B')
         self.ok(r, "Device didn't match spec", search='not found')
-        
-        
+
+
     def portals_cache_test(self):
         '''Portals clearcache command and option'''
         cik = self.client.cik()

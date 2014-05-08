@@ -2221,7 +2221,7 @@ class DiscreetFilter(object):
     def write(self, message):
         # hide the second half
         message = message.decode('utf-8')
-        s = self.ridre.sub(u'\g<1>01234567890123456789', message)
+        s = self.ridre.sub('\g<1>01234567890123456789', message)
         s = s.encode('utf-8')
         self.out.write(s)
 
