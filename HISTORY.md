@@ -1,6 +1,11 @@
 History
 =======
 
+0.7.10 (2014-05-08)
+-------------------
+
+- add spec --portal option to apply a spec to multiple devices
+
 0.7.9 (2014-04-15)
 ------------------
 
