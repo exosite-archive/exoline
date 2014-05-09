@@ -179,7 +179,7 @@ Command options:
                    all available keys are returned.'''),
     ('update',
         '''Update a resource from a json description passed on stdin.\n\nUsage:
-    exo [options] update <cik> (<rid> - | -)
+    exo [options] update <cik> <rid> -
 
     For details see https://github.com/exosite/docs/tree/master/rpc#update'''),
     ('map',
