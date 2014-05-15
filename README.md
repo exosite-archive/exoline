@@ -111,13 +111,11 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
   ├─device1 client cik: 970346d3391a2d8c703a01234567890123456789 (aliases: [u'device1'])
   └─device2 client cik: e95052ab56f985e6807d01234567890123456789 (aliases: [u'device2'])
       └─json string dataport rid: 82209d5888a3bd1530d201234567890123456789 (aliases: [u'json'])
-
 ```
 
 Upload a Lua script
 
 ```
-
     $ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa     
     Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
 ```
@@ -125,7 +123,6 @@ Upload a Lua script
 Monitor output of a script
 
 ```
-
     $ exo read e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --follow 
     2013-07-09 11:57:45,line 2: Running translate_gps.lua...
     2013-07-09 12:00:17,"line 12: New 4458.755987,N,09317.538945,W
@@ -137,21 +134,18 @@ Monitor output of a script
 Write raw data
 
 ```
-
     $ exo write e469e336ff9c8ed9176bc05ed7fa40daaaaaaaa gps-raw --value=4458.755987,N,09317.538945,W
 ```
 
 Record a bunch of data without timestamps
 
 ```
-
     $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
 ```
 
 Dump data from multiple dataports to CSV
 
 ```
-
     $ time ./exo.py read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --start=5/1/2013 --end=8/1/2013 --chunkhours=24 > alldata.csv
 
     real    1m58.377s
@@ -165,7 +159,6 @@ Dump data from multiple dataports to CSV
 Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
 
 ```
-
     $ exo clone e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa --rid=ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
     cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
     rid: 9635aa74053b3ab681e6ae0fb8187a0000000000
@@ -174,7 +167,6 @@ Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
 Copy a device with CIK e469e3... to a different portal with CIK ed6c3f... Note that whereas clone can clone all types of devices and device data within the same portal, copy is somewhat limited in the types of devices it supports but can do inter-portal copies.
 
 ```
-
     $ exo copy e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
     cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
     rid: 9635aa74053b3ab681e6ae0fb8187a0000000000
@@ -183,7 +175,6 @@ Copy a device with CIK e469e3... to a different portal with CIK ed6c3f... Note t
 Create a new client or resource
 
 ```
-
     $ exo create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --alias=stringport --name="Original Name"
     rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 ```
@@ -191,14 +182,12 @@ Create a new client or resource
 Update a the name of a resource
 
 ```
-
     $ echo '{"name":"New Name"}' | exo update ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa stringport -
 ```
 
 Get the RID for CIK ad0282...
 
 ```
-
     $ exo lookup ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa
     34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 ```
@@ -206,7 +195,6 @@ Get the RID for CIK ad0282...
 Show differences between two clients
 
 ```
-
     $ exo copy 3ae52bdd5280d7cb96a2077b0cd5aaaaaaaaaaaa 5de0cfcf7b5bed2ea7a802ebe0679baaaaaaaaaa
     cik: cc080a86b1c9b53d5371e0fa793faaaaaaaaaaa
     $ exo diff 3ae52bdd5280d7cb96a2077b0cd5aaaaaaaaaaaa cc080a86b1c9b53d5371e0fa793f1daaaaaaaaaa
@@ -315,7 +303,6 @@ Show differences between two clients
 See the HTTP requests and responses being made by pyonep:
 
 ```
-
 $ exo --debughttp --discreet read <cik> temperature
 DEBUG:pyonep.onep:POST /api:v1/rpc/process
 Host: m2.exosite.com:80
@@ -406,7 +393,6 @@ CIK Shortcuts
 Store your commonly used CIKs in a file:
 
 ```
-
 $ printf "keys:\n" > ~/.exoline
 $ printf "    foo: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> ~/.exoline
 $ exo read foo temperature
@@ -498,6 +484,17 @@ To run the tests the packages in test/requirements.txt, and then type:
 
 For more on testing (including running individual tests), see [test/README.md](test/README.md).
 
+Building for Windows
+--------------------
+
+You can build Exoline for Windows. On a Windows machine, do this:
+
+- install Python (make sure bitness matches the machine. pywin32 cares about this.)
+- [pip-win](https://sites.google.com/site/pydatalog/python/pip-for-windows)
+- install pywin32
+- install PyInstaller (`pip install pyinstaller`)
+- in the Exoline root directory, run (`pyinstaller exo.spec`)
+- `exo.exe` and its dependencies are in dist\exo\
 
 What's New?
 -----------

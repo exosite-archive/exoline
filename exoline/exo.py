@@ -32,11 +32,13 @@ See 'exo <command> --help' for more information on a specific command.
 from __future__ import unicode_literals
 import sys
 import os
+from os.path import expanduser
 import json
 if sys.version_info < (3, 0):
     import unicodecsv as csv
 else:
     import csv
+import platform
 import re
 from datetime import datetime
 from datetime import timedelta
@@ -457,7 +459,7 @@ class ExoRPC():
             if it doesn't look like a CIK.'''
         if self.regex_rid.match(cik) is None:
             # if cik doesn't look like a cik, maybe it's a shortcut
-            configfile = os.path.join(os.environ['HOME'], '.exoline')
+            configfile = os.path.join(expanduser('~'), '.exoline')
             try:
                 with open(configfile) as f:
                     config = yaml.safe_load(f)
@@ -980,13 +982,22 @@ probably not valid.".format(cik))
                     info = typelisting[rid]
                     islastoftype = rid_idx == len(typelisting) - 1
                     islast = islast_nonempty_type and islastoftype
-                    if islast:
-                        child_spacer = spacer + '    '
-                        own_spacer   = spacer + '  └─'
+                    if platform.system() != 'Windows':
+                        if islast:
+                            child_spacer = spacer + '    '
+                            own_spacer   = spacer + '  └─'
+                        else:
+                            child_spacer = spacer + '  │ '
+                            own_spacer   = spacer + '  ├─'
                     else:
-                        child_spacer = spacer + '  │ '
-                        own_spacer   = spacer + '  ├─'
-
+                        # Windows executable
+                        if islast:
+                            child_spacer = spacer + '    '
+                            own_spacer   = spacer + '  +-'
+                        else:
+                            child_spacer = spacer + '  | '
+                            own_spacer   = spacer + '  +-'
+                        
                     if t == 'client':
                         next_cik = info['key']
                         self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen)

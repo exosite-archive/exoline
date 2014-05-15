@@ -2,11 +2,15 @@
 
 from setuptools import setup
 import sys
+import py2exe
+from glob import glob
 
 from exoline import __version__ as version
 
 with open('requirements.txt') as f:
     required = f.read().splitlines()
+
+data_files = [("Microsoft.VC90.CRT", glob(r'C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC90.CRT\*.*'))]
 
 try:
     from collections import OrderedDict
@@ -37,4 +41,33 @@ setup(
     keywords=['exosite', 'onep', 'one platform', 'm2m'],
     install_requires=required,
     zip_safe=False,
+	console=['exoline/exo.py'],
+    data_files=data_files,
+	options={
+		'py2exe':
+		{
+			'includes': ['yaml', 'exoline']
+		}
+	}
     )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
