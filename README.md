@@ -495,6 +495,13 @@ You can build Exoline for Windows. On a Windows machine, do this:
 - install PyInstaller (`pip install pyinstaller`)
 - in the Exoline root directory, run (`pyinstaller exo.spec`)
 - `exo.exe` and its dependencies are in dist\exo\
+- run `copy dist\exo\exo.exe dist\exo\exo` so that Windows users don't need to type .exe
+
+Build the installer this way:
+
+- install Inno Setup 5.5.4 from here: http://www.innosetup.com/
+- open innosetup.iss
+- update Source in the Files section to point to dist\exo folder on your system
 
 What's New?
 -----------

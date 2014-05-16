@@ -1,6 +1,12 @@
 History
 =======
 
+0.7.11 (2014-05-16)
+-------------------
+
+- Windows executable and installer
+- fixed tree output for Windows
+
 0.7.10 (2014-05-08)
 -------------------
 

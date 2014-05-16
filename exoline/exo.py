@@ -337,28 +337,43 @@ doc_replace = {
     '{{ helpoption }}': '''    -h --help  Show this screen.''',
 }
 
-# load plugins. use timezone because this file may be running
-# as a script in some other location.
-plugin_path = os.path.join(os.path.dirname(timezone.__file__), 'plugins')
-
-plugin_names = [os.path.basename(f)[:-3]
-    for f in glob.glob(plugin_path + "/*.py")
-    if not os.path.basename(f).startswith('_')]
-
 plugins = []
-for module_name in plugin_names:
-    try:
-        plugin = importlib.import_module('plugins.' + module_name)
-    except:
-        plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
+if platform.system() != 'Windows':
+    # load plugins. use timezone because this file may be running
+    # as a script in some other location.
+    plugin_path = os.path.join(os.path.dirname(timezone.__file__), 'plugins')
 
-    # instantiate plugin
-    p = plugin.Plugin()
-    plugins.append(p)
+    plugin_names = [os.path.basename(f)[:-3]
+        for f in glob.glob(plugin_path + "/*.py")
+        if not os.path.basename(f).startswith('_')]
 
-    # get documentation
-    cmd_doc[p.command()] = plugin.__doc__
+    for module_name in plugin_names:
+        try:
+            plugin = importlib.import_module('plugins.' + module_name)
+        except:
+            plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
 
+        # instantiate plugin
+        p = plugin.Plugin()
+        plugins.append(p)
+
+        # get documentation
+        cmd_doc[p.command()] = plugin.__doc__
+else:
+    try: 
+        try:
+            from ..exoline.plugins import spec
+        except:
+            from exoline.plugins import spec
+        p = spec.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = spec.__doc__
+    except Exception as ex:
+        import traceback
+        traceback.print_exc()
+        print("Couldn't import spec......")
+        pprint(ex)
+        print('yup, that was an exception.')
 
 # perform substitutions on command documentation
 for k in cmd_doc:
