@@ -1,6 +1,11 @@
 History
 =======
 
+0.7.13 (2014-05-28)
+-------------------
+
+- add ExoRPC.mult() to avoid calling \_exomult directly
+
 0.7.12 (2014-05-28)
 -------------------
 

@@ -2,7 +2,11 @@
 
 from setuptools import setup
 import sys
-import py2exe
+try:
+    import py2exe
+except ImportError:
+    pass
+
 from glob import glob
 
 from exoline import __version__ as version
