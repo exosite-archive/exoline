@@ -1,6 +1,11 @@
 History
 =======
 
+0.7.12 (2014-05-28)
+-------------------
+
+- add --level option for info --recursive to limit depth
+
 0.7.11 (2014-05-16)
 -------------------
 

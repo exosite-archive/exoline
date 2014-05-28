@@ -173,6 +173,7 @@ Command options:
     --cikonly      print CIK by itself
     --pretty       pretty print output
     --recursive    embed info for any children recursively
+    --level=<num>  number of levels to recurse through the client tree
     --include=<key list>
     --exclude=<key list>
                    comma separated list of info keys to include and exclude.
@@ -360,7 +361,7 @@ if platform.system() != 'Windows':
         # get documentation
         cmd_doc[p.command()] = plugin.__doc__
 else:
-    try: 
+    try:
         try:
             from ..exoline.plugins import spec
         except:
@@ -775,11 +776,15 @@ class ExoRPC():
              rid={'alias': ''},
              options={},
              cikonly=False,
-             recursive=False):
+             recursive=False,
+             level=None):
         '''Returns info for RID as a dict.'''
         if recursive:
             rid = None if type(rid) is dict else rid
-            response = self._infotree(cik, rid=rid, options=options)
+            response = self._infotree(cik,
+                                      rid=rid,
+                                      options=options,
+                                      level=level)
         else:
             isok, response = self.exo.info(cik, rid, options)
             self._raise_for_response(isok, response)
@@ -1012,7 +1017,7 @@ probably not valid.".format(cik))
                         else:
                             child_spacer = spacer + '  | '
                             own_spacer   = spacer + '  +-'
-                        
+
                     if t == 'client':
                         next_cik = info['key']
                         self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen)
@@ -1262,7 +1267,7 @@ probably not valid.".format(cik))
 
         return list(differ.compare(s1, s2))
 
-    def _infotree(self, cik, rid=None, nodeidfn=lambda rid, info: rid, options={}):
+    def _infotree(self, cik, rid=None, nodeidfn=lambda rid, info: rid, options={}, level=None):
         '''Get all info for a cik and its children in a nested dict.
         The basic unit is {'rid': '<rid>', 'info': <info-with-children>},
         where <info-with-children> is just the info object for that node
@@ -1294,6 +1299,11 @@ probably not valid.".format(cik))
 
         info = self._exomult(cik, [['info', rid, options]])[0]
 
+        myid = nodeidfn(rid, info)
+
+        if level is not None and level <= 0:
+            return {'rid': myid, 'info': info}
+
         if norid or info['basic']['type'] == 'client':
             if not norid:
                 # key is only available to owner (not the resource itself)
@@ -1301,14 +1311,16 @@ probably not valid.".format(cik))
             listing = self._exomult(cik,
                                     [['listing', types, {}]])[0]
 
-        myid = nodeidfn(rid, info)
-
         info['children'] = []
         for typ in types:
             if typ in listing:
                 ridlist = listing[typ]
                 for childrid in ridlist:
-                    tr = self._infotree(cik, childrid, nodeidfn=nodeidfn, options=options)
+                    tr = self._infotree(cik,
+                                        childrid,
+                                        nodeidfn=nodeidfn,
+                                        options=options,
+                                        level=None if level is None else level-1)
                     info['children'].append(tr)
         info['children'].sort(key=itemgetter('rid'))
 
@@ -2037,11 +2049,14 @@ def handle_args(cmd, args):
                 for key in exclude.split(',')]
 
             options = er.make_info_options(include, exclude)
+            level = args['--level']
+            level = None if level is False or args['--recursive'] is False else int(level)
             info = er.info(cik,
                         rids[0],
                         options=options,
                         cikonly=args['--cikonly'],
-                        recursive=args['--recursive'])
+                        recursive=args['--recursive'],
+                        level=level)
             if args['--pretty']:
                 pr(info)
             else:
