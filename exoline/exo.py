@@ -445,7 +445,7 @@ class ExoRPC():
         return r
 
     def mult(self, cik, commands):
-        return _exomult(cik, commands)
+        return self._exomult(cik, commands)
 
     def _exomult(self, cik, commands):
         '''Takes a list of onep commands with cik omitted, e.g.:
