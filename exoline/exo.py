@@ -2234,7 +2234,7 @@ def handle_args(cmd, args):
             handled = False
             for plugin in plugins:
                 if cmd in plugin.command():
-                    options = {'cik': cik, 'rpc': er, 'exception': ExoException}
+                    options = {'cik': cik, 'rids': rids, 'rpc': er, 'exception': ExoException}
                     try:
                         options['data'] = ed
                     except NameError:
