@@ -342,24 +342,27 @@ plugins = []
 if platform.system() != 'Windows':
     # load plugins. use timezone because this file may be running
     # as a script in some other location.
-    plugin_path = os.path.join(os.path.dirname(timezone.__file__), 'plugins')
+    default_plugin_path = os.path.join(os.path.dirname(timezone.__file__), 'plugins')
 
-    plugin_names = [os.path.basename(f)[:-3]
-        for f in glob.glob(plugin_path + "/*.py")
-        if not os.path.basename(f).startswith('_')]
+    plugin_paths = os.getenv('EXO_PLUGIN_PATH', default_plugin_path).split(':')
 
-    for module_name in plugin_names:
-        try:
-            plugin = importlib.import_module('plugins.' + module_name)
-        except:
-            plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
+    for plugin_path in [i for i in plugin_paths if len(i) > 0]:
+        plugin_names = [os.path.basename(f)[:-3]
+            for f in glob.glob(plugin_path + "/*.py")
+            if not os.path.basename(f).startswith('_')]
 
-        # instantiate plugin
-        p = plugin.Plugin()
-        plugins.append(p)
+        for module_name in plugin_names:
+            try:
+                plugin = importlib.import_module('plugins.' + module_name)
+            except:
+                plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
 
-        # get documentation
-        cmd_doc[p.command()] = plugin.__doc__
+            # instantiate plugin
+            p = plugin.Plugin()
+            plugins.append(p)
+
+            # get documentation
+            cmd_doc[p.command()] = plugin.__doc__
 else:
     try:
         try:
