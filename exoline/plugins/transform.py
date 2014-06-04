@@ -5,12 +5,25 @@ Usage:
     exo [options] transform <cik> <rid> <func>
 
 Command Options:
-    --cma
+    --cma           Save data to cvs files just in case.
     --start=<time>
-    --end=<time>             start and end times (see details below)
-    {{ helpoption }}
+    --end=<time>    start and end times (see details below)
+{{ helpoption }}
 
-{{ startend }}
+    This plugin allows for applying a transformation function on the data
+    values in a dataport.  All values or a subset of them can be modified.
+
+    The intent is that while developing a system, it is not uncommon to
+    change what or how the data is stored. A lightweight example is storing
+    ADC counts then later deciding to store temperatures. Often this left
+    you with the two options of either flushing all the old data and
+    waiting for new data to fill. Or trying to deal with the two very
+    different data sets.
+
+    <func> is a python snippet to transform the data.  Typically you want
+    to stick with simpler things, like converting C into F: 'x*9/5+32'
+
+    {{ startend }}
 '''
 
 from __future__ import unicode_literals
