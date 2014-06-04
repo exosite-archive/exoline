@@ -42,3 +42,11 @@ tmp
 
 # vim 
 .ropeproject
+*.sw[a-z]
+
+# Mac OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
