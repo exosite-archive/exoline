@@ -32,11 +32,9 @@ class Plugin():
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
-
-        start, end = ExoUtilities.get_startend(args)
         cma = args['--cma']
 
-        # TODO Test using start-end ranges
+        start, end = ExoUtilities.get_startend(args)
 
         # read data in range, get as array of values.
         response = rpc.read(cik, rid, 65535, 'asc', start, end, 'all')
@@ -65,7 +63,13 @@ class Plugin():
                 cw = csv.writer(cvsfile)
                 cw.writerows(data)
 
-        # FIXME start and end for read and flush mean different things!
+        # start, end for read is inclusive.
+        # start, end for flush is exclusive.
+        # adjust by 1
+        if start is not None:
+            start = start - 1
+        if end is not None:
+            end = end + 1 
         rpc.flush(cik, [rid], start, end)
 
         # Put the modified values back
