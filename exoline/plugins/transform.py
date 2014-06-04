@@ -16,32 +16,8 @@ Command Options:
 from __future__ import unicode_literals
 import re
 import os
-import json
 import csv
-from pprint import pprint
 import sys
-
-def parse_ts(s):
-    return None if s is None else parse_ts_tuple(parser.parse(s).timetuple())
-def parse_ts_tuple(t):
-    return int(time.mktime(t))
-def is_ts(s):
-    return s is not None and re.match('^[0-9]+$', s) is not None
-def get_startend(args):
-    '''Get start and end timestamps based on standard arguments'''
-    start = args.get('--start', None)
-    end = args.get('--end', None)
-    if is_ts(start):
-        start = int(start)
-    else:
-        start = parse_ts(start)
-    if end == 'now':
-        end = None
-    elif is_ts(end):
-        end = int(end)
-    else:
-        end = parse_ts(end)
-    return start, end
 
 class Plugin():
     def command(self):
@@ -55,7 +31,9 @@ class Plugin():
         mpfn = eval('lambda x: ' + mapFunc)
         rpc = options['rpc']
         ExoException = options['exception']
-        start, end = get_startend(args)
+        ExoUtilities = options['utils']
+
+        start, end = ExoUtilities.get_startend(args)
         cma = args['--cma']
 
         # TODO Test using start-end ranges
@@ -79,9 +57,6 @@ class Plugin():
         # Rotate it back so we can 'record' it
         data = zip(*rotated)
 
-        print(data)
-        #sys.exit()
-
         if cma:
             with open(cik + '-transformed.csv', 'wb') as cvsfile:
                 cw = csv.writer(cvsfile)
@@ -94,4 +69,4 @@ class Plugin():
         rpc.record(cik, rid, data)
 
 
-# vim: set ai noet sw=4 ts=4 :
+# vim: set ai et sw=4 ts=4 :
