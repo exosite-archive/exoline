@@ -6,8 +6,10 @@ Usage:
 
 Command Options:
     --cma           Save data to cvs files just in case.
+    --dry           Does not flush or record back data.
     --start=<time>
     --end=<time>    start and end times (see details below)
+    -v --verbose    display transformed data
 {{ helpoption }}
 
     This plugin allows for applying a transformation function on the data
@@ -22,6 +24,7 @@ Command Options:
 
     <func> is a python snippet to transform the data.  Typically you want
     to stick with simpler things, like converting C into F: 'x*9/5+32'
+    or back: '(x-32)*5/9'
 
     {{ startend }}
 '''
@@ -46,6 +49,8 @@ class Plugin():
         ExoException = options['exception']
         ExoUtilities = options['utils']
         cma = args['--cma']
+        dry = args['--dry']
+        verbose = args['--verbose']
 
         start, end = ExoUtilities.get_startend(args)
 
@@ -76,17 +81,24 @@ class Plugin():
                 cw = csv.writer(cvsfile)
                 cw.writerows(data)
 
+        if verbose:
+            cw = csv.writer(sys.stdout)
+            cw.writerows(data)
+
         # start, end for read is inclusive.
         # start, end for flush is exclusive.
         # adjust by 1
         if start is not None:
             start = start - 1
         if end is not None:
-            end = end + 1 
-        rpc.flush(cik, [rid], start, end)
+            end = end + 1
+
+        if not dry:
+            rpc.flush(cik, [rid], start, end)
 
         # Put the modified values back
-        rpc.record(cik, rid, data)
+        if not dry:
+            rpc.record(cik, rid, data)
 
 
 # vim: set ai et sw=4 ts=4 :
