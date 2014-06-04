@@ -5,6 +5,7 @@ Usage:
     exo [options] transform <cik> <rid> <func>
 
 Command Options:
+    --cma
     --start=<time>
     --end=<time>             start and end times (see details below)
     {{ helpoption }}
@@ -16,6 +17,7 @@ from __future__ import unicode_literals
 import re
 import os
 import json
+import csv
 from pprint import pprint
 import sys
 
@@ -54,10 +56,18 @@ class Plugin():
         rpc = options['rpc']
         ExoException = options['exception']
         start, end = get_startend(args)
+        cma = args['--cma']
+
+        # TODO Test using start-end ranges
 
         # read data in range, get as array of values.
         response = rpc.read(cik, rid, 65535, 'asc', start, end, 'all')
         # response is array of arrays
+
+        if cma:
+            with open(cik + '-read.csv', 'wb') as cvsfile:
+                cw = csv.writer(cvsfile)
+                cw.writerows(response)
 
         # Rotate response so we can pass an array of values to the map
         rotated = zip(*response[::-1])
@@ -71,6 +81,11 @@ class Plugin():
 
         print(data)
         #sys.exit()
+
+        if cma:
+            with open(cik + '-transformed.csv', 'wb') as cvsfile:
+                cw = csv.writer(cvsfile)
+                cw.writerows(data)
 
         # FIXME start and end for read and flush mean different things!
         rpc.flush(cik, [rid], start, end)
