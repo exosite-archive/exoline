@@ -5,12 +5,28 @@ Usage:
     exo [options] transform <cik> <rid> <func>
 
 Command Options:
-    --cma
+    --cma           Save data to cvs files just in case.
+    --dry           Does not flush or record back data.
     --start=<time>
-    --end=<time>             start and end times (see details below)
-    {{ helpoption }}
+    --end=<time>    start and end times (see details below)
+    -v --verbose    display transformed data
+{{ helpoption }}
 
-{{ startend }}
+    This plugin allows for applying a transformation function on the data
+    values in a dataport.  All values or a subset of them can be modified.
+
+    The intent is that while developing a system, it is not uncommon to
+    change what or how the data is stored. A lightweight example is storing
+    ADC counts then later deciding to store temperatures. Often this left
+    you with the two options of either flushing all the old data and
+    waiting for new data to fill. Or trying to deal with the two very
+    different data sets.
+
+    <func> is a python snippet to transform the data.  Typically you want
+    to stick with simpler things, like converting C into F: 'x*9/5+32'
+    or back: '(x-32)*5/9'
+
+    {{ startend }}
 '''
 
 from __future__ import unicode_literals
@@ -33,6 +49,8 @@ class Plugin():
         ExoException = options['exception']
         ExoUtilities = options['utils']
         cma = args['--cma']
+        dry = args['--dry']
+        verbose = args['--verbose']
 
         start, end = ExoUtilities.get_startend(args)
 
@@ -63,17 +81,24 @@ class Plugin():
                 cw = csv.writer(cvsfile)
                 cw.writerows(data)
 
+        if verbose:
+            cw = csv.writer(sys.stdout)
+            cw.writerows(data)
+
         # start, end for read is inclusive.
         # start, end for flush is exclusive.
         # adjust by 1
         if start is not None:
             start = start - 1
         if end is not None:
-            end = end + 1 
-        rpc.flush(cik, [rid], start, end)
+            end = end + 1
+
+        if not dry:
+            rpc.flush(cik, [rid], start, end)
 
         # Put the modified values back
-        rpc.record(cik, rid, data)
+        if not dry:
+            rpc.record(cik, rid, data)
 
 
 # vim: set ai et sw=4 ts=4 :
