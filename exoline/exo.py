@@ -1540,44 +1540,44 @@ class ExoPortals():
             raise ExoException('Bad status from Portals cache invalidate API call: ' + ex)
 
 
-def parse_ts(s):
-    return None if s is None else parse_ts_tuple(parser.parse(s).timetuple())
+class ExoUtilities():
+    @classmethod
+    def get_startend(cls, args):
+        '''Get start and end timestamps based on standard arguments'''
+        start = args.get('--start', None)
+        end = args.get('--end', None)
+        def parse_ts(s):
+            return None if s is None else parse_ts_tuple(parser.parse(s).timetuple())
+        def parse_ts_tuple(t):
+            return int(time.mktime(t))
+        def is_ts(s):
+            return s is not None and re.match('^[0-9]+$', s) is not None
+        if is_ts(start):
+            start = int(start)
+        else:
+            start = parse_ts(start)
+        if end == 'now':
+            end = None
+        elif is_ts(end):
+            end = int(end)
+        else:
+            end = parse_ts(end)
+        return start, end
 
-def parse_ts_tuple(t):
-    return int(time.mktime(t))
-
-def is_ts(s):
-    return s is not None and re.match('^[0-9]+$', s) is not None
-
-def get_startend(args):
-    '''Get start and end timestamps based on standard arguments'''
-    start = args.get('--start', None)
-    end = args.get('--end', None)
-    if is_ts(start):
-        start = int(start)
-    else:
-        start = parse_ts(start)
-    if end == 'now':
-        end = None
-    elif is_ts(end):
-        end = int(end)
-    else:
-        end = parse_ts(end)
-    return start, end
-
-def format_time(sec):
-    '''Formats a time interval for human consumption'''
-    intervals = [[60 * 60 * 24, 'd'],
-                    [60 * 60, 'h'],
-                    [60, 'm']]
-    text = ""
-    for s, label in intervals:
-        if sec >= s and sec // s > 0:
-            text = "{0} {1}{2}".format(text, sec // s, label)
-            sec -= s * (sec // s)
-    if sec > 0:
-        text += " {0}s".format(sec)
-    return text.strip()
+    @classmethod
+    def format_time(cls, sec):
+        '''Formats a time interval for human consumption'''
+        intervals = [[60 * 60 * 24, 'd'],
+                        [60 * 60, 'h'],
+                        [60, 'm']]
+        text = ""
+        for s, label in intervals:
+            if sec >= s and sec // s > 0:
+                text = "{0} {1}{2}".format(text, sec // s, label)
+                sec -= s * (sec // s)
+        if sec > 0:
+            text += " {0}s".format(sec)
+        return text.strip()
 
 
 def spark(numbers, empty_val=None):
@@ -1689,8 +1689,8 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
 
     print(spark(bins, empty_val=0))
 
-    min_label = format_time(min_t)
-    max_label = format_time(max_t)
+    min_label = ExoUtilities.format_time(min_t)
+    max_label = ExoUtilities.format_time(max_t)
     sys.stdout.write(min_label)
     sys.stdout.write(' ' * (num_bins - len(min_label) - len(max_label)))
     sys.stdout.write(max_label + '\n')
@@ -1718,7 +1718,7 @@ def read_cmd(er, cik, rids, args):
     limit = 1 if limit is None else int(limit)
 
     # time range
-    start, end = get_startend(args)
+    start, end = ExoUtilities.get_startend(args)
 
     timeformat = args['--timeformat']
     if headertype == 'name':
@@ -2069,7 +2069,7 @@ def handle_args(cmd, args):
                 # output json
                 pr(json.dumps(info))
         elif cmd == 'flush':
-            start, end = get_startend(args)
+            start, end = ExoUtilities.get_startend(args)
             er.flush(cik, rids, newerthan=start, olderthan=end)
         elif cmd == 'usage':
             allmetrics = ['client',
@@ -2081,7 +2081,7 @@ def handle_args(cmd, args):
                         'sms',
                         'xmpp']
 
-            start, end = get_startend(args)
+            start, end = ExoUtilities.get_startend(args)
             er.usage(cik, rids[0], allmetrics, start, end)
         # special commands
         elif cmd == 'tree':
@@ -2237,7 +2237,13 @@ def handle_args(cmd, args):
             handled = False
             for plugin in plugins:
                 if cmd in plugin.command():
-                    options = {'cik': cik, 'rids': rids, 'rpc': er, 'exception': ExoException}
+                    options = {
+                            'cik': cik,
+                            'rids': rids,
+                            'rpc': er,
+                            'exception': ExoException,
+                            'utils': ExoUtilities
+                            }
                     try:
                         options['data'] = ed
                     except NameError:
