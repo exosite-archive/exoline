@@ -42,6 +42,9 @@ class Plugin():
         response = rpc.read(cik, rid, 65535, 'asc', start, end, 'all')
         # response is array of arrays
 
+        if len(response) == 0:
+            raise ExoException('No data read')
+
         if cma:
             with open(cik + '-read.csv', 'wb') as cvsfile:
                 cw = csv.writer(cvsfile)
