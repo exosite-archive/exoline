@@ -487,7 +487,7 @@ For more on testing (including running individual tests), see [test/README.md](t
 Building for Windows
 --------------------
 
-You can build Exoline for Windows. On a Windows machine, do this:
+You can build Exoline as a Windows executable. On a Windows machine, do this:
 
 - install Python (make sure bitness matches the machine. pywin32 cares about this.)
 - [pip-win](https://sites.google.com/site/pydatalog/python/pip-for-windows)
