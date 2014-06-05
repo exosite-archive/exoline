@@ -26,6 +26,20 @@ Command Options:
     to stick with simpler things, like converting C into F: 'x*9/5+32'
     or back: '(x-32)*5/9'
 
+    To do more complex things, you can specify a file to use for the
+    transform function.  '@<filename>' will import a python module of
+    filename. This module needs to have a method at the top level named
+    'tr'
+
+    For example, if the following python is in a file 'changefmt.py':
+        import json
+        def tr(x):
+            b = {'data': x}
+            return json.dumps(b)
+
+    You could use it with '@changefmt' as <func>
+
+
     {{ startend }}
 '''
 
@@ -44,7 +58,14 @@ class Plugin():
         cik = options['cik']
         rid = options['rids'][0]
         mapFunc = args['<func>']
-        mpfn = eval('lambda x: ' + mapFunc)
+        mpfn = None
+        if mapFunc[:1] == '@':
+            mapFunc = mapFunc.replace('@','').replace('.py', '')
+            trn = __import__(mapFunc)
+            mpfn = trn.tr
+        else:
+            mpfn = eval('lambda x: ' + mapFunc)
+        print(mpfn)
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
