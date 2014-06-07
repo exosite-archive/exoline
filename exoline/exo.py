@@ -364,14 +364,23 @@ if platform.system() != 'Windows':
             # get documentation
             cmd_doc[p.command()] = plugin.__doc__
 else:
+    # plugin support for Windows executable build
     try:
         try:
             from ..exoline.plugins import spec
+            from ..exoline.plugins import transform
         except:
             from exoline.plugins import spec
+            from exoline.plugins import transform
+        # spec plugin
         p = spec.Plugin()
         plugins.append(p)
         cmd_doc[p.command()] = spec.__doc__
+        # transform plugin
+        p = transform.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = transform.__doc__
+
     except Exception as ex:
         import traceback
         traceback.print_exc()

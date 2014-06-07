@@ -39,11 +39,11 @@ import six
 from six import iteritems
 
 
-class Spec401Exception():
+class Spec401Exception(BaseException):
     # Used when a 401 is caught during a spec
     pass
-    
-    
+
+
 class Plugin():
     def command(self):
         return 'spec'
@@ -259,23 +259,23 @@ scripts:
 
             with open(args['<spec-yaml>']) as f:
                 spec = yaml.safe_load(f)
-            
+
             ciks = []
             portal_ciks = []
-            
+
             iterate_portals = False
-            
+
             if args['--portal'] == True:
                 portal_ciks.append((input_cik,''))
                 iterate_portals = True
-            
+
             if args['--domain'] == True:
                 #set iterate_portals flag to true so we can interate over each portal
                 iterate_portals = True
                 # Get list of users under a domain
                 user_keys = []
                 clients = rpc._listing_with_info(input_cik,['client'])
-                
+
                 email_regex = re.compile(r'[^@]+@[^@]+\.[^@]+')
 
                 for k,v in clients['client'].items():
@@ -283,15 +283,15 @@ scripts:
                     # if name is an email address
                     if email_regex.match(name):
                         user_keys.append(v['key'])
-   
-                
+
+
                 # Get list of each portal
                 for key in user_keys:
                     userlisting = rpc._listing_with_info(key,['client'])
                     for k,v in userlisting['client'].items():
                         portal_ciks.append((v['key'],v['description']['name']))
-                    #print x
-                    
+                    #print(x)
+
 
             if iterate_portals == True:
                 for portal_cik, portal_name in portal_ciks:
@@ -306,18 +306,18 @@ scripts:
                               "    vendor: vendorName\r\n")
                         raise ExoException('--portal flag requires a device model/vendor in spec file')
                     else:
-                        
+
                         # get device vendor and model
                         modelName = spec['device']['model']
                         vendorName = spec['device']['vendor']
-                        
+
                         # If the portal has no name, use the cik as the name
                         if portal_name == '':
                             portal_name = portal_cik
                         print('Looking in ' + portal_name + " for " + modelName + "/" + vendorName)
                         # Get all clients in the portal
                         clients = rpc._listing_with_info(portal_cik, ['client'])
-                        #print modelName
+                        #print(modelName)
                         # for each client
                         for k,v in iteritems(list(iteritems(clients))[0][1]):
                             # Get meta field
@@ -332,7 +332,7 @@ scripts:
                             if validJson == True:
                                 # get device type (only vendor types have a model and vendor
                                 type = meta['device']['type']
-                                
+
                                 # if the device type is 'vendor'
                                 if type == 'vendor':
                                     # and it matches our vendor/model in the spec file
@@ -352,11 +352,11 @@ scripts:
                 if res == False:
                     print('exiting')
                     return
-            
+
             # for each device in our list of ciks
             for cik in ciks:
                 try:
-                    print "Running spec on: " + cik
+                    print("Running spec on: " + cik)
                     #   apply spec [--create]
                     for typ in ['dataport', 'client', 'script']:
                         if typ + 's' in spec:
@@ -374,12 +374,12 @@ scripts:
                                             continue
                                     except pyonep.exceptions.OnePlatformException as ex:
                                         exc = ast.literal_eval(ex.message)
-                                        
+
                                         if exc['code'] == 401:
                                             raise Spec401Exception()
                                         else:
                                             raise ex
-                                        
+
                                     # TODO: use templating library
                                     def template(script):
                                         if resource_data is None:
@@ -507,7 +507,7 @@ scripts:
                                             script_spec = template(scriptfile.read().decode('utf8'))
                                             script_svr = info['description']['rule']['script']
                                             if script_svr != script_spec:
-                                                print ('Script for {0} does not match file {1}.'.format(alias, res['file']))
+                                                print('Script for {0} does not match file {1}.'.format(alias, res['file']))
                                                 if updatescripts:
                                                     print('Uploading script to {0}...'.format(alias))
                                                     rpc.upload_script([cik], res['file'], name=name, create=False, filterfn=template)
@@ -529,4 +529,4 @@ scripts:
                 except Spec401Exception as ex:
                     print("******WARNING******* 401 received in spec, is the device expired?")
                     pass
-                
+

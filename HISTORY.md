@@ -1,6 +1,13 @@
 History
 =======
 
+0.7.15 (2014-06-05)
+-------------------
+
+- transform command for modifying time series data
+- EXO_PLUGIN_PATH variable to specify additional places to look for plugins 
+- spec support for domain level schema updates 
+
 0.7.14 (2014-05-30)
 -------------------
 
