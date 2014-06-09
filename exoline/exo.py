@@ -104,10 +104,9 @@ Command options:
     --timeformat=unix|human|iso8601
                              unix timestamp or human-readable? [default: human]
     --header=name|rid        include a header row
-    --chunkhours=<hours>     break read into multiple requests of length
-                             <hours>, printing data as it is received and
-                             ignoring --limit. Note that this requires start
-                             and end time be set.
+    --chunksize=<size>       break read into multiple requests of length
+                             <size>, printing data as it is received.
+                             [default: 212]
     {{ helpoption }}
 
     If <rid> is omitted, reads all datasources and datarules under <cik>.
@@ -591,7 +590,7 @@ class ExoRPC():
                  starttime=None,
                  endtime=None,
                  selection='all',
-                 chunkhours=None):
+                 chunksize=212):
         '''Generates multiple rids and returns combined timestamped data like this:
                [12314, [1, 77, 'a']
                [12315, [2, 78, None]]
@@ -603,57 +602,47 @@ class ExoRPC():
             responses = self._exomult(cik, [['read', rid, options] for rid in rids])
             return self._combinereads(responses, options['sort'])
 
-        def _read_chunk(cik, rids, options, start, end):
-            chunkoptions = options.copy()
-            chunkoptions['starttime'] = start
-            chunkoptions['endtime'] = end
-            # read all points
-            chunkoptions['limit'] = end - start
-            return _read(cik, rids, chunkoptions)
-
-        if chunkhours is None:
+        if limit <= chunksize :
             for r in _read(cik, rids, options):
                 yield r
         else:
-
-            # maximum # seconds we want to read in one request
-            # TODO: is there a clever way to calculate optimal read
-            # sizes automatially? What users want is 1.) no
-            # timeout/onep error and 2.) progress indication of some kind.
-            # I'd rather the user not have to figure out chunkhours
-            # themselves.
-            max_sec = 60 * 60 * int(chunkhours)
-
-            # TODO: figure out whether it's probably a large read by reading
-            # info, usage, or by some calculation.
-            is_large_read = True
-
-            # TODO: figure out earliest timestamp with data and adjust
-            # starttime if necessary.
-
-            if is_large_read:
-
-                if 'sort' in options and options['sort'] == 'desc':
-                    # descending
-                    for end in range(options['endtime'],
-                                     options['starttime'],
-                                     -max_sec):
-                        start = max(end - max_sec, options['starttime'])
-                        for r in _read_chunk(cik, rids, options, start, end):
-                            yield r
-                else:
-                    # ascending
-                    for start in range(options['starttime'],
-                                       options['endtime'],
-                                       max_sec):
-                        end = min(start + max_sec, options['endtime'])
-                        for r in _read_chunk(cik, rids, options, start, end):
-                            yield r
-
+            # Read chunks by limit.
+            maxLimit = option['limit']
+            if 'sort' in options and options['sort'] == 'desc':
+                # descending
+                nextStart = options['endtime']
+                while True:
+                    chunkOpt = options.copy()
+                    chunkOpt['endtime'] = nextStart
+                    chunkOpt['limit'] = chunksize
+                    res = _read(cik, rids, chunkOpt);
+                    if len(res) == 0:
+                        break
+                    maxLimit = maxLimit - len(res)
+                    if maxLimit <= 0:
+                        break;
+                    #save oldest
+                    nextStart = res[-1][0] - 1
+                    for r in res:
+                        yield r
             else:
-                # make a single request
-                for r in _read(cik, rids, options):
-                    yield r
+                # ascending
+                nextStart = options['starttime']
+                while True:
+                    chunkOpt = options.copy()
+                    chunkOpt['starttime'] = nextStart
+                    chunkOpt['limit'] = chunksize
+                    res = _read(cik, rids, chunkOpt);
+                    if len(res) == 0:
+                        break
+                    maxLimit = maxLimit - len(res)
+                    if maxLimit <= 0:
+                        break;
+                    #save oldest
+                    nextStart = res[-1][0] + 1
+                    for r in res:
+                        yield r
+
 
     def write(self, cik, rid, value):
         isok, response = self.exo.write(cik, rid, value)
@@ -1835,17 +1824,14 @@ def read_cmd(er, cik, rids, args):
 
             time.sleep(sleep_seconds)
     else:
-        chunkhours = args['--chunkhours']
-        if chunkhours is not None and (start is None or end is None):
-            raise ExoException(
-                "--chunkhours requires --start and --end be set")
+        chunksize = args['--chunksize']
         result = er.readmult(cik,
                              rids,
                              sort=args['--sort'],
                              starttime=start,
                              endtime=end,
                              limit=limit,
-                             chunkhours=chunkhours)
+                             chunksize=chunksize)
         for t, v in result:
             printline(t, v)
 

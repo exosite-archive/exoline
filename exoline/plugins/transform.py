@@ -44,10 +44,10 @@ Command Options:
 '''
 
 from __future__ import unicode_literals
-import re
 import os
 import csv
 import sys
+
 
 class Plugin():
     def command(self):
@@ -65,7 +65,6 @@ class Plugin():
             mpfn = trn.tr
         else:
             mpfn = eval('lambda x: ' + mapFunc)
-        print(mpfn)
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
