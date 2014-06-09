@@ -104,10 +104,9 @@ Command options:
     --timeformat=unix|human|iso8601
                              unix timestamp or human-readable? [default: human]
     --header=name|rid        include a header row
-    --chunkhours=<hours>     break read into multiple requests of length
-                             <hours>, printing data as it is received and
-                             ignoring --limit. Note that this requires start
-                             and end time be set.
+    --chunksize=<size>       break read into multiple requests of length
+                             <size>, printing data as it is received.
+                             [default: 212]
     {{ helpoption }}
 
     If <rid> is omitted, reads all datasources and datarules under <cik>.
@@ -582,7 +581,7 @@ class ExoRPC():
                  starttime=None,
                  endtime=None,
                  selection='all',
-                 chunksize=None):
+                 chunksize=212):
         '''Generates multiple rids and returns combined timestamped data like this:
                [12314, [1, 77, 'a']
                [12315, [2, 78, None]]
@@ -594,7 +593,7 @@ class ExoRPC():
             responses = self._exomult(cik, [['read', rid, options] for rid in rids])
             return self._combinereads(responses, options['sort'])
 
-        if chunksize is None:
+        if limit <= chunksize :
             for r in _read(cik, rids, options):
                 yield r
         else:
@@ -1816,17 +1815,14 @@ def read_cmd(er, cik, rids, args):
 
             time.sleep(sleep_seconds)
     else:
-        chunkhours = args['--chunkhours']
-        if chunkhours is not None and (start is None or end is None):
-            raise ExoException(
-                "--chunkhours requires --start and --end be set")
+        chunksize = args['--chunksize']
         result = er.readmult(cik,
                              rids,
                              sort=args['--sort'],
                              starttime=start,
                              endtime=end,
                              limit=limit,
-                             chunkhours=chunkhours)
+                             chunksize=chunksize)
         for t, v in result:
             printline(t, v)
 
