@@ -104,9 +104,8 @@ Command options:
     --timeformat=unix|human|iso8601
                              unix timestamp or human-readable? [default: human]
     --header=name|rid        include a header row
-    --chunksize=<size>       break read into multiple requests of length
-                             <size>, printing data as it is received.
-                             [default: 212]
+    --chunksize=<size>       [default: 212] break read into requests of
+                             length <size>, printing data as it is received.
     {{ helpoption }}
 
     If <rid> is omitted, reads all datasources and datarules under <cik>.
@@ -365,17 +364,20 @@ if platform.system() != 'Windows':
 else:
     # plugin support for Windows executable build
     try:
+        # spec plugin
         try:
             from ..exoline.plugins import spec
-            from ..exoline.plugins import transform
         except:
             from exoline.plugins import spec
-            from exoline.plugins import transform
-        # spec plugin
         p = spec.Plugin()
         plugins.append(p)
         cmd_doc[p.command()] = spec.__doc__
+
         # transform plugin
+        try:
+            from ..exoline.plugins import transform
+        except:
+            from exoline.plugins import transform
         p = transform.Plugin()
         plugins.append(p)
         cmd_doc[p.command()] = transform.__doc__
@@ -607,10 +609,13 @@ class ExoRPC():
                 yield r
         else:
             # Read chunks by limit.
-            maxLimit = option['limit']
+            maxLimit = options['limit']
             if 'sort' in options and options['sort'] == 'desc':
                 # descending
-                nextStart = options['endtime']
+                if 'endtime' in options:
+                    nextStart = options['endtime']
+                else:
+                    nextStart = ExoUtilities.parse_ts_tuple(datetime.now().timetuple())
                 while True:
                     chunkOpt = options.copy()
                     chunkOpt['endtime'] = nextStart
@@ -627,7 +632,10 @@ class ExoRPC():
                         yield r
             else:
                 # ascending
-                nextStart = options['starttime']
+                if 'starttime' in options:
+                    nextStart = options['starttime']
+                else:
+                    nextStart = 0
                 while True:
                     chunkOpt = options.copy()
                     chunkOpt['starttime'] = nextStart
@@ -637,7 +645,7 @@ class ExoRPC():
                         break
                     maxLimit = maxLimit - len(res)
                     if maxLimit <= 0:
-                        break;
+                        break
                     #save oldest
                     nextStart = res[-1][0] + 1
                     for r in res:
@@ -1824,7 +1832,7 @@ def read_cmd(er, cik, rids, args):
 
             time.sleep(sleep_seconds)
     else:
-        chunksize = args['--chunksize']
+        chunksize = int(args['--chunksize'])
         result = er.readmult(cik,
                              rids,
                              sort=args['--sort'],

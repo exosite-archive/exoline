@@ -26,8 +26,8 @@ if [ "$1" == "full" ];
 then
     #set -e
     # Python versions to test
-    #declare -a pythons=('python2.6' 'python2.7' 'python3.2' 'python3.3' 'python3.4')
-    declare -a pythons=('python2.7')
+    declare -a pythons=('python2.6' 'python2.7' 'python3.2' 'python3.3' 'python3.4')
+    #declare -a pythons=('python2.6')
 
     for i in "${pythons[@]}"
     do

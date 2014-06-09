@@ -1,12 +1,15 @@
 History
 =======
 
-0.7.15 (2014-06-05)
--------------------
+0.8.0 (2014-06-09)
+------------------
 
 - transform command for modifying time series data
 - EXO_PLUGIN_PATH variable to specify additional places to look for plugins 
 - spec support for domain level schema updates 
+- (breaking change) remove --chunkhours options and add --chunksize option,
+  which usually does not need to be specified
+- fixed Python 3.4 regression
 
 0.7.14 (2014-05-30)
 -------------------

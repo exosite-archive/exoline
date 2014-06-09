@@ -977,10 +977,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                    '--limit={0}'.format(numpts),
                    '--start={0}'.format(start),
                    '--end={0}'.format(end)]
-        r = rpc(*readcmd)
+        r = rpc(*(readcmd + ['--chunksize={0}'.format(numpts)]))
         self.notok(r, "read a lot of data with a single big read")
 
-        readcmdchunks = readcmd + ['--chunkhours=6']
+        readcmdchunks = readcmd + ['--chunksize=512']
         r = rpc(*readcmdchunks)
         self.ok(r, "read a lot of data with multiple reads")
 
@@ -1297,7 +1297,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def spec_domain_test(self):
         '''
             Tests the ability to update multiple device of the same clientmodel
-            under multiple portals that are under a single domain.  
+            under multiple portals that are under a single domain.
         '''
         # Get example spec
         r = rpc('spec', '--example')
@@ -1309,74 +1309,74 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             else:
                 out = r.stdout.encode('utf8')
             f.write(out)
-        
-        
+
+
         cik = self.client.cik()
-        
+
         # Create 2 users
         portalOne_r = Resource(
             cik,
             'client',
             {"name": "joe@exosite.com"})
-            
+
         portalTwo_r = Resource(
             cik,
             'client',
             {"name": "jim@exosite.com"})
-        
+
         # Create two portals
         portalOne = self._create(portalOne_r)
         portalTwo = self._create(portalTwo_r)
-        
+
         # meta fields for test devices
         metaMyModel = "{\"device\":{\"type\":\"vendor\",\"model\":\"myModel\",\"vendor\":\"myVendor\"}}"
         metaNotMyModel = "{\"device\":{\"type\":\"vendor\",\"model\":\"NotMyModel\",\"vendor\":\"myVendor\"}}"
 
-        
+
         # Create two devices of myModel type,
         myDev1_r = Resource(
             portalOne.cik(),
             'client',
             {"name": "myDev1",
             "meta":metaMyModel})
-            
+
         myDev2_r = Resource(
             portalOne.cik(),
             'client',
             {"name": "myDev2",
             "meta":metaMyModel})
-            
+
         # Create one device of notMyModel type
         notMyDev_r = Resource(
             portalOne.cik(),
             'client',
             {"name": "notMyDev",
             "meta":metaNotMyModel})
-        
+
         # Create once device without a model type
         genericDev_r = Resource(
             portalOne.cik(),
             'client',
             {"name": "genericDev"})
-            
+
         # Create devices under each portal
         p1_myDev1 = self._create(myDev1_r)
         p1_myDev2 = self._create(myDev2_r)
         p1_notMyDev = self._create(notMyDev_r)
         p1_genericDev = self._create(genericDev_r)
-        
+
         # set parent cik of resources to portal 2
         myDev1_r.parentcik = portalTwo.cik()
         myDev2_r.parentcik = portalTwo.cik()
         notMyDev_r.parentcik = portalTwo.cik()
         genericDev_r.parentcik = portalTwo.cik()
-        
+
         # create devices under portal 2
         p2_myDev1 = self._create(myDev1_r)
         p2_myDev2 = self._create(myDev2_r)
         p2_notMyDev = self._create(notMyDev_r)
         p2_genericDev = self._create(genericDev_r)
-        
+
         # Portal 1
         # Attempt to apply spec to myModel types
         r = rpc('spec', cik, example_spec, '--domain', '-f', '--create', '--update-scripts', '--ids=A,B')
@@ -1385,34 +1385,34 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # make sure that both myDevs now meet spec
         r = rpc('spec', p1_myDev1.cik(), example_spec, '--ids=A,B')
         self.ok(r, "P1 Device 1 didn't match spec", search='')
-        
+
         r = rpc('spec', p1_myDev2.cik(), example_spec, '--ids=A,B')
         self.ok(r, "P1 Device 2 didn't match spec", search='')
-        
-        # and that both the non-example or the one that didn't have 
+
+        # and that both the non-example or the one that didn't have
         # a type don't meet the spec.
         r = rpc('spec', p1_notMyDev.cik(), example_spec, '--ids=A,B')
         self.ok(r, "P1 Device didn't match spec", search='not found')
 
         r = rpc('spec', p1_genericDev.cik(), example_spec, '--ids=A,B')
         self.ok(r, "P1 Device didn't match spec", search='not found')
-        
+
         # Portal 2
         # make sure that both myDevs now meet spec
         r = rpc('spec', p2_myDev1.cik(), example_spec, '--ids=A,B')
         self.ok(r, "P2 Device 1 didn't match spec", search='')
-        
+
         r = rpc('spec', p2_myDev2.cik(), example_spec, '--ids=A,B')
         self.ok(r, "P2 Device 2 didn't match spec", search='')
-        
-        # and that both the non-example or the one that didn't have 
+
+        # and that both the non-example or the one that didn't have
         # a type don't meet the spec.
         r = rpc('spec', p2_notMyDev.cik(), example_spec, '--ids=A,B')
         self.ok(r, "P2 Device didn't match spec", search='not found')
 
         r = rpc('spec', p2_genericDev.cik(), example_spec, '--ids=A,B')
         self.ok(r, "P2 Device didn't match spec", search='not found')
-        
+
     def portals_cache_test(self):
         '''Portals clearcache command and option'''
         cik = self.client.cik()
