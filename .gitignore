@@ -43,6 +43,7 @@ tmp
 # vim 
 .ropeproject
 *.sw[a-z]
+tags
 
 # Mac OS
 .DS_Store
