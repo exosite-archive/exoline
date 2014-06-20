@@ -1029,6 +1029,19 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, rid, '--limit=3', '--format=raw', '--sort=desc')
         self.ok(r, 'read two points, descending', match="3\n2\n1")
 
+    def stripcarriage_test(self):
+        '''Read command handles carriage-returns correctly'''
+        cik = self.client.cik()
+        rid = self._createMultiple(
+            cik,
+            [Resource(cik,
+                      'dataport',
+                      {'format': 'string', 'name': 'stripcarriage_port'})])[0]
+
+        r = rpc('write', cik, rid, '--value=foo\rbar')
+        r = rpc('read', cik, rid, '--limit=1')
+        self.ok(r, 'removed carriage return from string', search='foobar')
+
     def ip_test(self):
         '''ip command'''
         r = rpc('ip')

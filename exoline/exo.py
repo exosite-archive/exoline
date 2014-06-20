@@ -1786,7 +1786,7 @@ def read_cmd(er, cik, rids, args):
 
             def stripcarriage(s):
                 # strip carriage returns not followed
-                if type(s) is str:
+                if type(s) is str or type(s) is unicode:
                     return recarriage.sub('', s)
                 else:
                     return s
