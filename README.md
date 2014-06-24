@@ -116,11 +116,17 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
       └─json string dataport rid: 82209d5888a3bd1530d201234567890123456789 (aliases: [u'json'])
 ```
 
-Upload a Lua script
+Write a Lua script
 
 ```
     $ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa     
     Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
+```
+
+Read a Lua script (with help from the awesome [jq](http://stedolan.github.io/jq/))
+
+```
+    $ exo info e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --include=description | jq -r .description.rule.script 
 ```
 
 Monitor output of a script
