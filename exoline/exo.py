@@ -749,7 +749,7 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def _listing_with_info(self, cik, types, info_options={}):
+    def _listing_with_info(self, cik, types, info_options={}, listing_options={}):
         '''Return a dict mapping types to dicts mapping RID to info for that
         RID. E.g.:
             {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
@@ -757,7 +757,7 @@ class ExoRPC():
 
         assert(len(types) > 0)
 
-        listing = self._exomult(cik, [['listing', types, {}]])[0]
+        listing = self._exomult(cik, [['listing', types, listing_options]])[0]
 
         # listing is a dictionary mapping types to lists of RIDs, like this:
         # {'client': ['<rid0>', '<rid1>'], 'dataport': ['<rid2>', '<rid3>']}
@@ -982,7 +982,11 @@ class ExoRPC():
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
         try:
-            listing = self._listing_with_info(cik, types=types, info_options=info_options)
+            # TODO: get shares, too
+            listing = self._listing_with_info(cik,
+                types=types,
+                info_options=info_options,
+                listing_options={"owned": True})
             # _listing_with_info(): {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
             #                        'dataport': {'<rid2>':<info2>}}
         except pyonep.exceptions.OnePlatformException:
@@ -1782,7 +1786,7 @@ def read_cmd(er, cik, rids, args):
 
             def stripcarriage(s):
                 # strip carriage returns not followed
-                if type(s) is str:
+                if type(s) is str or type(s) is unicode:
                     return recarriage.sub('', s)
                 else:
                     return s

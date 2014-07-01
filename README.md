@@ -29,9 +29,11 @@ Exoline supports Python 2.6 and above. (Tests run against 2.6, 2.7, 3.2, 3.3, an
 Installation - Windows
 ----------------------
 
-First install the prerequisites:
+For a Windows installer, look [here](https://github.com/exosite/exoline/releases/).
 
-- [Python](http://www.python.org/getit/)
+To install from PyPI, first install the prerequisites:
+
+- [Python](http://www.python.org/downloads/windows/)
 
 - [pip-win](https://sites.google.com/site/pydatalog/python/pip-for-windows) (Alternatively, you can install [setuptools](https://pypi.python.org/pypi/setuptools) and [pip](https://pypi.python.org/pypi/pip) individually. pip-win just saves a few steps.)
 
@@ -81,6 +83,7 @@ Commands:
   deactivate  Deactivate a share code or expire a CIK
   clone       Create a clone of a client
   spec        Determine whether a client matches a specification (beta)
+  transform   Transform data on in a dataport by mapping all values (alpha)
 
 Options:
   --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
@@ -113,11 +116,17 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
       └─json string dataport rid: 82209d5888a3bd1530d201234567890123456789 (aliases: [u'json'])
 ```
 
-Upload a Lua script
+Write a Lua script
 
 ```
     $ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa     
     Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
+```
+
+Read a Lua script (with help from the awesome [jq](http://stedolan.github.io/jq/))
+
+```
+    $ exo info e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --include=description | jq -r .description.rule.script 
 ```
 
 Monitor output of a script
