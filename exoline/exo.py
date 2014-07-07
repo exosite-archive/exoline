@@ -1773,7 +1773,7 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            print(val[0])
+            print(val[0].encode('utf-8'))
         else:
             if timeformat == 'unix':
                 dt = timestamp
