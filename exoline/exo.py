@@ -1773,7 +1773,7 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            print(val[0])
+            print(val[0].encode('utf-8'))
         else:
             if timeformat == 'unix':
                 dt = timestamp
@@ -1927,8 +1927,12 @@ def handle_args(cmd, args):
                     headers = ['timestamp', 'value']
                     dr = csv.DictReader(sys.stdin, headers)
                     for row in dr:
-                        # TODO: handle something other than unix timestamps
-                        entries.append([int(row['timestamp']), row['value']])
+                        s = row['timestamp']
+                        if s is not None and re.match('^[0-9]+$', s) is not None:
+                            ts = int(s)
+                        else:
+                            ts = ExoUtilities.parse_ts(s)
+                        entries.append([ts, row['value']])
                 else:
                     tvalues = args['--value']
                     reentry = re.compile('(-?\d+),(.*)')
@@ -1945,8 +1949,12 @@ def handle_args(cmd, args):
                                 has_errors = True
                         else:
                             g = match.groups()
-                            # TODO: handle something other than unix timestamps
-                            entries.append([int(g[0]), g[1]])
+                            s = g[0]
+                            if s is not None and re.match('^[0-9]+$', s) is not None:
+                                ts = int(s)
+                            else:
+                                ts = ExoUtilities.parse_ts(s)
+                            entries.append([ts, g[1]])
 
                 if has_errors or len(entries) == 0:
                     raise ExoException("Problems with input.")
