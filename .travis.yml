@@ -5,10 +5,11 @@ install: sudo pip install --upgrade -r requirements.txt
 before_script:
     - cd test
     - "echo -en \"config = {\n\t'portalcik': '\" > testconfig.py"
-    - curl "http://cik.herokuapp.com" >> testconfig.py
+    - curl -s -S "http://cik.herokuapp.com" >> testconfig.py
     - echo -e "'\n}" >> testconfig.py
     - cat testconfig.py
     - "export PYTHONPATH=../exoline/:$PYTHONPATH"
+    - echo $PYTHONPATH 
 script: nosetests --verbose 
 notifications:
   email:
