@@ -8,7 +8,8 @@ before_script:
     - curl "http://cik.herokuapp.com" >> testconfig.py
     - echo -e "'\n}" >> testconfig.py
     - cat testconfig.py
-script: ./test.sh
+    - "export PYTHONPATH=../exoline/:$PYTHONPATH"
+script: nosetests --verbose 
 notifications:
   email:
     - miketilstra@exosite.com
