@@ -1,15 +1,14 @@
 language: python
 python:
     - "2.7"
+install: pip install --upgrade --quiet -r requirements.txt
 before_script:
     - cd test
-    - echo -e "config = {\n\t'portalcik': '" > testconfig.py
+    - echo -en "config = {\n\t'portalcik': '" > testconfig.py
     - curl "http://cik.herokuapp.com" >> testconfig.py
-    - echo -e "'\n}"
-script:
-    - cd test
+    - echo -e "'\n}" >> testconfig.py
     - cat testconfig.py
-    - ./test.sh
+script: ./test.sh
 notifications:
   email:
     - miketilstra@exosite.com
