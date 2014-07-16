@@ -1773,7 +1773,7 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            print(val[0].encode('utf-8'))
+            print(str(val[0]).encode('utf-8'))
         else:
             if timeformat == 'unix':
                 dt = timestamp
@@ -1928,7 +1928,7 @@ def handle_args(cmd, args):
                     dr = csv.DictReader(sys.stdin, headers)
                     for row in dr:
                         s = row['timestamp']
-                        if s is not None and re.match('^[0-9]+$', s) is not None:
+                        if s is not None and re.match('^[-+]?[0-9]+$', s) is not None:
                             ts = int(s)
                         else:
                             ts = ExoUtilities.parse_ts(s)
@@ -1941,8 +1941,11 @@ def handle_args(cmd, args):
                         if match is None:
                             try:
                                 t, v = tv.split(',')
-                                t = ExoUtilities.parse_ts(t)
-                                entries.append([t, v])
+                                if t is not None and re.match('^[-+]?[0-9]+$', t) is not None:
+                                    ts = int(t)
+                                else:
+                                    ts = ExoUtilities.parse_ts(t)
+                                entries.append([ts, v])
                             except Exception:
                                 sys.stderr.write(
                                     'Line not in <timestamp>,<value> format: {0}'.format(tv))
@@ -1950,7 +1953,7 @@ def handle_args(cmd, args):
                         else:
                             g = match.groups()
                             s = g[0]
-                            if s is not None and re.match('^[0-9]+$', s) is not None:
+                            if s is not None and re.match('^[-+]?[0-9]+$', s) is not None:
                                 ts = int(s)
                             else:
                                 ts = ExoUtilities.parse_ts(s)
