@@ -1928,7 +1928,8 @@ def handle_args(cmd, args):
                     dr = csv.DictReader(sys.stdin, headers)
                     for row in dr:
                         s = row['timestamp']
-                        if s is not None and re.match('^[0-9]+$', s) is not None:
+                        # FIXME: Negative interger values are allowed
+                        if s is not None and re.match('^[-+]?[0-9]+$', s) is not None:
                             ts = int(s)
                         else:
                             ts = ExoUtilities.parse_ts(s)
@@ -1941,8 +1942,13 @@ def handle_args(cmd, args):
                         if match is None:
                             try:
                                 t, v = tv.split(',')
-                                t = ExoUtilities.parse_ts(t)
-                                entries.append([t, v])
+                                # FIXME: Negative interger values are allowed
+                                # They are seconds into the past from now
+                                if t is not None and re.match('^[-+]?[0-9]+$', t) is not None:
+                                    ts = int(t)
+                                else:
+                                    ts = ExoUtilities.parse_ts(t)
+                                entries.append([ts, v])
                             except Exception:
                                 sys.stderr.write(
                                     'Line not in <timestamp>,<value> format: {0}'.format(tv))
