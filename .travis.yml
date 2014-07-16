@@ -1,0 +1,14 @@
+language: python
+before_script:
+    - cd test
+    - echo -e "config = {\n\t'portalcik': '" > testconfig.py
+    - curl "http://cik.herokuapp.com" >> testconfig.py
+    - echo -e "'\n}"
+script:
+    - cd test
+    - cat testconfig.py
+    - ./test.sh
+notifications:
+  email:
+    - miketilstra@exosite.com
+
