@@ -997,6 +997,17 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, rid1, '--start=44', '--timeformat=unix', '--limit=2')
         self.ok(r, '--end has a default', match='[0-9]+,12.36')
 
+    def utf8_test(self):
+        '''Read a string with UTF8 characters'''
+        cik = self.client.cik()
+        rid1 = self._createMultiple(cik, [
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'})])
+
+        r = rpc('flush', cik, rid1)
+        r = rpc('write', cik, rid1, '--value=°C')
+        self.ok(r, 'write an UTF8 String')
+        r = rpc('read', cik, rid1)
+        self.ok(r, 'read UTF8 string', match='°C')
 
     def sort_test(self):
         '''Read command with --sort flag'''
