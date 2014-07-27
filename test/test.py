@@ -28,11 +28,12 @@ from exoline import timezone
 
 try:
     from .testconfig import config
+    if 'host' not in config:
+        config['host'] = 'm2.exosite.com'
 except Exception as ex:
     print(ex)
     sys.stderr.write(
         "Copy testconfig.py.template to testconfig.py and set portalcik.")
-
 
 logging.basicConfig(stream=sys.stderr)
 logging.getLogger("TestRPC").setLevel(logging.DEBUG)
@@ -50,7 +51,7 @@ def abbrev(s, length=1000):
 def rpc(*args, **kwargs):
     stdin = kwargs.get('stdin', None)
     if True:
-        argv = ['exo'] + list(args)
+        argv = ['exo', '--host', config['host']] + list(args)
         log.debug(' '.join([str(a) for a in argv]))
         if stdin is not None:
             log.debug('    stdin: ' + abbrev(stdin))
@@ -150,7 +151,7 @@ class TestRPC(TestCase):
 
     def _createMultiple(self, cik, resList):
         # use pyonep directly
-        pyonep = exo.ExoRPC().exo
+        pyonep = exo.ExoRPC(host=config['host']).exo
         for res in resList:
             pyonep.create(cik, res.type, res.desc, defer=True)
 
@@ -887,7 +888,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             self.ok(r, 'no differences', match='')
 
         # add comments
-        exo = ExolineOnepV1()
+        exo = ExolineOnepV1(host=config['host'])
         exo.comment(childcik, ridFloat, 'public', 'Hello')
         exo.comment(childcik, ridFloat, 'public', 'World')
 
@@ -916,13 +917,13 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Connection settings'''
         cik = self.client.cik()
 
-        r = rpc('--port=80', '--host=m2.exosite.com', '--http', 'info', cik)
+        r = rpc('--port=80', '--http', 'info', cik)
         self.ok(r, 'valid port and host at command line')
 
         r = rpc('--https', 'info', cik)
         self.ok(r, 'https connection')
 
-        r = rpc('--port=443', '--host=m2.exosite.com', 'info', cik)
+        r = rpc('--port=443', 'info', cik)
         self.ok(r, 'invalid port')
 
         r = rpc('--port=88', 'info', cik)

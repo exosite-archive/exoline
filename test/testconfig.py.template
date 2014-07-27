@@ -1,3 +1,4 @@
 config = {
-    'portalcik': '<portal cik from config.py>'
+    'portalcik': '<portal cik from config.py>',
+    'host': 'm2.exosite.com'
 }
