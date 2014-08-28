@@ -30,6 +30,10 @@ try:
     from .testconfig import config
     if 'host' not in config:
         config['host'] = 'm2.exosite.com'
+    if 'https' not in config:
+        config['https'] = True
+    if 'port' not in config:
+        config['port'] = 443 if config['https'] else 80
 except Exception as ex:
     print(ex)
     sys.stderr.write(
@@ -51,7 +55,13 @@ def abbrev(s, length=1000):
 def rpc(*args, **kwargs):
     stdin = kwargs.get('stdin', None)
     if True:
-        argv = ['exo', '--host', config['host']] + list(args)
+        if '--http' in args or '--port' in args or '--host' in args:
+            argv = ['exo']
+        else:
+            argv = ['exo', '--host', config['host'], '--port', config['port']]
+            if not config['https']:
+                argv.append('--http')
+        argv = argv + list(args)
         log.debug(' '.join([str(a) for a in argv]))
         if stdin is not None:
             log.debug('    stdin: ' + abbrev(stdin))
@@ -104,6 +114,9 @@ class Resource():
         return self.info['key']
 
 
+def makeRPC():
+    return exo.ExoRPC(host=config['host'], https=config['https'], port=config['port'])
+
 class TestRPC(TestCase):
     RE_RID = '[0-9a-f]{40}'
 
@@ -151,7 +164,7 @@ class TestRPC(TestCase):
 
     def _createMultiple(self, cik, resList):
         # use pyonep directly
-        pyonep = exo.ExoRPC(host=config['host']).exo
+        pyonep = makeRPC().exo
         for res in resList:
             pyonep.create(cik, res.type, res.desc, defer=True)
 
@@ -888,7 +901,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             self.ok(r, 'no differences', match='')
 
         # add comments
-        exo = ExolineOnepV1(host=config['host'])
+        exo = ExolineOnepV1(host=config['host'], port=config['port'], https=config['https'])
         exo.comment(childcik, ridFloat, 'public', 'Hello')
         exo.comment(childcik, ridFloat, 'public', 'World')
 
