@@ -1871,11 +1871,12 @@ def handle_args(cmd, args):
             raise ExoException('--https, --port, and --debughttp are not supported for ip and data commands.')
         ed = ExoData(url='http://' + args['--host'])
 
-    if cmd in ['activate']:
-        if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
-            # TODO: support these
-            raise ExoException('--https, --port, and --debughttp are not supported for provisioning commands.')
-        ep = ExoProvision(url='http://' + args['--host'])
+    # activate relates to shares, not provisioning
+    #if cmd in ['activate']:
+    #    if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
+    #        # TODO: support these
+    #        raise ExoException('--https, --port, and --debughttp are not supported for provisioning commands.')
+    #    ep = ExoProvision(url='http://' + args['--host'])
 
     if cmd in ['portals'] or args['--clearcache']:
         portals = ExoPortals(args['--portals'])

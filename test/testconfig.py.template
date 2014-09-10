@@ -1,3 +1,4 @@
+# NOTE: host, https, and port are ignored by tests of ip and data commands
 config = {
     'portalcik': '<portal cik from config.py>',
     'host': 'm2.exosite.com',
