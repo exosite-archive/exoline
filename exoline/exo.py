@@ -114,7 +114,8 @@ Command options:
     {{ startend }}'''),
     ('write',
         '''Write data at the current time.\n\nUsage:
-    exo [options] write <cik> [<rid>] --value=<value>'''),
+    exo [options] write <cik> [<rid>] --value=<value>
+    exo [options] write <cik> [<rid>] -'''),
     ('record',
         '''Write data at a specified time.\n\nUsage:
     exo [options] record <cik> [<rid>] ((--value=<timestamp,value> ...) | -)
@@ -1916,7 +1917,11 @@ def handle_args(cmd, args):
         if cmd == 'read':
             read_cmd(er, cik, rids, args)
         elif cmd == 'write':
-            er.write(cik, rids[0], args['--value'])
+            if args['-']:
+                val = sys.stdin.read()
+                er.write(cik, rids[0], val)
+            else:
+                er.write(cik, rids[0], args['--value'])
         elif cmd == 'record':
             interval = args['--interval']
             if interval is None:

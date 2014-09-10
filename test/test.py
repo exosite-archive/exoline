@@ -251,7 +251,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         stdports = {}
         stdports['integer'] = Resource(
             cik, 'dataport', {'format': 'integer', 'name': 'int_port'},
-            write=['-1', '0', '100000000'],
+            write=['-1', '42'],
             record=[[665366400, '42']])
         stdports['string'] = Resource(
             cik, 'dataport', {'format': 'string', 'name': 'string_port'},
@@ -260,8 +260,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             record=[[163299600, 'home brew'], [543212345, 'nonsense']])
         stdports['float'] = Resource(
             cik, 'dataport', {'format': 'float', 'name': 'float_port'},
-            write=['-0.1234567', '0', '3.5', '100000000.1'],
-            record=[[-100, '-0.1234567'], [-200, '0'], [-300, '3.5'], [-400, '10000000.1']])
+            write=['-0.1234567', '0', '3.5'],
+            record=[[-100, '-0.1234567'], [-200, '0']])
             # TODO: handle scientific notation from OneP '-0.00001'
 
         self._createMultiple(cik, list(stdports.values()))
@@ -307,8 +307,15 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         readvalues_notime = [v[1] for v in readvalues]
         self.l('Wrote {0}'.format(wrotevalues))
         self.l('Read  {0}'.format(readvalues))
-        self.assertTrue(wrotevalues == readvalues_notime,
-                        'Read values did not match written values')
+
+        # it seems as though if you pass '0' the platform reads '0.0', and vice
+        # versa.
+        wrote = ['0' if x == '0.0' else x for x in wrotevalues]
+        read = ['0' if x == '0.0' else x for x in readvalues_notime]
+        self.assertTrue(wrote == read,
+                        u'Read values did not match written values. Expected {0}, got {1}.'.format(
+                            wrote,
+                            read))
 
     def write_test(self):
         '''Write command'''
@@ -319,12 +326,25 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 if res.write is not None:
                     cik = res.parentcik
                     rid = res.rid
+
+                    # test passing value on the command line
                     for value in res.write:
                         rpc('write', cik, rid, '--value=' + value)
+                        # sleep for a second to prevent writing over the top of
+                        # the previous value
                         time.sleep(1)
-
                     readvalues = self._readBack(res, len(res.write))
                     self._verifyWrite(res.write, readvalues)
+
+                    # test the form of write that takes value from stdin
+                    for value in res.write:
+                        rpc('write', cik, rid, '-', stdin=value)
+                        # sleep for a second to prevent writing over the top of
+                        # the previous value
+                        time.sleep(1)
+                    readvalues = self._readBack(res, len(res.write))
+                    self._verifyWrite(res.write, readvalues)
+
 
     def _verifyRecord(self, writetime, wrotevalues, readvalues):
         '''Checks readvalues against wrotevalues and returns True if they match

@@ -1,6 +1,6 @@
 config = {
     'portalcik': '<portal cik from config.py>',
     'host': 'm2.exosite.com',
-    'https': False,
-    'port': 5000
+    'https': True,
+    'port': 443
 }
