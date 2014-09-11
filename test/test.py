@@ -437,53 +437,58 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 _recordAndVerify(r, on_stdin)
                 _flush(r)
 
+
     def tree_test(self):
         '''Tree command'''
-        cik = self.client.cik()
+        def run_tests(treecmd='tree'):
+            cik = self.client.cik()
 
-        r = rpc('create', cik, '--type=client', '--cikonly')
-        self.ok(r, 'create child')
-        childcik = r.stdout
+            r = rpc('create', cik, '--type=client', '--cikonly')
+            self.ok(r, 'create child')
+            childcik = r.stdout
 
-        stdports = self._createDataports(childcik)
+            stdports = self._createDataports(childcik)
 
-        r = rpc('tree', cik)
-        # call did not fail
-        self.ok(r, 'tree shouldn\'t fail')
-        # starts with cik
-        self.assertTrue(
-            re.match(".* cik: {0}.*".format(cik), r.stdout) is not None)
+            r = rpc(treecmd, cik)
+            # call did not fail
+            self.ok(r, treecmd + ' shouldn\'t fail')
+            # starts with cik
+            self.assertTrue(
+                re.match(".* cik: {0}.*".format(cik), r.stdout) is not None)
 
-        delim = '\n'.encode('utf-8')
-        def get_lines(stdout):
-            # has correct number of lines
-            if sys.version_info < (3, 0):
-                so = stdout
-            else:
-                so = stdout.encode('utf-8')
-            return so.split(delim)
+            delim = '\n'.encode('utf-8')
+            def get_lines(stdout):
+                # has correct number of lines
+                if sys.version_info < (3, 0):
+                    so = stdout
+                else:
+                    so = stdout.encode('utf-8')
+                return so.split(delim)
 
-        self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
+            self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
 
-        r = rpc('tree', cik, '--level=0')
-        self.ok(r, 'tree with --level=0 shouldn\'t fail')
-        self.assertTrue(len(get_lines(r.stdout)) == 1)
+            r = rpc(treecmd, cik, '--level=0')
+            self.ok(r, treecmd + ' with --level=0 shouldn\'t fail')
+            self.assertTrue(len(get_lines(r.stdout)) == 1)
 
-        r = rpc('tree', cik, '--level=1')
-        self.ok(r, 'tree with --level=1 shouldn\'t fail')
-        self.assertTrue(len(get_lines(r.stdout)) == 2)
+            r = rpc(treecmd, cik, '--level=1')
+            self.ok(r, treecmd + ' with --level=1 shouldn\'t fail')
+            self.assertTrue(len(get_lines(r.stdout)) == 2)
 
-        r = rpc('tree', cik, '--level=2')
-        self.ok(r, 'tree with --level=2 shouldn\'t fail')
-        self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
+            r = rpc(treecmd, cik, '--level=2')
+            self.ok(r, treecmd + ' with --level=2 shouldn\'t fail')
+            self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
 
-        r = rpc('tree', cik, '--values')
-        # call did not fail
-        self.ok(r, 'tree with --values shouldn\'t fail')
+            r = rpc(treecmd, cik, '--values')
+            # call did not fail
+            self.ok(r, treecmd + ' with --values shouldn\'t fail')
 
-        r = rpc('tree', cik, '--verbose')
-        # call did not fail
-        self.ok(r, 'tree with --verbose shouldn\'t fail')
+            r = rpc(treecmd, cik, '--verbose')
+            # call did not fail
+            self.ok(r, treecmd + ' with --verbose shouldn\'t fail')
+
+        run_tests('tree')
+        run_tests('twee')
 
 
     def map_test(self):

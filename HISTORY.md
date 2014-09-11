@@ -6,6 +6,7 @@ History
 
 - --values option for tree to show latest point for dataports 
   and datarules
+- add twee command: like tree, but more wuvable 
 - write command support for passing value on stdin
 - make tree report and continue when it encounters locked clients
 - fix tests that broke for float handling with OneP updates

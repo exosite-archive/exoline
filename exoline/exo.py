@@ -47,6 +47,8 @@ from pprint import pprint
 from operator import itemgetter
 import logging
 from collections import defaultdict
+import copy
+import difflib
 
 import six
 from six import StringIO
@@ -227,6 +229,10 @@ Command options:
     {{ startend }}'''),
     ('tree', '''Display a resource's descendants.\n\nUsage:
     exo [options] tree [--verbose] [--values] <cik>
+
+    --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]'''),
+    ('twee', '''Display a resource's descendants. Like tree, but more wuvable.\n\nUsage:
+    exo [options] twee <cik>
 
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]'''),
     #('ut', '''Display a tree as fast as possible\n\nUsage:
@@ -410,6 +416,7 @@ class ExoRPC():
     '''Wrapper for pyonep RPC API.
     Raises exceptions on error and provides some reasonable defaults.'''
     regex_rid = re.compile("[0-9a-fA-F]{40}")
+    regex_tweeid = re.compile("rid\.[0-9a-fA-F]{5}")
 
     class RPCException(Exception):
         pass
@@ -953,25 +960,105 @@ class ExoRPC():
             return str(day_diff / 30) + " months ago"
         return str(day_diff / 365) + " years ago"
 
-
-
-    def _format_values(self, values):
-        '''format tree latest point value output
+    def _format_timestamp(self, values):
+        '''format tree latest point timestamp
 
         values is up to two most recent values, e.g.:
             [[<timestamp1>, <value1>], [<timestamp0>, <value0>]]'''
-        MAXLEN = 20
         if values is None:
             return None
         if len(values) == 0:
             return ''
-        # TODO: for long strings, show only content that changed from
-        #       the previous value
-        latest = str(values[0][1])
-        latest_time = self._pretty_date(values[0][0])
-        return "{1}-- {0}".format((latest[:MAXLEN - 3] + '...') if len(latest) > MAXLEN else latest, latest_time)
+        return self._pretty_date(values[0][0])
+
+    def _format_value_with_previous(self, v, prev, maxlen):
+        '''Return a string representing the string v, w/maximum length
+           maxlen. If v is longer than maxlen, the return value
+           should include something that changed from previous
+           value prev.'''
+        v = repr(v)
+        prev = repr(prev)
+        if len(v) <= maxlen:
+            return v
+
+        sm = difflib.SequenceMatcher(None, prev, v)
+        def get_nonmatching_blocks(mb):
+            lasti = 0
+            out = []
+            for m in mb:
+                if m.b - lasti > 0:
+                    out.append({'i': lasti, 'size': m.b - lasti})
+                lasti = m.b + m.size
+            return out
+
+        # get the blocks (index, size) of v that changed from prev
+        mb = list(sm.get_matching_blocks())
+        nonmatching_blocks = get_nonmatching_blocks(mb)
+
+        # get the biggest non-matching block
+        #bnb = nmb.sorted(nonmatching_blocks, key=lambda(b): b['size'])[-1]
+
+        def widen_block(block, s, left=0, right=0):
+            '''block is a location in s and size in this form:
+               {'i': <index>, 'size': <size>}. Return block b
+               such that the b is up to widen_by wider on the
+               left and right while keeping it within the bounds
+               of s. block must be already a subset of s. '''
+            out = copy.copy(block)
+            for j in range(left):
+                # try to add to left
+                if out['i'] > 0:
+                    out['i'] -= 1
+                    out['size'] += 1
+            for j in range(right):
+                # try to add to right
+                if out['i'] + out['size'] < len(s):
+                    out['size'] += 1
+            return out
+
+        # number of characters of context to show on either side of a difference
+        context = 5
+        s = ''
+
+        print(prev)
+        print(v)
+        print(mb)
+        print(nonmatching_blocks)
+
+        startblock = widen_block(nonmatching_blocks[0], v, left=context, right=maxlen)
+        s = ''
+        if startblock['i'] > 0:
+            s += '...'
+        s += v[startblock['i']:startblock['i']+startblock['size']]
+        return s[:maxlen] + ('...' if startblock['i'] + len(s) < maxlen else '')
+
+
+    def _format_values(self, values, maxlen=20):
+        '''format latest value for output with tree
+
+        values is up to two most recent values, e.g.:
+            [[<timestamp1>, <value1>], [<timestamp0>, <value0>]]'''
+        if values is None:
+            return None
+        if len(values) == 0:
+            return ''
+
+        v = values[0][1]
+        if type(v) is float or type(v) is int:
+            return str(v)
+        else:
+            # repr to escape newlines
+            latest = str(v).encode('string_escape')
+            out = (latest[:maxlen - 3] + '...') if len(latest) > maxlen else latest
+            return out
+            # this is not better
+            #prev = values[1][1] if len(values) > 1 else ''
+            #v = values[0][1]
+            #return self._format_value_with_previous(v, prev, maxlen)
+
 
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
+        twee = cli_args['<command>'] == 'twee'
         typ = info['basic']['type']
         if typ == 'client':
             id = 'cik: ' + info['key']
@@ -1026,7 +1113,9 @@ class ExoRPC():
                 ridopt = True
         add_opt(ridopt, 'rid', rid)
         add_opt('--verbose', 'unit', units)
-        add_opt(values is not None, 'value', self._format_values(values))
+        val = self._format_values(values, 50 if twee else 20)
+        timestamp = self._format_timestamp(values)
+        add_opt(values is not None, 'value', None if (val is None or timestamp is None) else val + '/' + timestamp)
 
         if maxlen == None:
             maxlen = {}
@@ -1034,22 +1123,81 @@ class ExoRPC():
             maxlen['name'] = len(name)
             maxlen['format'] = 0 if 'format' not in info['description'] else len(info['description']['format'])
 
-        if 'format' in info['description']:
-            fmt = info['description']['format']
-            desc = fmt + ' ' * (maxlen['format'] + 1 - len(fmt))
-            desc += typ + ' ' * (maxlen['type'] + 1 - len(typ))
-            desc += id
-        else:
-            desc = typ + ' ' * (maxlen['type'] + 1 - len(typ))
-            desc += id
+        if twee:
+            # twee tree
 
-        self._print_tree_line('{0}{1}{2} {3} {4}'.format(
-            spacer,
-            name,
-            ' ' * (maxlen['name'] + 1 - len(name)),
-            desc,
-            '' if len(opt) == 0 else '({0})'.format(', '.join(
-                ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
+            # colors, of course
+            class bcolors:
+                SPACER = '\033[0m'
+                NAME = '\033[0m'
+                TYPE = '\033[95m'
+                ID = '\033[92m'
+                VALUE = '\033[93m'
+                TIMESTAMP = '\033[94m'
+                PINK = '\033[95m'
+                MODEL = '\033[96m'
+                ENDC = '\033[0m'
+
+            # the goal here is to make the line short to provide more room for the value
+            # so if there's an alias, just use that, since it's
+            # if no alias, then the first ten of the RID and the name
+            # if multiple alias, then the first alias
+            if typ == 'client':
+                tweeid = bcolors.SPACER + 'cik: ' + bcolors.ID + id[5:]
+            else:
+                if aliases is not None and len(aliases) > 0:
+                    tweeid = aliases[0]
+                else:
+                    tweeid = 'rid.' + rid[:5]
+
+            displayname = ((name + bcolors.SPACER + ' ') if len(name) > 0 else ' ')
+            displaytype = {'dataport': 'dp', 'client': 'cl', 'datarule': 'dr', 'dispatch': 'ds'}[typ]
+            if 'format' in info['description']:
+                displaytype += '.' + {'string': 's', 'float': 'f', 'integer': 'i'}[info['description']['format']]
+            else:
+                displaytype = '  ' + displaytype
+
+
+            displaymodel = ''
+            if 'sn' in opt:
+                displaymodel = ' (sn:' + opt['sn'] + ')'
+
+            self._print_tree_line(
+                bcolors.SPACER +
+                spacer +
+                bcolors.NAME +
+                displayname +
+                ' ' * (maxlen['name'] + 1 - len(name)) +
+                bcolors.TYPE +
+                displaytype + ' ' +
+                bcolors.ID +
+                tweeid +
+                ('' if typ == 'client' else ': ') +
+                bcolors.VALUE +
+                ('' if val is None else val) +
+                bcolors.TIMESTAMP +
+                ('' if timestamp is None or len(timestamp) == 0 else ' (' + timestamp + ')') +
+                bcolors.MODEL +
+                displaymodel +
+                bcolors.ENDC)
+        else:
+            # standard tree
+            if 'format' in info['description']:
+                fmt = info['description']['format']
+                desc = fmt + ' ' * (maxlen['format'] + 1 - len(fmt))
+                desc += typ + ' ' * (maxlen['type'] + 1 - len(typ))
+                desc += id
+            else:
+                desc = typ + ' ' * (maxlen['type'] + 1 - len(typ))
+                desc += id
+
+            self._print_tree_line('{0}{1}{2} {3} {4}'.format(
+                spacer,
+                name,
+                ' ' * (maxlen['name'] + 1 - len(name)),
+                desc,
+                '' if len(opt) == 0 else '({0})'.format(', '.join(
+                    ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
 
     def tree(self, auth, aliases=None, cli_args={}, spacer='', level=0, info_options={}):
         '''Print a tree of entities in OneP'''
@@ -1085,11 +1233,12 @@ class ExoRPC():
         types = ['dataport', 'datarule', 'dispatch', 'client']
         try:
             # TODO: get shares, too
+            should_read = '--values' in cli_args and cli_args['--values']
             listing = self._listing_with_info(auth,
                 types=types,
                 info_options=info_options,
                 listing_options={"owned": True},
-                read_options={"limit": 2} if cli_args['--values'] else None)
+                read_options={"limit": 1} if should_read else None)
             # _listing_with_info(): {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
             #                        'dataport': {'<rid2>':<info2>}}
         except pyonep.exceptions.OnePlatformException:
@@ -1386,7 +1535,6 @@ probably not valid.".format(cik))
         return dct
 
     def _differences(self, dict1, dict2):
-        import difflib
         differ = difflib.Differ()
 
         s1 = json.dumps(dict1, indent=2, sort_keys=True).splitlines(1)
@@ -2000,11 +2148,27 @@ def handle_args(cmd, args):
     else:
         # for data ip command
         cik = None
-    def rid_or_alias(rid):
+    def rid_or_alias(rid, cik=None):
         '''Translate what was passed for <rid> to an alias object if
            it doesn't look like a RID.'''
         if er.regex_rid.match(rid) is None:
-            return {"alias": rid}
+            if er.regex_tweeid.match(rid) is None:
+                return {'alias': rid}
+            else:
+                # look up full RID based on short version
+                tweetype, ridfrag = rid.split('.')
+                listing = er.listing(cik, ['client', 'dataport', 'datarule', 'dispatch'], {})
+                candidates = []
+                for typ in listing:
+                    for fullrid in listing[typ]:
+                        if fullrid.startswith(ridfrag):
+                            candidates.append(fullrid)
+                if len(candidates) == 1:
+                    return candidates[0]
+                elif len(candidates) > 1:
+                    raise ExoException('More than one RID starts with ' + ridfrag + '. Better use the full RID.')
+                else:
+                    raise ExoException('No RID found that starts with ' + ridfrag + '. Is an immediate child of ' + cik + '?')
         else:
             return rid
 
@@ -2012,12 +2176,12 @@ def handle_args(cmd, args):
     if '<rid>' in args:
         if type(args['<rid>']) is list:
             for rid in args['<rid>']:
-                rids.append(rid_or_alias(rid))
+                rids.append(rid_or_alias(rid, cik))
         else:
             if args['<rid>'] is None:
                 rids.append({"alias": ""})
             else:
-                rids.append(rid_or_alias(args['<rid>']))
+                rids.append(rid_or_alias(args['<rid>'], cik))
 
     if args.get('--pretty', False):
         pr = pretty_print
@@ -2224,6 +2388,9 @@ def handle_args(cmd, args):
             er.usage(cik, rids[0], allmetrics, start, end)
         # special commands
         elif cmd == 'tree':
+            er.tree(cik, cli_args=args)
+        elif cmd == 'twee':
+            args['--values'] = True
             er.tree(cik, cli_args=args)
         elif cmd == 'script':
             # cik is a list of ciks
