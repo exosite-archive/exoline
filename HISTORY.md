@@ -1,6 +1,15 @@
 History
 =======
 
+0.8.1 (2014-09-11)
+------------------
+
+- --values option for tree to show latest point for dataports 
+  and datarules
+- write command support for passing value on stdin
+- make tree report and continue when it encounters locked clients
+- fix tests that broke for float handling with OneP updates
+
 0.8.0 (2014-06-09)
 ------------------
 

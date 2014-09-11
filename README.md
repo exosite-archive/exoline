@@ -111,9 +111,19 @@ Show a tree view of a client
 ```
 $ exo tree 5de0cfcf7b5bed2ea7a801234567890123456789
 Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
-  ├─device1 client cik: 970346d3391a2d8c703a01234567890123456789 (aliases: [u'device1'])
-  └─device2 client cik: e95052ab56f985e6807d01234567890123456789 (aliases: [u'device2'])
-      └─json string dataport rid: 82209d5888a3bd1530d201234567890123456789 (aliases: [u'json'])
+  ├─device1 client cik: 970346d3391a2d8c703a01234567890123456789 (aliases: ['device1'])
+  └─device2 client cik: e95052ab56f985e6807d01234567890123456789 (aliases: ['device2'])
+      └─json string dataport rid: 82209d5888a3bd1530d201234567890123456789 (aliases: ['json'])
+```
+
+Show a tree view of a client with values
+
+```
+$ exo tree 5de0cfcf7b5bed2ea7a801234567890123456789
+Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
+  ├─device1 client cik: 970346d3391a2d8c703a01234567890123456789 (aliases: ['device1'])
+  └─device2 client cik: e95052ab56f985e6807d01234567890123456789 (aliases: ['device2'])
+      └─json string dataport rid: 82209d5888a3bd1530d201234567890123456789 (aliases: ['json'], value: {"setpoint": 6... 3 minutes ago)
 ```
 
 Write a Lua script
@@ -533,7 +543,10 @@ TODO
 - add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
 - create executable and installer for a better Windows experience
 - support datasources with subscribe
-- resource ancestry lookup 
+- new command to do resource ancestry lookup 
 - add a --monitor (or --follow) option to script command
 - add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
 - add --timeformat=excel option for Excel import. Instead of "2014-03-13 15:53:20-05:00,<value>" it would output "2014-03-13 15:53:20,-05:00,<value>"
+- make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
+- simpler tree output with value diffs, only show RID if it doesn't have an alias
+- add new form for script command that has cik first to be more consistent, e.g. `exo script <cik> --file=foo.lua`

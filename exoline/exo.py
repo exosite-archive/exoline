@@ -226,7 +226,7 @@ Command options:
 
     {{ startend }}'''),
     ('tree', '''Display a resource's descendants.\n\nUsage:
-    exo [options] tree [--verbose] <cik>
+    exo [options] tree [--verbose] [--values] <cik>
 
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]'''),
     #('ut', '''Display a tree as fast as possible\n\nUsage:
@@ -461,20 +461,35 @@ class ExoRPC():
     def mult(self, cik, commands):
         return self._exomult(cik, commands)
 
-    def _exomult(self, cik, commands):
+    def _exomult(self, auth, commands):
         '''Takes a list of onep commands with cik omitted, e.g.:
             [['info', {alias: ""}], ['listing']]'''
         if len(commands) == 0:
             return []
+        if type(auth) is str or type(auth) is unicode:
+            cik = auth
+        elif type(auth) is dict:
+            cik = auth['cik']
+            assert(not ('client_id' in auth and 'resource_id' in auth))
+            if 'client_id' in auth:
+                # print('connecting as ' + json.dumps(auth))
+                self.exo.connect_as(auth['client_id'])
+            if 'resource_id' in auth:
+                # print('connecting as ' + json.dumps(auth))
+                self.exo.connect_owner(auth['resource_id'])
+        else:
+            raise Exception("_exomult: unexpected type for auth " + str(auth))
         assert(not self.exo.has_deferred(cik))
         for c in commands:
             if type(c) is not list:
                 raise Exception("_exomult: found invalid command")
             method = getattr(self.exo, c[0])
-            #print c
             method(cik, *c[1:], defer=True)
         assert(self.exo.has_deferred(cik))
-        responses = self._raise_for_deferred(self.exo.send_deferred(cik))
+        r = self.exo.send_deferred(cik)
+        if 'client_id' in auth or 'resource_id' in auth:
+            self.exo.connect_as(None)
+        responses = self._raise_for_deferred(r)
         return responses
 
     def _readoptions(self, limit, sort, starttime, endtime, selection):
@@ -502,7 +517,7 @@ class ExoRPC():
                         else:
                             raise ExoException('No CIK shortcut {0}\n{1}'.format(
                                 cik,
-                                '\n'.join(config['keys'])))
+                                '\n'.join(sorted(config['keys']))))
                     else:
                         raise ExoException('Tried a CIK shortcut {0}, but found no keys in {1}'.format(
                             cik,
@@ -750,15 +765,22 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def _listing_with_info(self, cik, types, info_options={}, listing_options={}):
+    def _listing_with_info(self, auth, types, info_options={}, listing_options={}, read_options=None):
         '''Return a dict mapping types to dicts mapping RID to info for that
         RID. E.g.:
             {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
-             'dataport': {'<rid2>':<info2>, '<rid3>':<info3>}}'''
+             'dataport': {'<rid2>':<info2>, '<rid3>':<info3>}}
+
+             info_options and read_options correspond to the options parameters
+                 for info and read.
+             read_options if set to something other than None, does a read for
+                 any datarule or dataport in the listing, passing read_options
+                 as options. The result of the read, a list of timestamp value
+                 pairs, is placed inside the info dict in a 'read' property.'''
 
         assert(len(types) > 0)
 
-        listing = self._exomult(cik, [['listing', types, listing_options]])[0]
+        listing = self._exomult(auth, [['listing', types, listing_options]])[0]
 
         # listing is a dictionary mapping types to lists of RIDs, like this:
         # {'client': ['<rid0>', '<rid1>'], 'dataport': ['<rid2>', '<rid3>']}
@@ -766,11 +788,19 @@ class ExoRPC():
         # request info for each rid
         # (rids is a flattened version of listing)
         rids = []
+        restype = {}
         for typ in types:
             rids += listing[typ]
+            for rid in listing[typ]:
+                restype[rid] = typ
 
-        responses = self._exomult(cik, [['info', rid, info_options] for rid in rids])
-
+        info_commands = [['info', rid, info_options] for rid in rids]
+        read_commands = []
+        readable_rids = [rid for rid in rids if restype[rid] in ['dataport', 'datarule']]
+        if read_options is not None:
+            # add reads for readable resource types
+            read_commands += [['read', rid, read_options] for rid in readable_rids]
+        responses = self._exomult(auth, info_commands + read_commands)
         # From the return values make a dict of dicts
         # use ordered dicts in case someone cares about order in the output
         response_index = 0
@@ -780,6 +810,9 @@ class ExoRPC():
             for rid in listing[typ]:
                 type_response[rid] = responses[response_index]
                 response_index += 1
+                if read_options is not None and rid in readable_rids:
+                    type_response[rid]['read'] = responses[len(info_commands) + readable_rids.index(rid)]
+
             listing_with_info[typ] = type_response
 
         return listing_with_info
@@ -875,7 +908,70 @@ class ExoRPC():
         else:
             print(line)
 
-    def _print_node(self, rid, info, aliases, cli_args, spacer, islast, maxlen=None):
+    def _pretty_date(self, time=False):
+        """
+        Get a datetime object or a int() Epoch timestamp and return a
+        pretty string like 'an hour ago', 'Yesterday', '3 months ago',
+        'just now', etc
+
+        http://stackoverflow.com/a/1551394/81346
+        """
+        from datetime import datetime
+        now = datetime.now()
+        if type(time) is int:
+            diff = now - datetime.fromtimestamp(time)
+        elif isinstance(time,datetime):
+            diff = now - time
+        elif not time:
+            diff = now - now
+        second_diff = diff.seconds
+        day_diff = diff.days
+
+        if day_diff < 0:
+            return ''
+
+        if day_diff == 0:
+            if second_diff < 10:
+                return "just now"
+            if second_diff < 60:
+                return str(second_diff) + " seconds ago"
+            if second_diff < 120:
+                return "a minute ago"
+            if second_diff < 3600:
+                return str(second_diff / 60) + " minutes ago"
+            if second_diff < 7200:
+                return "an hour ago"
+            if second_diff < 86400:
+                return str(second_diff / 3600) + " hours ago"
+        if day_diff == 1:
+            return "Yesterday"
+        if day_diff < 7:
+            return str(day_diff) + " days ago"
+        if day_diff < 31:
+            return str(day_diff / 7) + " weeks ago"
+        if day_diff < 365:
+            return str(day_diff / 30) + " months ago"
+        return str(day_diff / 365) + " years ago"
+
+
+
+    def _format_values(self, values):
+        '''format tree latest point value output
+
+        values is up to two most recent values, e.g.:
+            [[<timestamp1>, <value1>], [<timestamp0>, <value0>]]'''
+        MAXLEN = 20
+        if values is None:
+            return None
+        if len(values) == 0:
+            return ''
+        # TODO: for long strings, show only content that changed from
+        #       the previous value
+        latest = str(values[0][1])
+        latest_time = self._pretty_date(values[0][0])
+        return "{1}-- {0}".format((latest[:MAXLEN - 3] + '...') if len(latest) > MAXLEN else latest, latest_time)
+
+    def _print_node(self, rid, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
         typ = info['basic']['type']
         if typ == 'client':
             id = 'cik: ' + info['key']
@@ -930,7 +1026,7 @@ class ExoRPC():
                 ridopt = True
         add_opt(ridopt, 'rid', rid)
         add_opt('--verbose', 'unit', units)
-
+        add_opt(values is not None, 'value', self._format_values(values))
 
         if maxlen == None:
             maxlen = {}
@@ -955,16 +1051,21 @@ class ExoRPC():
             '' if len(opt) == 0 else '({0})'.format(', '.join(
                 ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
 
-    def tree(self, cik, aliases=None, cli_args={}, spacer='', level=0, info_options={}):
+    def tree(self, auth, aliases=None, cli_args={}, spacer='', level=0, info_options={}):
         '''Print a tree of entities in OneP'''
         max_level = int(cli_args['--level'])
         # print root node
         isroot = len(spacer) == 0
+        if type(auth) is str:
+            cik = auth
+        elif type(auth) is dict:
+            cik = auth['cik']
+            rid = auth['client_id']
         if isroot:
             # usage and counts are slow, so omit them if we don't need them
-            exclude = ['usage']
+            exclude = ['usage', 'counts']
             info_options = self.make_info_options(exclude=exclude)
-            rid, info = self._exomult(cik,
+            rid, info = self._exomult(auth,
                                       [['lookup', 'alias', ''],
                                        ['info', {'alias': ''}, info_options]])
             # info doesn't contain key
@@ -984,10 +1085,11 @@ class ExoRPC():
         types = ['dataport', 'datarule', 'dispatch', 'client']
         try:
             # TODO: get shares, too
-            listing = self._listing_with_info(cik,
+            listing = self._listing_with_info(auth,
                 types=types,
                 info_options=info_options,
-                listing_options={"owned": True})
+                listing_options={"owned": True},
+                read_options={"limit": 2} if cli_args['--values'] else None)
             # _listing_with_info(): {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
             #                        'dataport': {'<rid2>':<info2>}}
         except pyonep.exceptions.OnePlatformException:
@@ -995,6 +1097,15 @@ class ExoRPC():
                 spacer +
                 "  └─listing for {0} failed. info['basic']['status'] is \
 probably not valid.".format(cik))
+        except ExoRPC.RPCException as ex:
+            if str(ex).startswith('locked ('):
+                self._print_tree_line(
+                    spacer +
+                    "  └─{0} is locked".format(cik))
+            else:
+                self._print_tree_line(
+                    spacer +
+                    "  └─RPC error for {0}: {1}".format(cik, ex))
         else:
             # calculate the maximum length of various things for all children,
             # so we can make things line up in the output.
@@ -1036,12 +1147,11 @@ probably not valid.".format(cik))
                             own_spacer   = spacer + '  +-'
 
                     if t == 'client':
-                        next_cik = info['key']
                         self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen)
                         if max_level == -1 or level < max_level:
-                            self.tree(next_cik, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
+                            self.tree({'cik': cik, 'client_id': rid}, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
                     else:
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen)
+                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen, values=info['read'] if 'read' in info else None)
 
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(

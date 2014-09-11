@@ -62,14 +62,14 @@ def rpc(*args, **kwargs):
     # override configuration file
     noconfig = kwargs.get('noconfig', None)
 
-    if noconfig or argmatch(args, '--http*') or argmatch(args, '--port*') or argmatch(args, '--host*'):
+    if noconfig or argmatch(args, '--http.*') or argmatch(args, '--port.*') or argmatch(args, '--host.*'):
         argv = ['exo']
     else:
         argv = ['exo', '--host', config['host'], '--port', config['port']]
         if not config['https']:
             argv.append('--http')
     argv = argv + list(args)
-    log.debug(' '.join([str(a) for a in argv]))
+    log.debug(' '.join([unicode(a) for a in argv]))
     if stdin is not None:
         log.debug('    stdin: ' + abbrev(stdin))
     return exo.run(argv, stdin=stdin)
@@ -476,6 +476,15 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('tree', cik, '--level=2')
         self.ok(r, 'tree with --level=2 shouldn\'t fail')
         self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
+
+        r = rpc('tree', cik, '--values')
+        # call did not fail
+        self.ok(r, 'tree with --values shouldn\'t fail')
+
+        r = rpc('tree', cik, '--verbose')
+        # call did not fail
+        self.ok(r, 'tree with --verbose shouldn\'t fail')
+
 
     def map_test(self):
         '''Map/unmap commands'''
@@ -1044,7 +1053,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Read a string with UTF8 characters'''
         cik = self.client.cik()
         rid1 = self._createMultiple(cik, [
-            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'})])
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'})])[0]
 
         r = rpc('flush', cik, rid1)
         r = rpc('write', cik, rid1, '--value=°C')
