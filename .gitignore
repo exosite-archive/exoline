@@ -51,3 +51,5 @@ tags
 .LSOverride
 Icon
 
+# virtual environment
+vepython*
