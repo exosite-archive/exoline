@@ -136,6 +136,7 @@ scripts:
                     script_dir = 'scripts'
                 print('Generating spec for {0}.'.format(input_cik))
                 print('spec file: {0}, scripts directory: {1}'.format(spec_file, script_dir))
+                print "FFFFFFFFFFFOOOOOOOOOOOOOOOOO"
 
                 # generate spec file, download scripts
                 spec = {}
@@ -159,8 +160,12 @@ scripts:
                         if typ == 'dataport':
                             dp = {'name': myinfo['description']['name'],
                                   'alias': info['aliases'][rid][0],
-                                  'format': myinfo['description']['format']}
+                                  'format': myinfo['description']['format']
+                                  'preprocess': myinfo['description']['preprocess'],
+                                  'subscribe': myinfo['description']['subscribe']}
 
+                            # TODO: Don't add subscribe or preprocess unless they have data
+                            # TODO: If possible, lookup alias for subscribe
                             meta_string = myinfo['description']['meta']
                             try:
                                 meta = json.loads(meta_string)
@@ -493,6 +498,24 @@ scripts:
                                                     update_meta(meta)
                                                 else:
                                                     bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
+
+                                        if 'subscribe' in res:
+                                            # For now, must be RID, but in future:
+                                            # Could be an rid, alias, or name (checked in that order)
+                                            # Alias and name *must* be local to this CIK
+                                            subscribe = info['description']['subscribe']
+                                            if subscribe is None:
+                                                if create:
+                                                    new_desc = info['description'].copy()
+                                                    new_desc['subscribe'] = res['subscribe']
+                                                    rpc.update(cik, {'alias': alias}, new_desc)
+                                                else:
+                                                    sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, res['subscribe']))
+                                            elif subscribe != res['subscribe']:
+                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, res['subscribe']))
+
+                                        if 'preprocess' in res:
+                                            print 'working on it'
 
                                     elif typ == 'script':
                                         if 'file' not in res:
