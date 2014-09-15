@@ -12,6 +12,7 @@ Command options:
     --update-scripts  Update any scripts that do not match what's
                       on the filesystem
     --create          Create any resources that do not exist
+    --asrid           When generating a spec, do not try to convert RIDs into aliases.
     --ids substitutes values for <% id %> when matching alias
     --example         Show an annotated example spec YAML file
     --portal          Will apply the spec command to all devices in a portal
@@ -126,6 +127,8 @@ scripts:
         input_cik = options['cik']
         rpc = options['rpc']
         ExoException = options['exception']
+        asrid = args['--asrid']
+
         if cmd == 'spec':
 
             if args['--generate'] is not None:
@@ -167,7 +170,7 @@ scripts:
                             preprocess = myinfo['description']['preprocess']
                             if preprocess is not None and len(preprocess) > 0:
                                 def toAlias(pair):
-                                    if pair[1] in info['aliases']:
+                                    if not asrid and pair[1] in info['aliases']:
                                         return [pair[0], info['aliases'][pair[1]][0]]
                                     else:
                                         return pair
@@ -176,7 +179,7 @@ scripts:
 
                             subscribe = myinfo['description']['subscribe']
                             if subscribe is not None and subscribe is not "":
-                                if subscribe in info['aliases']:
+                                if not asrid and subscribe in info['aliases']:
                                     dp['subscribe'] = info['aliases'][subscribe][0]
                                 else:
                                     dp['subscribe'] = subscribe
