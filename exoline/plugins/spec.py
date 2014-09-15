@@ -3,7 +3,7 @@
 
 Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>] [--portal|--domain] [-f]
-    exo [options] spec <cik> --generate=<filename> [--scripts=<dir>]
+    exo [options] spec <cik> --generate=<filename> [--scripts=<dir>] [--asrid]
     exo [options] spec --example
 
 The --generate form creates spec YAML and scripts from a CIK.
@@ -12,7 +12,7 @@ Command options:
     --update-scripts  Update any scripts that do not match what's
                       on the filesystem
     --create          Create any resources that do not exist
-    --asrid           When generating a spec, do not try to convert RIDs into aliases.
+    --asrid           When generating a spec, do not convert RIDs into aliases.
     --ids substitutes values for <% id %> when matching alias
     --example         Show an annotated example spec YAML file
     --portal          Will apply the spec command to all devices in a portal
@@ -139,7 +139,6 @@ scripts:
                     script_dir = 'scripts'
                 print('Generating spec for {0}.'.format(input_cik))
                 print('spec file: {0}, scripts directory: {1}'.format(spec_file, script_dir))
-                print "FFFFFFFFFFFOOOOOOOOOOOOOOOOO"
 
                 # generate spec file, download scripts
                 spec = {}
@@ -527,9 +526,7 @@ scripts:
                                                     bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
 
                                         if 'subscribe' in res:
-                                            # For now, must be RID, but in future:
-                                            # Could be an rid, alias, or name (checked in that order)
-                                            # Alias and name *must* be local to this CIK
+                                            # Alias *must* be local to this CIK
                                             resSub = res['subscribe']
                                             # Lookup alias/name if need be
                                             if resSub in aliases:
