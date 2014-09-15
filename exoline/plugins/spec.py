@@ -146,6 +146,7 @@ scripts:
                                               'aliases': True}],
                      ['listing', ['dataport', 'datarule', 'dispatch'], {}]])
                 rids = listing['dataport'] + listing['datarule']
+
                 if len(rids) > 0:
                     child_info = rpc._exomult(input_cik, [['info', rid, {'basic': True, 'description': True}] for rid in rids])
                     for idx, rid in enumerate(rids):
@@ -161,11 +162,25 @@ scripts:
                             dp = {'name': myinfo['description']['name'],
                                   'alias': info['aliases'][rid][0],
                                   'format': myinfo['description']['format']
-                                  'preprocess': myinfo['description']['preprocess'],
-                                  'subscribe': myinfo['description']['subscribe']}
+                                  }
 
-                            # TODO: Don't add subscribe or preprocess unless they have data
-                            # TODO: If possible, lookup alias for subscribe
+                            preprocess = myinfo['description']['preprocess']
+                            if preprocess is not None and len(preprocess) > 0:
+                                def toAlias(pair):
+                                    if pair[1] in info['aliases']:
+                                        return [pair[0], info['aliases'][pair[1]][0]]
+                                    else:
+                                        return pair
+                                dp['preprocess'] = [toAlias(x) for x in preprocess]
+
+
+                            subscribe = myinfo['description']['subscribe']
+                            if subscribe is not None and subscribe is not "":
+                                if subscribe in info['aliases']:
+                                    dp['subscribe'] = info['aliases'][subscribe][0]
+                                else:
+                                    dp['subscribe'] = subscribe
+
                             meta_string = myinfo['description']['meta']
                             try:
                                 meta = json.loads(meta_string)
@@ -503,16 +518,18 @@ scripts:
                                             # For now, must be RID, but in future:
                                             # Could be an rid, alias, or name (checked in that order)
                                             # Alias and name *must* be local to this CIK
+                                            resSub = res['subscribe']
+                                            # TODO Lookup alias/name if need be
                                             subscribe = info['description']['subscribe']
                                             if subscribe is None:
                                                 if create:
                                                     new_desc = info['description'].copy()
-                                                    new_desc['subscribe'] = res['subscribe']
+                                                    new_desc['subscribe'] = resSub
                                                     rpc.update(cik, {'alias': alias}, new_desc)
                                                 else:
-                                                    sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, res['subscribe']))
-                                            elif subscribe != res['subscribe']:
-                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, res['subscribe']))
+                                                    sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
+                                            elif subscribe != resSub:
+                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
 
                                         if 'preprocess' in res:
                                             print 'working on it'
