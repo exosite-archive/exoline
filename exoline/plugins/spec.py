@@ -382,11 +382,14 @@ scripts:
                     print("Running spec on: " + cik)
                     #   apply spec [--create]
 
-                    # Get map of aliases 
+                    # Get map of aliases
                     info = rpc.info(cik, {'alias': ''}, {'aliases': True})
-                    for rid, alist in info['aliases'].items():
-                        for alias in alist:
-                            aliases[alias] = rid
+                    try:
+                        for rid, alist in info['aliases'].items():
+                            for alias in alist:
+                                aliases[alias] = rid
+                    except:
+                        pass
 
                     for typ in ['dataport', 'client', 'script']:
                         if typ + 's' in spec:
@@ -548,9 +551,9 @@ scripts:
                                                     return [pair[0], aliases[pair[1]]]
                                                 else:
                                                     return pair
-                                            resPrep = [fromAliases(x) for x in res['preprocess']
+                                            resPrep = [fromAliases(x) for x in res['preprocess']]
                                             preprocess = info['description']['preprocess']
-                                            if preprocess is None:
+                                            if preprocess is None or len(preprocess) == 0:
                                                 if create:
                                                     new_desc = info['description'].copy()
                                                     new_desc['preprocess'] = resPrep
@@ -558,7 +561,7 @@ scripts:
                                                 else:
                                                     sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
                                             elif preprocess != resPrep:
-                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
+                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.'.format(alias, resPrep, preprocess))
 
                                     elif typ == 'script':
                                         if 'file' not in res:
