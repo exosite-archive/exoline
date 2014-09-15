@@ -546,7 +546,22 @@ scripts:
                                                 sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
 
                                         if 'preprocess' in res:
-                                            print 'working on it'
+                                            def fromAliases(pair):
+                                                if pair[1] in aliases:
+                                                    return [pair[0], aliases[pair[1]]]
+                                                else:
+                                                    return pair
+                                            resPrep = [fromAliases(x) for x in res['preprocess']
+                                            preprocess = info['description']['preprocess']
+                                            if preprocess is None:
+                                                if create:
+                                                    new_desc = info['description'].copy()
+                                                    new_desc['preprocess'] = resPrep
+                                                    rpc.update(cik, {'alias': alias}, new_desc)
+                                                else:
+                                                    sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
+                                            elif preprocess != resPrep:
+                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
 
                                     elif typ == 'script':
                                         if 'file' not in res:
