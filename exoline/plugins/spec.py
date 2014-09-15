@@ -379,8 +379,16 @@ scripts:
             # for each device in our list of ciks
             for cik in ciks:
                 try:
+                    aliases = {}
                     print("Running spec on: " + cik)
                     #   apply spec [--create]
+
+                    # Get map of aliases 
+                    info = rpc.info(cik, {'alias': ''}, {'aliases': True})
+                    for rid, alist in info['aliases'].items():
+                        for alias in alist:
+                            aliases[alias] = rid
+
                     for typ in ['dataport', 'client', 'script']:
                         if typ + 's' in spec:
                             for res in spec[typ + 's']:
@@ -430,6 +438,7 @@ scripts:
                                             rid = rpc.create_dataport(cik, format, name=name)
                                             rpc.map(cik, rid, alias)
                                             info, val = infoval(cik, alias)
+                                            aliases[alias] = rid
 
                                         # check type
                                         if info['basic']['type'] != typ:
@@ -522,7 +531,9 @@ scripts:
                                             # Could be an rid, alias, or name (checked in that order)
                                             # Alias and name *must* be local to this CIK
                                             resSub = res['subscribe']
-                                            # TODO Lookup alias/name if need be
+                                            # Lookup alias/name if need be
+                                            if resSub in aliases:
+                                                resSub = aliases[resSub]
                                             subscribe = info['description']['subscribe']
                                             if subscribe is None:
                                                 if create:
