@@ -3,7 +3,7 @@
 
 Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>] [--portal|--domain] [-f]
-    exo [options] spec <cik> --generate=<filename> [--scripts=<dir>]
+    exo [options] spec <cik> --generate=<filename> [--scripts=<dir>] [--asrid]
     exo [options] spec --example
 
 The --generate form creates spec YAML and scripts from a CIK.
@@ -12,6 +12,7 @@ Command options:
     --update-scripts  Update any scripts that do not match what's
                       on the filesystem
     --create          Create any resources that do not exist
+    --asrid           When generating a spec, do not convert RIDs into aliases.
     --ids substitutes values for <% id %> when matching alias
     --example         Show an annotated example spec YAML file
     --portal          Will apply the spec command to all devices in a portal
@@ -126,6 +127,8 @@ scripts:
         input_cik = options['cik']
         rpc = options['rpc']
         ExoException = options['exception']
+        asrid = args['--asrid']
+
         if cmd == 'spec':
 
             if args['--generate'] is not None:
@@ -145,6 +148,7 @@ scripts:
                                               'aliases': True}],
                      ['listing', ['dataport', 'datarule', 'dispatch'], {}]])
                 rids = listing['dataport'] + listing['datarule']
+
                 if len(rids) > 0:
                     child_info = rpc._exomult(input_cik, [['info', rid, {'basic': True, 'description': True}] for rid in rids])
                     for idx, rid in enumerate(rids):
@@ -159,7 +163,25 @@ scripts:
                         if typ == 'dataport':
                             dp = {'name': myinfo['description']['name'],
                                   'alias': info['aliases'][rid][0],
-                                  'format': myinfo['description']['format']}
+                                  'format': myinfo['description']['format']
+                                  }
+
+                            preprocess = myinfo['description']['preprocess']
+                            if preprocess is not None and len(preprocess) > 0:
+                                def toAlias(pair):
+                                    if not asrid and pair[1] in info['aliases']:
+                                        return [pair[0], info['aliases'][pair[1]][0]]
+                                    else:
+                                        return pair
+                                dp['preprocess'] = [toAlias(x) for x in preprocess]
+
+
+                            subscribe = myinfo['description']['subscribe']
+                            if subscribe is not None and subscribe is not "":
+                                if not asrid and subscribe in info['aliases']:
+                                    dp['subscribe'] = info['aliases'][subscribe][0]
+                                else:
+                                    dp['subscribe'] = subscribe
 
                             meta_string = myinfo['description']['meta']
                             try:
@@ -356,8 +378,19 @@ scripts:
             # for each device in our list of ciks
             for cik in ciks:
                 try:
+                    aliases = {}
                     print("Running spec on: " + cik)
                     #   apply spec [--create]
+
+                    # Get map of aliases
+                    info = rpc.info(cik, {'alias': ''}, {'aliases': True})
+                    try:
+                        for rid, alist in info['aliases'].items():
+                            for alias in alist:
+                                aliases[alias] = rid
+                    except:
+                        pass
+
                     for typ in ['dataport', 'client', 'script']:
                         if typ + 's' in spec:
                             for res in spec[typ + 's']:
@@ -407,6 +440,7 @@ scripts:
                                             rid = rpc.create_dataport(cik, format, name=name)
                                             rpc.map(cik, rid, alias)
                                             info, val = infoval(cik, alias)
+                                            aliases[alias] = rid
 
                                         # check type
                                         if info['basic']['type'] != typ:
@@ -493,6 +527,41 @@ scripts:
                                                     update_meta(meta)
                                                 else:
                                                     bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
+
+                                        if 'subscribe' in res:
+                                            # Alias *must* be local to this CIK
+                                            resSub = res['subscribe']
+                                            # Lookup alias/name if need be
+                                            if resSub in aliases:
+                                                resSub = aliases[resSub]
+                                            subscribe = info['description']['subscribe']
+                                            if subscribe is None:
+                                                if create:
+                                                    new_desc = info['description'].copy()
+                                                    new_desc['subscribe'] = resSub
+                                                    rpc.update(cik, {'alias': alias}, new_desc)
+                                                else:
+                                                    sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
+                                            elif subscribe != resSub:
+                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
+
+                                        if 'preprocess' in res:
+                                            def fromAliases(pair):
+                                                if pair[1] in aliases:
+                                                    return [pair[0], aliases[pair[1]]]
+                                                else:
+                                                    return pair
+                                            resPrep = [fromAliases(x) for x in res['preprocess']]
+                                            preprocess = info['description']['preprocess']
+                                            if preprocess is None or len(preprocess) == 0:
+                                                if create:
+                                                    new_desc = info['description'].copy()
+                                                    new_desc['preprocess'] = resPrep
+                                                    rpc.update(cik, {'alias': alias}, new_desc)
+                                                else:
+                                                    sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
+                                            elif preprocess != resPrep:
+                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.'.format(alias, resPrep, preprocess))
 
                                     elif typ == 'script':
                                         if 'file' not in res:
