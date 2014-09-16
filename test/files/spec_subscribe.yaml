@@ -1,0 +1,8 @@
+# Test spec
+dataports:
+    - alias: source
+      format: string
+    - alias: destination
+      format: string
+      subscribe: source
+

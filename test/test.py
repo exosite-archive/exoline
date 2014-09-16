@@ -1301,6 +1301,19 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         os.remove(example_spec)
 
+    def spec_subscribe_test(self):
+        '''Test spec dataports with a subscription to another'''
+        cik = self.client.cik()
+        spec = 'files/spec_subscribe.yaml'
+        r = rpc('spec', cik, spec, '--create')
+        self.ok(r, 'create dataports with subscriptions based on spec')
+
+        # Now see if it did
+        r = rpc('write', cik, 'source', '--value=ATEST')
+        self.ok(r, 'wrote to source')
+        r = rpc('read', cik, 'destination', '--format=raw')
+        self.ok(r, 'read subscribed value', match='ATEST')
+
     def spec_multi_test(self):
         '''Test spec --portal for updating multiple devices'''
         # Get example spec
