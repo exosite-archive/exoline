@@ -69,7 +69,7 @@ def rpc(*args, **kwargs):
         if not config['https']:
             argv.append('--http')
     argv = argv + list(args)
-    log.debug(' '.join([unicode(a) for a in argv]))
+    log.debug(' '.join([str(a) for a in argv]))
     if stdin is not None:
         log.debug('    stdin: ' + abbrev(stdin))
     return exo.run(argv, stdin=stdin)
@@ -320,7 +320,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         wrote = ['0' if x == '0.0' else x for x in wrotevalues]
         read = ['0' if x == '0.0' else x for x in readvalues_notime]
         self.assertTrue(wrote == read,
-                        u'Read values did not match written values. Expected {0}, got {1}.'.format(
+                        'Read values did not match written values. Expected {0}, got {1}.'.format(
                             wrote,
                             read))
 
@@ -437,58 +437,64 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 _recordAndVerify(r, on_stdin)
                 _flush(r)
 
+    def run_tree_tsts(self, treecmd='tree', options=[]):
+        cik = self.client.cik()
 
-    def tree_test(self):
-        '''Tree command'''
-        def run_tests(treecmd='tree'):
-            cik = self.client.cik()
+        r = rpc('drop', cik, '--all-children')
 
-            r = rpc('create', cik, '--type=client', '--cikonly')
-            self.ok(r, 'create child')
-            childcik = r.stdout
+        r = rpc('create', cik, '--type=client', '--cikonly')
+        self.ok(r, 'create child')
+        childcik = r.stdout
 
-            stdports = self._createDataports(childcik)
+        stdports = self._createDataports(childcik)
 
-            r = rpc(treecmd, cik)
-            # call did not fail
-            self.ok(r, treecmd + ' shouldn\'t fail')
-            # starts with cik
-            self.assertTrue(
-                re.match(".* cik: {0}.*".format(cik), r.stdout) is not None)
+        r = rpc(treecmd, cik, *options)
+        # call did not fail
+        self.ok(r, treecmd + ' shouldn\'t fail')
+        # starts with cik
+        self.assertTrue(
+            re.match('.* cik: {0}.*'.format(cik), r.stdout) is not None)
 
-            delim = '\n'.encode('utf-8')
-            def get_lines(stdout):
-                # has correct number of lines
-                if sys.version_info < (3, 0):
-                    so = stdout
-                else:
-                    so = stdout.encode('utf-8')
-                return so.split(delim)
+        delim = '\n'.encode('utf-8')
+        def get_lines(stdout):
+            # has correct number of lines
+            if sys.version_info < (3, 0):
+                so = stdout
+            else:
+                so = stdout.encode('utf-8')
+            return so.split(delim)
 
-            self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
+        #self.l(r.stdout)
+        #self.l(len(get_lines(r.stdout)))
+        #self.l(stdports)
+        #self.l(len(stdports) + 1 + 1)
+        self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
 
-            r = rpc(treecmd, cik, '--level=0')
-            self.ok(r, treecmd + ' with --level=0 shouldn\'t fail')
-            self.assertTrue(len(get_lines(r.stdout)) == 1)
+        r = rpc(treecmd, cik, '--level=0', *options)
+        self.ok(r, treecmd + ' with --level=0 shouldn\'t fail')
+        self.assertTrue(len(get_lines(r.stdout)) == 1)
 
-            r = rpc(treecmd, cik, '--level=1')
-            self.ok(r, treecmd + ' with --level=1 shouldn\'t fail')
-            self.assertTrue(len(get_lines(r.stdout)) == 2)
+        r = rpc(treecmd, cik, '--level=1', *options)
+        self.ok(r, treecmd + ' with --level=1 shouldn\'t fail')
+        self.assertTrue(len(get_lines(r.stdout)) == 2)
 
-            r = rpc(treecmd, cik, '--level=2')
-            self.ok(r, treecmd + ' with --level=2 shouldn\'t fail')
-            self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
+        r = rpc(treecmd, cik, '--level=2', *options)
+        self.ok(r, treecmd + ' with --level=2 shouldn\'t fail')
+        self.assertTrue(len(get_lines(r.stdout)) == len(stdports) + 1 + 1)
 
-            r = rpc(treecmd, cik, '--values')
+        if treecmd != 'twee':
+            r = rpc(treecmd, cik, '--values', *options)
             # call did not fail
             self.ok(r, treecmd + ' with --values shouldn\'t fail')
 
-            r = rpc(treecmd, cik, '--verbose')
+            r = rpc(treecmd, cik, '--verbose', *options)
             # call did not fail
             self.ok(r, treecmd + ' with --verbose shouldn\'t fail')
 
-        run_tests('tree')
-        run_tests('twee')
+    def tree_test(self):
+        '''Tree command'''
+        self.run_tree_tsts('tree')
+        self.run_tree_tsts('twee', ['--nocolor'])
 
 
     def map_test(self):
@@ -644,6 +650,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         #             'debug output from updated script within {0} sec'.format(waitsec))
         #self._latest(cik, 'string_port_alias', lua2['portoutput'],
         #             'dataport write from updated script within {0} sec'.format(waitsec))
+        # test other form
+        r = rpc('script', cik, '--file='+lua1['path'], '--name=' + lua1['name'] + 'form2', '--create')
+        self.ok(r, 'upload new script with new argument form succeeds')
+        self.assertEqual(readscript(cik, lua1['name'] + 'form2'), lua1['content'], 'create script with new argument form')
 
         # test --recursive
         r = rpc('read', childcik1, lua1['name'])
@@ -662,7 +672,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertEqual(readscript(childcik1, lua1['name']), lua2['content'], "child1 updated")
         self.assertEqual(readscript(childcik2, lua1['name']), lua2['content'], "child2 updated")
         self.assertEqual(readscript(childcik3, lua1['name']), lua2['content'], "grandchild updated")
-
 
     def usage_t(self):
         '''Get resource usage'''
@@ -1666,12 +1675,31 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 '--share=' + share_code)
         self.ok(r, 'look up RID for share_code', match=dataport_rid1)
 
+    def read_speed_test(self):
+        '''Read speed test'''
+        cik = self.client.cik()
+
+        self._createMultiple(
+            cik,
+            [Resource(cik, 'dataport',
+                      {'name': 'dp1',
+                       'format': 'string'},
+                      alias='dp1')])
+        r = rpc('write', cik, 'dp1', '--value=foo')
+        self.ok(r, 'write a value')
+
+        start = time.time()
+        r = rpc('read', cik, 'dp1')
+        end = time.time()
+        self.ok(r, 'read a value')
+        self.assertTrue(end - start < 3, 'read should not be slow')
+
 
     def flush_test(self):
         '''Flush command'''
         cik = self.client.cik()
 
-        dp1 = self._createMultiple(
+        self._createMultiple(
             cik,
             [Resource(cik, 'dataport',
                       {'name': 'dp1',
