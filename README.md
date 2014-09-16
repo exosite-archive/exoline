@@ -550,5 +550,3 @@ TODO
 - add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
 - add --timeformat=excel option for Excel import. Instead of "2014-03-13 15:53:20-05:00,<value>" it would output "2014-03-13 15:53:20,-05:00,<value>"
 - make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
-- simpler tree output with value diffs, only show RID if it doesn't have an alias
-- add new form for script command that has cik first to be more consistent, e.g. `exo script <cik> --file=foo.lua`
