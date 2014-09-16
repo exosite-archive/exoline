@@ -1314,6 +1314,29 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, 'destination', '--format=raw')
         self.ok(r, 'read subscribed value', match='ATEST')
 
+    def spec_preprocess_test(self):
+        '''Test spec dataports with preprocess'''
+        cik = self.client.cik()
+        spec = 'files/spec_preprocess.yaml'
+        r = rpc('spec', cik, spec, '--create')
+        self.ok(r, 'create dataports with subscriptions based on spec')
+
+        # Check the simple one
+        r = rpc('write', cik, 'math', '--value=10')
+        self.ok(r, 'wrote to source')
+        r = rpc('read', cik, 'math', '--format=raw')
+        self.ok(r, 'read preprocessed value', match='28.8')
+
+        # Check the complex one
+        r = rpc('write', cik, 'variable', '--value=10')
+        self.ok(r, 'wrote to variable')
+        r = rpc('write', cik, 'complex', '--value=5')
+        self.ok(r, 'wrote to complex')
+        r = rpc('read', cik, 'complex', '--format=raw')
+        self.ok(r, 'read preprocessed value', match='30')
+
+
+
     def spec_multi_test(self):
         '''Test spec --portal for updating multiple devices'''
         # Get example spec
