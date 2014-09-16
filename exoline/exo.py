@@ -12,7 +12,7 @@ Commands:
 Options:
   --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
   --port=<port>        OneP port. Default is $EXO_PORT or 443
-  --httptimeout=<sec>  HTTP timeout [default: 60]
+  --httptimeout=<sec>  HTTP timeout [default: 60] (default for copy is 480)
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
   --useragent=<ua>     Set User-Agent Header for outgoing requests
@@ -117,7 +117,11 @@ Command options:
     ('write',
         '''Write data at the current time.\n\nUsage:
     exo [options] write <cik> [<rid>] --value=<value>
-    exo [options] write <cik> [<rid>] -'''),
+    exo [options] write <cik> [<rid>] -
+
+The - form takes the value to write from stdin. For example:
+
+    $ echo '42' | exo write 8f21f0189b9acdc82f7ec28dc0c54ccdf8bc5ade myDataport -'''),
     ('record',
         '''Write data at a specified time.\n\nUsage:
     exo [options] record <cik> [<rid>] ((--value=<timestamp,value> ...) | -)
@@ -234,11 +238,52 @@ Command options:
     ('twee', '''Display a resource's descendants. Like tree, but more wuvable.\n\nUsage:
     exo [options] twee <cik>
 
-    --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]'''),
+    --nocolor      don't use color in output
+    --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]
+
+Example:
+
+    $ exo twee 7893635162b84f78e4475c2d6383645659545344
+     Temporary CIK    cl cik: 7893635162b84f78e4475c2d6383645659545344
+       ├─  dp.i rid.098f1: 77 (just now)
+       └─  dp.s config: {"a":1,"b":2} (21 seconds ago)
+    $ exo read 7893635162b84f78e4475c2d6383645659545344 rid.098f1
+    2014-09-12 13:48:28-05:00,77
+    $ exo read 7893635162b84f78e4475c2d6383645659545344 config --format=raw
+    {"a":1,"b":2}
+    $ exo info 7893635162b84f78e4475c2d6383645659545344 --include=description --pretty
+    {
+        "description": {
+            "limits": {
+                "client": 1,
+                "dataport": 10,
+                "datarule": 10,
+                "disk": "inherit",
+                "dispatch": 10,
+                "email": 5,
+                "email_bucket": "inherit",
+                "http": 10,
+                "http_bucket": "inherit",
+                "share": 5,
+                "sms": 0,
+                "sms_bucket": 0,
+                "xmpp": 10,
+                "xmpp_bucket": "inherit"
+            },
+            "locked": false,
+            "meta": "",
+            "name": "Temporary CIK",
+            "public": false
+        }
+    }
+    '''),
     #('ut', '''Display a tree as fast as possible\n\nUsage:
     #exo [options] ut <cik>'''),
     ('script', '''Upload a Lua script\n\nUsage:
+    exo [options] script <cik> --file=<script-file>
     exo [options] script <script-file> <cik> ...
+
+    All three forms do the same thing, but --file or - are the recommended forms
 
 Command options:
     --name=<name>  script name, if different from script filename. The name
@@ -473,7 +518,7 @@ class ExoRPC():
             [['info', {alias: ""}], ['listing']]'''
         if len(commands) == 0:
             return []
-        if type(auth) is str or type(auth) is unicode:
+        if type(auth) is str or (sys.version_info < (3, 0) and type(auth) is unicode):
             cik = auth
         elif type(auth) is dict:
             cik = auth['cik']
@@ -1056,7 +1101,6 @@ class ExoRPC():
             #v = values[0][1]
             #return self._format_value_with_previous(v, prev, maxlen)
 
-
     def _print_node(self, rid, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
         twee = cli_args['<command>'] == 'twee'
         typ = info['basic']['type']
@@ -1124,19 +1168,17 @@ class ExoRPC():
             maxlen['format'] = 0 if 'format' not in info['description'] else len(info['description']['format'])
 
         if twee:
-            # twee tree
-
             # colors, of course
             class bcolors:
-                SPACER = '\033[0m'
-                NAME = '\033[0m'
-                TYPE = '\033[95m'
-                ID = '\033[92m'
-                VALUE = '\033[93m'
-                TIMESTAMP = '\033[94m'
-                PINK = '\033[95m'
-                MODEL = '\033[96m'
-                ENDC = '\033[0m'
+                SPACER = '' if cli_args['--nocolor'] else '\033[0m'
+                NAME = '' if cli_args['--nocolor'] else '\033[0m'
+                TYPE = '' if cli_args['--nocolor'] else '\033[95m'
+                ID = '' if cli_args['--nocolor'] else '\033[92m'
+                VALUE = '' if cli_args['--nocolor'] else '\033[93m'
+                TIMESTAMP = '' if cli_args['--nocolor'] else '\033[94m'
+                PINK = '' if cli_args['--nocolor'] else '\033[95m'
+                MODEL = '' if cli_args['--nocolor'] else '\033[96m'
+                ENDC = '' if cli_args['--nocolor'] else '\033[0m'
 
             # the goal here is to make the line short to provide more room for the value
             # so if there's an alias, just use that, since it's
@@ -1172,6 +1214,7 @@ class ExoRPC():
                 displaytype + ' ' +
                 bcolors.ID +
                 tweeid +
+                bcolors.SPACER +
                 ('' if typ == 'client' else ': ') +
                 bcolors.VALUE +
                 ('' if val is None else val) +
@@ -1396,7 +1439,6 @@ probably not valid.".format(cik))
                             print("Skipping CIK: {0} -- {1} not found".format(cik, name))
                             if not create:
                                     print('Pass --create to create it')
-
 
                     if recursive:
                         self.cik_recursive(cik, up)
@@ -1972,7 +2014,6 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
 
 def read_cmd(er, cik, rids, args):
     '''Read command'''
-
     if len(rids) == 0:
         # if only a CIK was passed, include all dataports and datarules
         # by default.
@@ -2017,6 +2058,8 @@ def read_cmd(er, cik, rids, args):
     if tz == None:
         # default to UTC
         try:
+            # this single call is slow if pytz is compressed
+            # running pip unzip pytz fixes it
             tz = timezone.localtz()
         except pytz.UnknownTimeZoneError as e:
             # Unable to detect local time zone, defaulting to UTC
@@ -2032,7 +2075,10 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            print(str(val[0]).encode('utf-8'))
+            if sys.version_info < (3, 0):
+                print(str(val[0]).encode('utf-8'))
+            else:
+                print(val[0])
         else:
             if timeformat == 'unix':
                 dt = timestamp
@@ -2045,7 +2091,7 @@ def read_cmd(er, cik, rids, args):
 
             def stripcarriage(s):
                 # strip carriage returns not followed
-                if type(s) is str or type(s) is unicode:
+                if type(s) is str or (sys.version_info < (3, 0) and type(s) is unicode):
                     return recarriage.sub('', s)
                 else:
                     return s
@@ -2117,6 +2163,12 @@ def pretty_print(arg):
 
 def handle_args(cmd, args):
     use_https = False if args['--http'] is True else True
+
+    # command-specific http timeout defaults
+    if args['--httptimeout'] == '60':
+        if args['<command>'] == 'copy':
+            args['--httptimeout'] == '480'
+
     er = ExoRPC(host=args['--host'],
                 port=args['--port'],
                 https=use_https,
@@ -2394,7 +2446,11 @@ def handle_args(cmd, args):
             er.tree(cik, cli_args=args)
         elif cmd == 'script':
             # cik is a list of ciks
-            er.upload_script(cik, args['<script-file>'],
+            if args['--file']:
+                filename = args['--file']
+            else:
+                filename = args['<script-file>']
+            er.upload_script(cik, filename,
                             name=args['--name'],
                             recursive=args['--recursive'],
                             create=args['--create'])

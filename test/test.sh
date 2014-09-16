@@ -3,6 +3,7 @@
 function test() {
     PYTHONPATH=../exoline/:$PYTHONPATH
     nosetests --verbose --with-coverage --cover-erase --cover-package=exoline --cover-package=exoline.plugins
+    #./testone.sh read_speed_test
     #nosetests --with-xunit --xunit-file=$1 --verbose --with-coverage --cover-erase --cover-package=exoline
     #python -m coverage xml
     #cp coverage.xml coverage$1.xml
@@ -27,7 +28,7 @@ then
     #set -e
     # Python versions to test
     declare -a pythons=('python2.6' 'python2.7' 'python3.2' 'python3.3' 'python3.4')
-    #declare -a pythons=('python2.6')
+    #declare -a pythons=('python3.2')
 
     for i in "${pythons[@]}"
     do
@@ -49,12 +50,15 @@ then
         pushd ..
         if [ "$2" == "--quiet" ];
         then
-            python setup.py --quiet install 2>&1 >/dev/null | grep error | grep -v Py | grep -v __pyx_
+            #python setup.py --quiet install 2>&1 >/dev/null | grep error | grep -v Py | grep -v __pyx_
+            pip install . --quiet 2>&1 >/dev/null | grep error | grep -v Py | grep -v __pyx_
         else
-            python setup.py install
+            pip install .
         fi
         popd 
+        # install test requirements
         pip install --upgrade --quiet -r requirements.txt 
+
         echo  
         echo Starting tests in $i environment
         test nosetests-$i.xml

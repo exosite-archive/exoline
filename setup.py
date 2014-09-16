@@ -45,6 +45,7 @@ setup(
     keywords=['exosite', 'onep', 'one platform', 'm2m'],
     install_requires=required,
     zip_safe=False,
+    #always_unzip=True,
 	console=['exoline/exo.py'],
     data_files=data_files,
 	options={
@@ -54,24 +55,4 @@ setup(
 		}
 	}
     )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
