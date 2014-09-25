@@ -1,0 +1,19 @@
+# Test spec
+dataports:
+    - alias: A
+      retention:
+          count: 45
+
+    - alias: B
+      retention:
+          duration: 6000
+
+    - alias: C
+      retention:
+          count: 10
+          duration: 9900
+
+    - alias: D
+      retention:
+          count: infinity
+

@@ -583,13 +583,10 @@ scripts:
                                                 resRet['duration'] = res['retention']['duration']
 
                                             retention = info['description']['retention']
-                                            if retention is None:
-                                                if create:
-                                                    new_desc = info['description'].copy()
-                                                    new_desc['preprocess'] = resRet
-                                                    rpc.update(cik, {'alias': alias}, new_desc)
-                                                else:
-                                                    sys.stdout.write('spec expects retention for {0} to be {1}, but they are not.'.format(alias, resRet))
+                                            if create:
+                                                new_desc = info['description'].copy()
+                                                new_desc['retention'] = resRet
+                                                rpc.update(cik, {'alias': alias}, new_desc)
                                             elif retention != resRet:
                                                 sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.'.format(alias, resRet, retention))
 
