@@ -573,6 +573,23 @@ scripts:
                                             elif preprocess != resPrep:
                                                 sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.'.format(alias, resPrep, preprocess))
 
+                                        if 'retention' in res:
+                                            resRet = {}
+                                            resRet['count'] = res['retention']['count'] if 'count' in res['retention']
+                                            resRet['duration'] = res['retention']['duration'] if 'duration' in res['retention']
+
+                                            retention = info['description']['retention']
+                                            if retention is None:
+                                                if create:
+                                                    new_desc = info['description'].copy()
+                                                    new_desc['preprocess'] = resRet
+                                                    rpc.update(cik, {'alias': alias}, new_desc)
+                                                else:
+                                                    sys.stdout.write('spec expects retention for {0} to be {1}, but they are not.'.format(alias, resRet))
+                                            elif retention != resRet
+                                                sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.'.format(alias, resRet, retention))
+
+
                                     elif typ == 'script':
                                         if 'file' not in res:
                                             raise ExoException('{0} is a script, so it needs a "file" key'.format(alias))
