@@ -188,8 +188,10 @@ scripts:
                                 count = retention['count']
                                 duration = retention['duration']
                                 if count is not None and duration is not None:
-                                    del retention['count'] if count == 'infinity'
-                                    del retention['duration'] if duration == 'infinity'
+                                    if count == 'infinity':
+                                        del retention['count']
+                                    if duration == 'infinity':
+                                        del retention['duration']
                                     if len(retention) > 0:
                                         dp['retention'] = retention
 
@@ -575,8 +577,10 @@ scripts:
 
                                         if 'retention' in res:
                                             resRet = {}
-                                            resRet['count'] = res['retention']['count'] if 'count' in res['retention']
-                                            resRet['duration'] = res['retention']['duration'] if 'duration' in res['retention']
+                                            if 'count' in res['retention']:
+                                                resRet['count'] = res['retention']['count']
+                                            if 'duration' in res['retention']:
+                                                resRet['duration'] = res['retention']['duration']
 
                                             retention = info['description']['retention']
                                             if retention is None:
@@ -586,7 +590,7 @@ scripts:
                                                     rpc.update(cik, {'alias': alias}, new_desc)
                                                 else:
                                                     sys.stdout.write('spec expects retention for {0} to be {1}, but they are not.'.format(alias, resRet))
-                                            elif retention != resRet
+                                            elif retention != resRet:
                                                 sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.'.format(alias, resRet, retention))
 
 
