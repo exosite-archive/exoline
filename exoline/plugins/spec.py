@@ -183,6 +183,16 @@ scripts:
                                 else:
                                     dp['subscribe'] = subscribe
 
+                            retention = myinfo['description']['retention']
+                            if retention is not None:
+                                count = retention['count']
+                                duration = retention['duration']
+                                if count is not None and duration is not None:
+                                    del retention['count'] if count == 'infinity'
+                                    del retention['duration'] if duration == 'infinity'
+                                    if len(retention) > 0:
+                                        dp['retention'] = retention
+
                             meta_string = myinfo['description']['meta']
                             try:
                                 meta = json.loads(meta_string)
