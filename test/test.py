@@ -1354,7 +1354,45 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, 'complex', '--format=raw')
         self.ok(r, 'read preprocessed value', match='30')
 
+    def spec_retention_test(self):
+        '''Test spec dataports with retention'''
+        cik = self.client.cik()
+        spec = 'files/spec_retention.yaml'
+        r = rpc('spec', cik, spec, '--create')
+        self.ok(r, 'create dataports with retention based on spec')
 
+        # Check them
+        r = rpc('info', cik, 'A', '--include=description')
+        info = json.loads(r.stdout)
+        retention = info['description']['retention']
+        log.debug(retention)
+        self.assertTrue(retention is not None, 'No retention in info')
+        self.assertTrue(retention['count'] == 45, 'Count is wrong')
+        self.assertTrue(retention['duration'] == 'infinity', 'Duration is wrong')
+
+        r = rpc('info', cik, 'B', '--include=description')
+        info = json.loads(r.stdout)
+        retention = info['description']['retention']
+        log.debug(retention)
+        self.assertTrue(retention is not None, 'No retention in info')
+        self.assertTrue(retention['count'] == 'infinity', 'Count is wrong')
+        self.assertTrue(retention['duration'] == 6000, 'Duration is wrong')
+
+        r = rpc('info', cik, 'C', '--include=description')
+        info = json.loads(r.stdout)
+        retention = info['description']['retention']
+        log.debug(retention)
+        self.assertTrue(retention is not None, 'No retention in info')
+        self.assertTrue(retention['count'] == 10, 'Count is wrong')
+        self.assertTrue(retention['duration'] == 9900, 'Duration is wrong')
+
+        r = rpc('info', cik, 'D', '--include=description')
+        info = json.loads(r.stdout)
+        retention = info['description']['retention']
+        log.debug(retention)
+        self.assertTrue(retention is not None, 'No retention in info')
+        self.assertTrue(retention['count'] == 'infinity', 'Count is wrong')
+        self.assertTrue(retention['duration'] == 'infinity', 'Duration is wrong')
 
     def spec_multi_test(self):
         '''Test spec --portal for updating multiple devices'''

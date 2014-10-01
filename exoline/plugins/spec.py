@@ -183,6 +183,18 @@ scripts:
                                 else:
                                     dp['subscribe'] = subscribe
 
+                            retention = myinfo['description']['retention']
+                            if retention is not None:
+                                count = retention['count']
+                                duration = retention['duration']
+                                if count is not None and duration is not None:
+                                    if count == 'infinity':
+                                        del retention['count']
+                                    if duration == 'infinity':
+                                        del retention['duration']
+                                    if len(retention) > 0:
+                                        dp['retention'] = retention
+
                             meta_string = myinfo['description']['meta']
                             try:
                                 meta = json.loads(meta_string)
@@ -562,6 +574,22 @@ scripts:
                                                     sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
                                             elif preprocess != resPrep:
                                                 sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.'.format(alias, resPrep, preprocess))
+
+                                        if 'retention' in res:
+                                            resRet = {}
+                                            if 'count' in res['retention']:
+                                                resRet['count'] = res['retention']['count']
+                                            if 'duration' in res['retention']:
+                                                resRet['duration'] = res['retention']['duration']
+
+                                            retention = info['description']['retention']
+                                            if create:
+                                                new_desc = info['description'].copy()
+                                                new_desc['retention'] = resRet
+                                                rpc.update(cik, {'alias': alias}, new_desc)
+                                            elif retention != resRet:
+                                                sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.'.format(alias, resRet, retention))
+
 
                                     elif typ == 'script':
                                         if 'file' not in res:
