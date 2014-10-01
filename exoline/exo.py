@@ -19,7 +19,7 @@ Options:
   --debug              Show debug info (stack traces on exceptions)
   -d --debughttp       Turn on debug level logging in pyonep
   --discreet           Obfuscate RIDs in stdout and stderr
-  -c --clearcache     Invalidate Portals cache after running command
+  -c --clearcache      Invalidate Portals cache after running command
   --portals=<server>   Portals server [default: https://portals.exosite.com]
   -h --help            Show this screen
   -v --version         Show version
