@@ -51,6 +51,7 @@ import copy
 import difflib
 
 import six
+from six import BytesIO
 from six import StringIO
 from six import iteritems
 
@@ -88,6 +89,8 @@ except:
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
+
+PERF_DATA = []
 
 cmd_doc = OrderedDict([
     ('read',
@@ -234,10 +237,12 @@ Command options:
     ('tree', '''Display a resource's descendants.\n\nUsage:
     exo [options] tree [--verbose] [--values] <cik>
 
+Command options:
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]'''),
     ('twee', '''Display a resource's descendants. Like tree, but more wuvable.\n\nUsage:
     exo [options] twee <cik>
 
+Command options:
     --nocolor      don't use color in output
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]
 
@@ -361,8 +366,12 @@ Command options:
      --noactivate    don't activate CIK of clone (client only)
 
      The clone command copies the client resource specified by --rid or --share
-     into the client specified by <cik>. For example, to clone a portals device,
-     pass the portal CIK as <cik> and the device RID as <rid>.
+     into the client specified by <cik>.
+
+     For example, to clone a portals device, pass the portal CIK as <cik> and
+     the device RID as <rid>. The portal CIK can be found in Portals
+     https://<yourdomain>.exosite.com/account/portals, where it says Key: <cik>.
+     A device's RID can be obtained using exo lookup <device-cik>.
 
      The clone and copy commands do similar things, but clone uses the RPC's
      create (clone) functionality, which is more full featured.
@@ -453,6 +462,20 @@ for k in cmd_doc:
 class ExolineOnepV1(onep.OnepV1):
     '''Subclass that re-adds deprecated commands needed for devices created
     in Portals before the commands were deprecated.'''
+
+    def _callJsonRPC(self, cik, callrequests, returnreq=False):
+        '''Time all calls to _callJsonRPC'''
+        try:
+            ts = time.time()
+            procedures = [cr['procedure'] for cr in callrequests]
+            r = onep.OnepV1._callJsonRPC(self, cik, callrequests, returnreq)
+        except:
+            raise
+        finally:
+            te = time.time()
+            PERF_DATA.append({'cik': cik, 'procedures': procedures, 'seconds': te-ts})
+        return r
+
     def comment(self, cik, rid, visibility, comment, defer=False):
         return self._call('comment', cik, [rid, visibility, comment], defer)
 
@@ -518,7 +541,7 @@ class ExoRPC():
             [['info', {alias: ""}], ['listing']]'''
         if len(commands) == 0:
             return []
-        if type(auth) is str or (sys.version_info < (3, 0) and type(auth) is unicode):
+        if isinstance(auth, six.string_types):
             cik = auth
         elif type(auth) is dict:
             cik = auth['cik']
@@ -1092,8 +1115,7 @@ class ExoRPC():
         if type(v) is float or type(v) is int:
             return str(v)
         else:
-            # repr to escape newlines
-            latest = str(v).encode('string_escape')
+            latest = v.replace('\n', r'\n').replace('\r', r'\r')
             out = (latest[:maxlen - 3] + '...') if len(latest) > maxlen else latest
             return out
             # this is not better
@@ -1247,11 +1269,13 @@ class ExoRPC():
         max_level = int(cli_args['--level'])
         # print root node
         isroot = len(spacer) == 0
-        if type(auth) is str:
+        if isinstance(auth, six.string_types):
             cik = auth
         elif type(auth) is dict:
             cik = auth['cik']
             rid = auth['client_id']
+        else:
+            raise ExoException('Unexpected auth type ' + str(type(auth)))
         if isroot:
             # usage and counts are slow, so omit them if we don't need them
             exclude = ['usage', 'counts']
@@ -2075,10 +2099,7 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            if sys.version_info < (3, 0):
-                print(str(val[0]).encode('utf-8'))
-            else:
-                print(val[0])
+            print(val[0])
         else:
             if timeformat == 'unix':
                 dt = timestamp
@@ -2091,7 +2112,7 @@ def read_cmd(er, cik, rids, args):
 
             def stripcarriage(s):
                 # strip carriage returns not followed
-                if type(s) is str or (sys.version_info < (3, 0) and type(s) is unicode):
+                if isinstance(s, six.string_types):
                     return recarriage.sub('', s)
                 else:
                     return s
@@ -2154,6 +2175,7 @@ def read_cmd(er, cik, rids, args):
 
 
 def plain_print(arg):
+    #raise Exception("{0} {1}".format(arg, type(arg)))
     print(arg)
 
 
@@ -2257,8 +2279,9 @@ def handle_args(cmd, args):
                 has_errors = False
                 if args['-']:
                     headers = ['timestamp', 'value']
-                    dr = csv.DictReader(sys.stdin, headers)
-                    for row in dr:
+                    dr = csv.DictReader(sys.stdin, headers, encoding='utf-8')
+                    rows = list(dr)
+                    for row in rows:
                         s = row['timestamp']
                         if s is not None and re.match('^[-+]?[0-9]+$', s) is not None:
                             ts = int(s)
@@ -2738,16 +2761,17 @@ def run(argv, stdin=None):
     try:
         if stdin is None:
             stdin = sys.stdin
-        elif type(stdin) is str or type(stdin) is unicode:
+        elif isinstance(stdin, six.string_types):
             sio = StringIO()
-            sio.write(stdin)
+            if six.PY3:
+                sio.write(stdin)
+            else:
+                sio.write(stdin.encode('utf8'))
             sio.seek(0)
             stdin = sio
         stdout = StringIO()
         stderr = StringIO()
 
-        # unicode causes problems in docopt
-        argv = [str(a) for a in argv]
         exitcode = cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
         stdout.seek(0)
         stdout = stdout.read().strip()  # strip to get rid of leading newline

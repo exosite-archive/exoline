@@ -11,10 +11,10 @@ Installation
 Install the latest released version of Exoline from PyPI. 
 
 ```
-    # pip install exoline
+    $ sudo pip install exoline
 ```
 
-(pip is a package manager for Python. To get pip, try `sudo easy_install pip` in Mac OS X,  `sudo apt-get install python-setuptools;sudo easy_install pip` in Ubuntu. See below for Windows instructions.)
+pip is a package manager for Python. To get pip, try `sudo easy_install pip` in Mac OS X,  `sudo apt-get install python-setuptools;sudo easy_install pip` in Ubuntu. See below for Windows instructions.
 
 Here's how to install from source:
 
@@ -121,11 +121,15 @@ Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
 Show a tree view of a client with values
 
 ```
-$ exo tree 5de0cfcf7b5bed2ea7a801234567890123456789
-Dev client cik: 5de0cfcf7b5bed2ea7a801234567890123456789 (aliases: (see parent))
-  ├─device1 client cik: 970346d3391a2d8c703a01234567890123456789 (aliases: ['device1'])
-  └─device2 client cik: e95052ab56f985e6807d01234567890123456789 (aliases: ['device2'])
-      └─json string dataport rid: 82209d5888a3bd1530d201234567890123456789 (aliases: ['json'], value: {"setpoint": 6... 3 minutes ago)
+$ exo tree 2ca4f441538c1f2cc8bf01234567890123456789 --values
+ArduinoWifi  client cik: 2ca4f441538c1f2cc8bf01234567890123456789 (aliases: see parent)
+  ├─event        string  dataport rid: f264984bc4f9cf205e8801234567890123456789 (aliases: ["event"], value: button/1 years ago)
+  ├─gas          integer dataport rid: 5c9d695fdbe1503c662201234567890123456789 (aliases: ["gas"], value: 263/1 years ago)
+  ├─Humidity     float   dataport rid: 4fa572ba020cd921038801234567890123456789 (aliases: ["humidity"], value: 71.7/1 years ago)
+  ├─Image URL    string  dataport rid: 76143aaf0930802775e201234567890123456789 (aliases: ["image-url"], value: http://exosite.co.../1 years ago)
+  ├─light        integer dataport rid: 8dc131ea3fff528b122301234567890123456789 (aliases: ["light"], value: 1/1 years ago)
+  ├─Metadata     string  dataport rid: e93eea75d58615e78e8f01234567890123456789 (aliases: ["metadata"], value: {"foo":"bar","baz.../1 years ago)
+  └─Temperature  float   dataport rid: 3bbee56c446f546b546901234567890123456789 (aliases: ["temperature"], value: 22/1 years ago)
 ```
 
 Write a Lua script
@@ -503,6 +507,19 @@ To run the tests the packages in test/requirements.txt, and then type:
     $ ./test.sh full
 ```
 
+Alternatively, run tests with tox. Tox tests against multiple Python versions
+quite a bit more quickly than the hand-rolled `test/test.sh`.
+
+```
+    $ pip install tox
+    $ # run full set of tests in standard set of python versions
+    $ ./toxfull.sh
+    $ # run full set of tests with a specific python version
+    $ ./toxfull.sh -e py27
+    $ # run one test against a specific python version
+    $ ./toxone.sh update_test -e py27
+```
+
 For more on testing (including running individual tests), see [test/README.md](test/README.md).
 
 Building for Windows
@@ -550,3 +567,5 @@ TODO
 - add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
 - add --timeformat=excel option for Excel import. Instead of "2014-03-13 15:53:20-05:00,<value>" it would output "2014-03-13 15:53:20,-05:00,<value>"
 - make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
+- fix install warning: "UserWarning: Unknown distribution option: 'console'"
+- support 'brew install exoline' in OSX

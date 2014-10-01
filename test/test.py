@@ -26,6 +26,8 @@ from exoline import exo
 from exoline.exo import ExolineOnepV1
 from exoline import timezone
 
+basedir = 'test'
+
 try:
     from .testconfig import config
     if 'host' not in config:
@@ -69,7 +71,11 @@ def rpc(*args, **kwargs):
         if not config['https']:
             argv.append('--http')
     argv = argv + list(args)
-    log.debug(' '.join([str(a) for a in argv]))
+    if sys.version_info < (3, 0):
+        log.debug(' '.join([unicode(a) for a in argv]))
+    else:
+        log.debug(' '.join([str(a) for a in argv]))
+
     if stdin is not None:
         log.debug('    stdin: ' + abbrev(stdin))
     return exo.run(argv, stdin=stdin)
@@ -261,10 +267,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             write=['-1', '42'],
             record=[[665366400, '42']])
         stdports['string'] = Resource(
-            cik, 'dataport', {'format': 'string', 'name': 'string_port'},
+            cik, 'dataport', {'format': 'string', 'name': 'string_port_你好'},
             alias='string_port_alias',
-            write=['test', 'a' * 300],
-            record=[[163299600, 'home brew'], [543212345, 'nonsense']])
+            write=['hello', '你好'],
+            record=[[163299600, 'hello'], [10, '你好']])
         stdports['float'] = Resource(
             cik, 'dataport', {'format': 'float', 'name': 'float_port'},
             write=['-0.1234567', '0', '3.5'],
@@ -292,6 +298,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Clean up any test client'''
         rpc('drop', self.portalcik, self.client.rid)
 
+
     def _readBack(self, res, limit):
         r = rpc('read',
                 res.parentcik,
@@ -299,7 +306,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 '--limit={0}'.format(limit),
                 '--timeformat=unix')
         log.debug(r.stdout)
-        lines = r.stdout.split('\n')
+        lines = r.stdout.decode('utf-8').split('\n')
         vread = []
         for line in lines:
             t, v = line.split(',')
@@ -421,11 +428,12 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             self.assertTrue(r.exitcode == 0)
 
         def on_stdin(res):
+            stdin='\n'.join(['{0},{1}'.format(t, v) for t, v in res.record])
             r = rpc('record',
                     res.parentcik,
                     res.rid,
                     '-',
-                    stdin='\n'.join(['{0},{1}'.format(t, v) for t, v in res.record]))
+                    stdin=stdin)
             self.assertTrue(r.exitcode == 0)
 
         for r in list(stdports.values()):
@@ -442,7 +450,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         r = rpc('drop', cik, '--all-children')
 
-        r = rpc('create', cik, '--type=client', '--cikonly')
+        r = rpc('create', cik, '--type=client', '--name=你好', '--cikonly')
         self.ok(r, 'create child')
         childcik = r.stdout
 
@@ -494,8 +502,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def tree_test(self):
         '''Tree command'''
         self.run_tree_tsts('tree')
-        self.run_tree_tsts('twee', ['--nocolor'])
 
+    def twee_test(self):
+        '''Twee command'''
+        self.run_tree_tsts('twee', ['--nocolor'])
 
     def map_test(self):
         '''Map/unmap commands'''
@@ -537,7 +547,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                         'xmpp': 'inherit',
                         'xmpp_bucket': 'inherit',
                         },
-            "name": "test_create_client",
+            "name": "test_你好",
             "public": False})
         self._create(client)
 
@@ -545,9 +555,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         cik = client.cik()
         dataports = {}
         resources = [
-            Resource(cik, 'dataport', {'format': 'integer', 'name': 'int_port'}),
-            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'}),
-            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port'}),
+            Resource(cik, 'dataport', {'format': 'integer', 'name': 'int_port_你好'}),
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port_你好'}),
+            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port_你好'}),
         ]
         for res in resources:
             self._create(res)
@@ -615,12 +625,12 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         childrid3, childcik3 = self._ridcik(r.stdout)
 
         lua1 = {'name': 'helloworld.lua',
-                'path': 'files/helloworld.lua',
+                'path': basedir + '/files/helloworld.lua',
                 'out': 'line 1: Hello world!',
                 'portoutput': 'Hello dataport!'}
         lua1['content'] = open(lua1['path']).read().strip()
         lua2 = {'name': 'helloworld2.lua',
-                'path': 'files/helloworld2.lua',
+                'path': basedir + '/files/helloworld2.lua',
                 'out': 'line 1: Hello world!',
                 'portoutput': 'Hello dataport 2!'}
         lua2['content'] = open(lua2['path']).read().strip()
@@ -1072,7 +1082,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('flush', cik, rid1)
         r = rpc('write', cik, rid1, '--value=°C')
         self.ok(r, 'write an UTF8 String')
-        r = rpc('read', cik, rid1)
+        r = rpc('read', cik, rid1, '--format=raw')
         self.ok(r, 'read UTF8 string', match='°C')
 
     def sort_test(self):
@@ -1206,8 +1216,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def spec_test(self):
         '''Spec command'''
         cik = self.client.cik()
-        spec = 'files/spec.yaml'
-        spec_schema = 'files/spec_schema.yaml'
+        spec = basedir + '/files/spec.yaml'
+        spec_schema = basedir + '/files/spec_schema.yaml'
         r = rpc('spec', cik, spec)
         self.notok(r, 'no ids specified')
         r = rpc('spec', cik, spec, '--ids=1,2')
@@ -1293,7 +1303,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('drop', cik, '--all-children')
         self.ok(r, 'drop children from test client')
         r = rpc('spec', '--example')
-        example_spec = 'files/tmp_examplespec.yaml'
+        example_spec = basedir + '/files/tmp_examplespec.yaml'
         with open(example_spec, 'w') as f:
             print(r.stdout)
             if six.PY3:
@@ -1313,7 +1323,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def spec_subscribe_test(self):
         '''Test spec dataports with a subscription to another'''
         cik = self.client.cik()
-        spec = 'files/spec_subscribe.yaml'
+        spec = basedir + '/files/spec_subscribe.yaml'
         r = rpc('spec', cik, spec, '--create')
         self.ok(r, 'create dataports with subscriptions based on spec')
 
@@ -1326,7 +1336,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def spec_preprocess_test(self):
         '''Test spec dataports with preprocess'''
         cik = self.client.cik()
-        spec = 'files/spec_preprocess.yaml'
+        spec = basedir + '/files/spec_preprocess.yaml'
         r = rpc('spec', cik, spec, '--create')
         self.ok(r, 'create dataports with subscriptions based on spec')
 
@@ -1350,7 +1360,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''Test spec --portal for updating multiple devices'''
         # Get example spec
         r = rpc('spec', '--example')
-        example_spec = 'files/tmp_examplespec.yaml'
+        example_spec = basedir + '/files/tmp_examplespec.yaml'
         with open(example_spec, 'w') as f:
             print(r.stdout)
             if six.PY3:
@@ -1427,7 +1437,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''
         # Get example spec
         r = rpc('spec', '--example')
-        example_spec = 'files/tmp_examplespec.yaml'
+        example_spec = basedir + '/files/tmp_examplespec.yaml'
         with open(example_spec, 'w') as f:
             print(r.stdout)
             if six.PY3:
@@ -1733,4 +1743,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'flush with both start and end time')
         r = rpc('read', cik, 'dp1', '--limit=3', '--format=raw', '--sort=asc')
         self.ok(r, 'points were flushed', match='str1')
+
+def tearDownModule(self):
+    '''Do final things'''
+    with open('testperf.json', 'w') as f:
+        f.write(json.dumps(exo.PERF_DATA))
+
 
