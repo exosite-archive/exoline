@@ -36,6 +36,8 @@ class Plugin():
             level=None
 
         def removeWhite(string):
+            string = re.sub(r'^\s+','',string)
+            string = re.sub(r'\s+$','',string)
             if args['--space'] == 'camel':
                 def repl(mo):
                     return mo.group(1).upper()
