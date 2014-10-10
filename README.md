@@ -569,3 +569,6 @@ TODO
 - make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
 - fix install warning: "UserWarning: Unknown distribution option: 'console'"
 - support 'brew install exoline' in OSX
+- add command line interaction animated gif to README
+- marketing stuff (blog post)
+- make exoline<tab> autocompletion work in iPython
