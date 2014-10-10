@@ -12,6 +12,7 @@ Commands:
 Options:
   --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
   --port=<port>        OneP port. Default is $EXO_PORT or 443
+  --config=<file>      Config file [default: ~/.exoline]
   --httptimeout=<sec>  HTTP timeout [default: 60] (default for copy is 480)
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
@@ -458,6 +459,35 @@ for k in cmd_doc:
     for r in doc_replace:
         cmd_doc[k] = cmd_doc[k].replace(r, doc_replace[r])
 
+class ExoConfig:
+    '''Manages the config file, grouping all realted actions'''
+    regex_rid = re.compile("[0-9a-fA-F]{40}")
+
+    def __init__(self, configfile='~/.exoline'):
+        configfile = expanduser(configfile)
+        try:
+            with open(configfile) as f:
+                self.config = yaml.safe_load(f)
+        except IOError as ex:
+            self.config = {}
+            #raise ExoException('Couldn\'t open config file at {0}'.format(configfile))
+
+    def lookup_shortcut(self, cik):
+        '''Look up what was passed for cik in config file
+            if it doesn't look like a CIK.'''
+        if self.regex_rid.match(cik) is None:
+            if 'keys' in self.config:
+                if cik in self.config['keys']:
+                    return self.config['keys'][cik].strip()
+                else:
+                    raise ExoException('No CIK shortcut {0}\n{1}'.format(
+                        cik, '\n'.join(sorted(self.config['keys']))))
+            else:
+                raise ExoException('Tried a CIK shortcut {0}, but found no keys'.format(cik))
+        else:
+            return cik
+
+exoconfig = ExoConfig()
 
 class ExolineOnepV1(onep.OnepV1):
     '''Subclass that re-adds deprecated commands needed for devices created
@@ -576,34 +606,6 @@ class ExoRPC():
         if endtime is not None:
             options['endtime'] = int(endtime)
         return options
-
-    def lookup_shortcut(self, cik):
-        '''Look up what was passed for cik in config file
-            if it doesn't look like a CIK.'''
-        if self.regex_rid.match(cik) is None:
-            # if cik doesn't look like a cik, maybe it's a shortcut
-            configfile = os.path.join(expanduser('~'), '.exoline')
-            try:
-                with open(configfile) as f:
-                    config = yaml.safe_load(f)
-                    if 'keys' in config:
-                        if cik in config['keys']:
-                            return config['keys'][cik].strip()
-                        else:
-                            raise ExoException('No CIK shortcut {0}\n{1}'.format(
-                                cik,
-                                '\n'.join(sorted(config['keys']))))
-                    else:
-                        raise ExoException('Tried a CIK shortcut {0}, but found no keys in {1}'.format(
-                            cik,
-                            configfile))
-            except IOError as ex:
-                raise ExoException(
-                    'Tried a CIK shortcut {0}, but couldn\'t open {1}'.format(
-                    cik,
-                    configfile))
-        else:
-            return cik
 
     def read(self,
              cik,
@@ -1552,7 +1554,7 @@ probably not valid.".format(cik))
                 if 'subscribe' in desc and desc['subscribe'] is not None and len(desc['subscribe']) > 0:
                     raise ExoException('''Copy does not yet support resources that use the "subscribe" feature, as RID {0} in the source client does.\nIf you're just copying a device into the same portal consider using the clone command.'''.format(rid));
                 return rid
-            destcik = self.lookup_shortcut(destcik)
+            destcik = exoconfig.lookup_shortcut(destcik)
             infotree = self._infotree(cik, options={}, nodeidfn=check_for_unsupported)
 
         # check counts
@@ -1695,7 +1697,7 @@ probably not valid.".format(cik))
     def diff(self, cik1, cik2, full=False, nochildren=False):
         '''Show differences between two ciks.'''
 
-        cik2 = self.lookup_shortcut(cik2)
+        cik2 = exoconfig.lookup_shortcut(cik2)
 
         # list of info "keypaths" to not include in comparison
         # only the last item in the list is removed. E.g. for a
@@ -2216,9 +2218,9 @@ def handle_args(cmd, args):
     if '<cik>' in args and args['<cik>'] is not None:
         cik = args['<cik>']
         if type(cik) is list:
-            cik = [er.lookup_shortcut(c) for c in cik]
+            cik = [exoconfig.lookup_shortcut(c) for c in cik]
         else:
-            cik = er.lookup_shortcut(cik)
+            cik = exoconfig.lookup_shortcut(cik)
     else:
         # for data ip command
         cik = None
@@ -2382,7 +2384,7 @@ def handle_args(cmd, args):
             owner_of = args['--owner-of']
             share = args['--share']
             if cik_to_find is not None:
-                cik_to_find = er.lookup_shortcut(cik_to_find)
+                cik_to_find = exoconfig.lookup_shortcut(cik_to_find)
                 rid = er.lookup_rid(cik, cik_to_find)
                 if rid is not None:
                     pr(rid)
@@ -2691,6 +2693,9 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         doc,
         version="Exosite Command Line {0}".format(__version__),
         options_first=True)
+
+    global exoconfig
+    exoconfig = ExoConfig(args['--config'])
 
     # get command args
     cmd = args['<command>']
