@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-'''Build a list of aliases from a client
+'''Build a list of shortcuts from a client
 
 Usage:
-    exo [options] makeAliases <cik>
+    exo [options] makeShortcuts <cik>
 
 Command Options:
     --level=n   Maximum number of level to dig [default: None]
     --sep=c     Seperator to use between levels [default: :]
     --space=s   What to do with whitespace. camel, snake, remove. [default: camel]
 
-    This plugin will build a list of aliases from a CIK and all of its
+    This plugin will build a list of shortcuts from a CIK and all of its
     children clients.
 
     This list is suitable to be added to a .exoline file and used as future 
@@ -24,7 +24,7 @@ import re
 
 class Plugin():
     def command(self):
-        return 'makeAliases'
+        return 'makeShortcuts'
 
     def run(self, cmd, args, options):
         cik = options['cik']
