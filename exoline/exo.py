@@ -2629,7 +2629,8 @@ def handle_args(cmd, args):
                             'rids': rids,
                             'rpc': er,
                             'exception': ExoException,
-                            'utils': ExoUtilities
+                            'utils': ExoUtilities,
+							'config': exoconfig
                             }
                     try:
                         options['data'] = ed
