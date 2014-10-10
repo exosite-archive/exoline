@@ -6,7 +6,8 @@ Usage:
 
 Command Options:
     --level=n   Maximum number of level to dig [default: None]
-
+    --sep=c     Seperator to use between levels [default: :]
+    --space=s   What to do with whitespace. camel, snake, remove. [default: camel]
 
     This plugin will build a list of aliases from a CIK and all of its
     children clients.
@@ -18,6 +19,7 @@ Command Options:
 from __future__ import unicode_literals
 import os
 import sys
+import re
 
 
 class Plugin():
@@ -30,11 +32,24 @@ class Plugin():
         ExoException = options['exception']
         ExoUtilities = options['utils']
         level = args['--level']
+        if level == 'None':
+            level=None
+
+        def removeWhite(string):
+            if args['--space'] == 'camel':
+                def repl(mo):
+                    return mo.group(1).upper()
+                return re.sub(r'\s+(.)', repl, string)
+            elif args['--space'] == 'snake':
+                return re.sub(r'\s+', '_', string)
+            else:
+                return re.sub(r'\s+', '', string)
 
         def printnodes(node, path):
             if 'key' in node['info']:
                 cik = node['info']['key']
-                pp = ':'.join(path)
+                pp = args['--sep'].join(path)
+                pp = removeWhite(pp)
                 print("  '{0}': {1}".format(pp, cik))
             children = node['info']['children']
             for child in children:
@@ -49,7 +64,7 @@ class Plugin():
                 p.append(alias)
                 printnodes(child, p )
 
-        tree = rpc._infotree(cik)
+        tree = rpc._infotree(cik, level=level)
         tree['info']['key'] = cik
         if rpc.regex_rid.match(args['<cik>']) is None:
             alias = args['<cik>']
