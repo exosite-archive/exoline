@@ -42,6 +42,13 @@ To install from PyPI, first install the prerequisites:
 After pip-win is installed, a GUI window will pop up. To install Exoline, type
 `pip install exoline` into the command field.
 
+Upgrading
+---------
+To upgade your version of exoline you can use the following command. 
+
+```
+    $ sudo pip install exoline --upgrade
+```
 
 Usage
 -----
@@ -104,6 +111,7 @@ Options:
 
 See 'exo <command> --help' for more information on a specific command.
 ```
+
 
 Examples
 --------
