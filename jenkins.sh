@@ -1,3 +1,1 @@
-# test
-cd test
-source ./test.sh full
+./test.sh
