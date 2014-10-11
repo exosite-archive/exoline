@@ -1219,7 +1219,7 @@ class ExoRPC():
             displayname = ((name + bcolors.SPACER + ' ') if len(name) > 0 else ' ')
             displaytype = {'dataport': 'dp', 'client': 'cl', 'datarule': 'dr', 'dispatch': 'ds'}[typ]
             if 'format' in info['description']:
-                displaytype += '.' + {'string': 's', 'float': 'f', 'integer': 'i'}[info['description']['format']]
+                displaytype += '.' + {'binary': 'b', 'string': 's', 'float': 'f', 'integer': 'i'}[info['description']['format']]
             else:
                 displaytype = '  ' + displaytype
 
