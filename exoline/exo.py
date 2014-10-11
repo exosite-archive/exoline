@@ -2281,7 +2281,10 @@ def handle_args(cmd, args):
                 has_errors = False
                 if args['-']:
                     headers = ['timestamp', 'value']
-                    dr = csv.DictReader(sys.stdin, headers, encoding='utf-8')
+                    if sys.version_info < (3, 0):
+                        dr = csv.DictReader(sys.stdin, headers, encoding='utf-8')
+                    else:
+                        dr = csv.DictReader(sys.stdin, headers)
                     rows = list(dr)
                     for row in rows:
                         s = row['timestamp']
@@ -2661,9 +2664,11 @@ class DiscreetFilter(object):
 
     def write(self, message):
         # hide the second half
-        message = message.decode('utf-8')
+        if sys.version_info < (3, 0):
+            message = message.decode('utf-8')
         s = self.ridre.sub('\g<1>01234567890123456789', message)
-        s = s.encode('utf-8')
+        if sys.version_info < (3, 0):
+            s = s.encode('utf-8')
         self.out.write(s)
 
 def cmd(argv=None, stdin=None, stdout=None, stderr=None):

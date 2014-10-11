@@ -502,33 +502,8 @@ If you see an issue with exoline or want to suggest an improvement, please log i
 Test
 ----
 
-To run the tests the packages in test/requirements.txt, and then type:
+Exoline comes with integration tests that cover ~80% of code. To run the tests, see [test/README.md](test/README.md).
 
-```
-    $ cd test
-    $ pip install -r requirements.txt
-
-    # run tests in current Python environment
-    $ ./test.sh
-
-    # test multiple version of Python (requires virtualenv)
-    $ ./test.sh full
-```
-
-Alternatively, run tests with tox. Tox tests against multiple Python versions
-quite a bit more quickly than the hand-rolled `test/test.sh`.
-
-```
-    $ pip install tox
-    $ # run full set of tests in standard set of python versions
-    $ ./toxfull.sh
-    $ # run full set of tests with a specific python version
-    $ ./toxfull.sh -e py27
-    $ # run one test against a specific python version
-    $ ./toxone.sh update_test -e py27
-```
-
-For more on testing (including running individual tests), see [test/README.md](test/README.md).
 
 Building for Windows
 --------------------

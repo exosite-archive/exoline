@@ -101,9 +101,9 @@ dataports:
 scripts:
     # by default, scripts are datarules with
     # names and aliases set to the file name
-    - file: files/helloworld.lua
+    - file: test/files/helloworld.lua
     # you can also set them explicitly
-    - file: files/convert.lua
+    - file: test/files/convert.lua
       # if <% id %> is embedded in aliases
       # or script content, the --ids parameter must
       # be passed in. The spec command then expects

@@ -13,6 +13,6 @@ dataports:
       initial: '{}'
 
 scripts:
-    - file: files/helloworld.lua
-    - file: files/helloworld2.lua
+    - file: test/files/helloworld.lua
+    - file: test/files/helloworld2.lua
       alias: helloworld2_set<% id %> 
