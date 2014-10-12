@@ -54,7 +54,6 @@ Usage
 -----
 
 ```
-$ exo -h
 Exosite RPC API Command Line Interface
    Provides command line access to the Remote Procedure Call API:
    https://github.com/exosite/docs/tree/master/rpc
@@ -63,41 +62,45 @@ Usage:
   exo [--help] [options] <command> [<args> ...]
 
 Commands:
-  read        Read data from a resource.
-  write       Write data at the current time.
-  record      Write data at a specified time.
-  create      Create a resource from a json description passed on stdin (with -),
-              or using command line shorthand (other variants).
-  listing     List the RIDs of a client's children.
-  info        Get metadata for a resource in json format.
-  update      Update a resource from a json description passed on stdin.
-  map         Add an alias to a resource.
-  unmap       Remove an alias from a resource.
-  lookup      Look up a resource's RID based on its alias cik.
-  drop        Drop (permanently delete) a resource.
-  flush       Remove time series data from a resource.
-  usage       Display usage of One Platform resources over a time period.
-  tree        Display a resource's descendants.
-  script      Upload a Lua script
-  spark       Show distribution of intervals between points.
-  copy        Make a copy of a client.
-  diff        Show differences between two clients.
-  ip          Get IP address of the server.
-  data        Read or write with the HTTP Data API.
-  portals     Invalidate the Portals cache for a CIK by telling Portals
-              a particular procedure was taken on client identified by <cik>.
-  share       Generate a code that allows non-owners to access resources
-  revoke      Revoke a share code or CIK
-  activate    Activate a share code or CIK
-  deactivate  Deactivate a share code or expire a CIK
-  clone       Create a clone of a client
-  spec        Determine whether a client matches a specification (beta)
-  transform   Transform data on in a dataport by mapping all values (alpha)
+  read           Read data from a resource.
+  write          Write data at the current time.
+  record         Write data at a specified time.
+  create         Create a resource from a json description passed on stdin (with -),
+                 or using command line shorthand (other variants).
+  listing        List the RIDs of a client's children.
+  info           Get metadata for a resource in json format.
+  update         Update a resource from a json description passed on stdin.
+  map            Add an alias to a resource.
+  unmap          Remove an alias from a resource.
+  lookup         Look up a resource's RID based on its alias cik.
+  drop           Drop (permanently delete) a resource.
+  flush          Remove time series data from a resource.
+  usage          Display usage of One Platform resources over a time period.
+  tree           Display a resource's descendants.
+  twee           Display a resource's descendants. Like tree, but more wuvable.
+  script         Upload a Lua script
+  spark          Show distribution of intervals between points.
+  copy           Make a copy of a client.
+  diff           Show differences between two clients.
+  ip             Get IP address of the server.
+  data           Read or write with the HTTP Data API.
+  portals        Invalidate the Portals cache for a CIK by telling Portals
+                 a particular procedure was taken on client identified by <cik>.
+  share          Generate a code that allows non-owners to access resources
+  revoke         Revoke a share code or CIK
+  activate       Activate a share code or CIK
+  deactivate     Deactivate a share code or expire a CIK
+  clone          Create a clone of a client
+  makeShortcuts  Build a list of shortcuts from a client
+  ndup           Duplicate a value in a dataport
+  spec           Determine whether a client matches a specification (beta)
+  transform      Transform data on in a dataport by mapping all values (alpha)
 
 Options:
   --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
   --port=<port>        OneP port. Default is $EXO_PORT or 443
-  --httptimeout=<sec>  HTTP timeout [default: 60]
+  --config=<file>      Config file [default: ~/.exoline]
+  --httptimeout=<sec>  HTTP timeout [default: 60] (default for copy is 480)
   --https              Enable HTTPS (deprecated, HTTPS is default)
   --http               Disable HTTPS
   --useragent=<ua>     Set User-Agent Header for outgoing requests
