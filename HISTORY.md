@@ -1,6 +1,18 @@
 History
 =======
 
+0.8.2 (2014-10-12)
+------------------
+
+- support retention in spec command
+- support preprocess in spec command
+- support subscribe in spec command
+- makeShortcuts command for populating CIK shortcuts in .exoline
+- flexible config file location 
+- fix some unicode issues, add unicode tests
+- fix exoline tree --values example output
+- fix twee for dataports of type 'binary'
+
 0.8.1 (2014-09-15)
 ------------------
 
