@@ -505,7 +505,7 @@ If you see an issue with exoline or want to suggest an improvement, please log i
 Test
 ----
 
-Exoline comes with integration tests that cover ~80% of code. To run the tests, see [test/README.md](test/README.md).
+To run Exoline's integration tests, see [test/README.md](test/README.md).
 
 
 Building for Windows
