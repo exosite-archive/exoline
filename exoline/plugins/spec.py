@@ -548,6 +548,20 @@ scripts:
                                                 else:
                                                     bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
 
+                                        if 'public' in res:
+                                            resPub = res['public']
+                                            public = info['description']['public']
+                                            if public is None:
+                                                if create:
+                                                    new_desc = info['description'].copy()
+                                                    new_desc['public'] = respub
+                                                    rpc.update(cik, {'alias': alias}, new_desc)
+                                                else:
+                                                    sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
+                                            elif public != resPub:
+                                                sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
+
+
                                         if 'subscribe' in res:
                                             # Alias *must* be local to this CIK
                                             resSub = res['subscribe']
