@@ -201,10 +201,18 @@ scripts:
                                 unit = meta['datasource']['unit']
                                 if len(unit) > 0:
                                     dp['unit'] = unit
+                                desc = meta['datasource']['description']
+                                if len(desc) > 0:
+                                    dp['description'] = desc
                             except:
                                 # assume unit is not present in metadata
                                 pass
                             spec.setdefault('dataports', []).append(dp)
+                            
+                            public = myinfo['description']['public']
+                            if public is not None and public:
+                                dp['public'] = public
+
 
                         elif typ == 'datarule':
                             desc = myinfo['description']
