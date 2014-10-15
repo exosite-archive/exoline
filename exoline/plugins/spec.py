@@ -514,39 +514,46 @@ scripts:
                                                 'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))
 
                                         # check unit
-                                        if 'unit' in res:
+                                        if 'unit' in res or 'description' in res:
                                             meta_string = info['description']['meta']
                                             try:
                                                 meta = json.loads(meta_string)
                                             except:
                                                 meta = None
 
+                                            def bad_desc_msg(s):
+                                                sys.stdout.write('spec expects description for {0} to be {1}, but they are not.'.format(alias, res['description']))
                                             def bad_unit_msg(s):
                                                 sys.stdout.write('spec expects unit for {0} to be {1}, but they are not.'.format(alias, res['unit']))
-                                            def update_meta(meta):
+
+                                            if create:
+                                                if meta is None:
+                                                    meta = {'datasource':{'description':'','unit':''}}
+                                                if 'datasource' not in meta:
+                                                    meta['datasource'] = {'description':'','unit':''}
+                                                if 'unit' in res:
+                                                    meta['datasource']['unit'] = res['unit']
+                                                if 'description:' in res:
+                                                    meta['datasource']['description'] = res['description']
+
                                                 new_desc = info['description'].copy()
                                                 new_desc['meta'] = json.dumps(meta)
                                                 rpc.update(cik, {'alias': alias}, new_desc)
-                                                print('unit value for {0} updated to {1}'.format(alias, meta['datasource']['unit']))
 
-                                            if meta is None:
-                                                if create:
-                                                    update_meta({'datasource':{'description':'','unit':res['unit']}})
-                                                else:
-                                                    bad_unit_msg(', but found has no metadata at all. Pass --create to write metadata with unit.')
-                                            elif 'datasource' not in meta or 'unit' not in meta['datasource']:
-                                                if create:
-                                                    meta.setdefault('datasource', {})
-                                                    meta['datasource']['unit'] = res['unit']
-                                                    update_meta(meta)
-                                                else:
+                                            else:
+                                                if meta is None:
+                                                    sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.')
+                                                elif 'datasource' not in meta:
+                                                    sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.')
+                                                elif 'unit' not in meta['datasource']:
                                                     bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.')
-                                            elif meta['datasource']['unit'] != res['unit']:
-                                                if create:
-                                                    meta['datasource']['unit'] = res['unit']
-                                                    update_meta(meta)
-                                                else:
+                                                elif 'description' not in meta['datasource']:
+                                                    bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.')
+                                                elif meta['datasource']['unit'] != res['unit']:
                                                     bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
+                                                elif meta['datasource']['description'] != res['description']:
+                                                    bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.'.format(meta['datasource']['description']))
+
 
                                         if 'public' in res:
                                             resPub = res['public']
