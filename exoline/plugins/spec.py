@@ -119,7 +119,7 @@ scripts:
       # written to each script datarule.
       #
       alias: convert<% id %>.lua
-''')
+'''.encode('utf-8'))
             return
 
 
