@@ -93,6 +93,12 @@ dataports:
                    "properties": {"name": {"type": "string"}},
                    "required": ["name"]}
       initial: '{"name":"John Doe"}'
+    - alias: place
+      # An description of the dataport.
+      description: 'This is a place I have been'
+      # Dataport are private by default,
+      # but if you want to share one with the world
+      public: true
 
     # any dataports not listed but found in the client
     # are ignored. The spec command does not delete things.
