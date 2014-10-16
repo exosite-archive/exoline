@@ -558,3 +558,4 @@ TODO
 - add command line interaction animated gif to README
 - marketing stuff (blog post)
 - make exoline<tab> autocompletion work in iPython
+- support PIKs in place of CIKs
