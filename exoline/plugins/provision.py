@@ -2,40 +2,40 @@
 '''Provisioning.
 
 Usage:
-	exo [options] provision model list [--shared]
-	exo [options] provision model info <model>
-	exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
-	exo [options] provision model delete <model>
-	exo [options] provision content list <model>
-	exo [options] provision content create <model> <id> [<meta>] [--protected]
-	exo [options] provision content delete <model> <id>
-	exo [options] provision content info <model> <id>
-	exo [options] provision content get <model> <id> <file>
-	exo [options] provision content put <model> <id> <file>
-	exo [options] provision sn list <model> [--offset=num] [--limit=num]
-	exo [options] provision sn ranges <model>
-	exo [options] provision sn add <model> <sn> [<extra>]
-	exo [options] provision sn addcsv <model> <file>
-	exo [options] provision sn addrange <model> <format> <length> <casing> <first> <last>
-	exo [options] provision sn del <model> <sn>
-	exo [options] provision sn delcsv <model> <file>
-	exo [options] provision sn delrange <model> <format> <length> <casing> <first> <last>
-	exo [options] provision sn rids <model> <sn>
-	exo [options] provision sn groups <model> <sn>
-	exo [options] provision sn log <model> <sn>
-	exo [options] provision sn create <model> <sn> <ownerRID>
-	exo [options] provision sn remap <model> <new_sn> <old_sn>
-	exo [options] provision sn regen <model> <sn>
-	exo [options] provision sn disable <model> <sn>
+    exo [options] provision model list [--shared]
+    exo [options] provision model info <model>
+    exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
+    exo [options] provision model delete <model>
+    exo [options] provision content list <model>
+    exo [options] provision content create <model> <id> [<meta>] [--protected]
+    exo [options] provision content delete <model> <id>
+    exo [options] provision content info <model> <id>
+    exo [options] provision content get <model> <id> <file>
+    exo [options] provision content put <model> <id> <file>
+    exo [options] provision sn list <model> [--offset=num] [--limit=num]
+    exo [options] provision sn ranges <model>
+    exo [options] provision sn add <model> <sn> [<extra>]
+    exo [options] provision sn addcsv <model> <file>
+    exo [options] provision sn addrange <model> <format> <length> <casing> <first> <last>
+    exo [options] provision sn del <model> <sn>
+    exo [options] provision sn delcsv <model> <file>
+    exo [options] provision sn delrange <model> <format> <length> <casing> <first> <last>
+    exo [options] provision sn rids <model> <sn>
+    exo [options] provision sn groups <model> <sn>
+    exo [options] provision sn log <model> <sn>
+    exo [options] provision sn create <model> <sn> <ownerRID>
+    exo [options] provision sn remap <model> <new_sn> <old_sn>
+    exo [options] provision sn regen <model> <sn>
+    exo [options] provision sn disable <model> <sn>
 
 Command Options:
-	--shared		something.
-	--noaliases		n
-	--nocomments	n
-	--nohistory		n
-	--protected		m
-	--offset=num	Offset to start listing at [default: 0]
-	--limit=num		Maximum entries to return [default: 1000]
+    --shared        something.
+    --noaliases     n
+    --nocomments    n
+    --nohistory     n
+    --protected     m
+    --offset=num    Offset to start listing at [default: 0]
+    --limit=num     Maximum entries to return [default: 1000]
 
 
 '''
