@@ -10,8 +10,8 @@ Usage:
 	exo [options] provision content create <model> <id> [<meta>] [--protected]
 	exo [options] provision content delete <model> <id>
 	exo [options] provision content info <model> <id>
-	exo [options] provision content get <model> <id>
-	exo [options] provision content put <model> <id>
+	exo [options] provision content get <model> <id> <file>
+	exo [options] provision content put <model> <id> <file>
 	exo [options] provision sn list <model> [--offset=num] [--limit=num]
 	exo [options] provision sn ranges <model>
 	exo [options] provision sn add <model> <sn> [<extra>]
@@ -110,6 +110,51 @@ class Plugin():
 			mlist = pop.content_info(key, args['<model>'], args['<id>'])
 			print(mlist.body)
 
+		def create(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<id>'] is None:
+				raise ExoException("Missing content id")
+			meta = args['<meta>']
+			if meta is None:
+				meta = ''
+			mlist = pop.content_create(key, args['<model>'], args['<id>'], meta)
+			print(mlist.body)
+
+
+		def delete(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<id>'] is None:
+				raise ExoException("Missing content id")
+			mlist = pop.content_remove(key, args['<model>'], args['<id>'])
+			print(mlist.body)
+
+		def get(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<id>'] is None:
+				raise ExoException("Missing content id")
+			if args['<file>'] is None:
+				raise ExoException("Missing file")
+
+			print('not implemented yet')
+
+
+		def put(self, cmd, args, options):
+			print('not implemented yet')
 
 	########################
 	class sn:
