@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-'''Provisioning.
+'''Provisioning. (alpha)
 
 Usage:
     exo [options] provision model list [--shared]
@@ -45,7 +45,7 @@ import os
 import sys
 import re
 from pyonep import provision
-
+import urllib, mimetypes
 
 class Plugin():
 	def command(self):
@@ -171,7 +171,30 @@ class Plugin():
 
 
 		def put(self, cmd, args, options):
-			print('not implemented yet')
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<id>'] is None:
+				raise ExoException("Missing content id")
+			if args['<file>'] is None:
+				raise ExoException("Missing file")
+
+			data=''
+			try:
+				with open(args['<file>']) as f:
+					data = f.read()
+			except IOError as ex:
+				raise ExoException("Could not read {0}".format(args['<file>']))
+
+			url = urllib.pathname2url(args['<file>'])
+			mime, encoding = mimetypes.guess_type(url)
+
+			mlist = pop.content_upload(key, args['<model>'], args['<id>'], data, mime)
+			print(mlist.body)
+
 
 	########################
 	class sn:
@@ -312,6 +335,9 @@ class Plugin():
 		ExoException = options['exception']
 		ExoUtilities = options['utils']
 		exoconfig = options['config']
+
+		if 'vendortoken' not in exoconfig.config:
+			raise ExoException("Vender Token is not defined!")
 
 		options['pop'] = provision.Provision(manage_by_cik=False,
 										port='443',
