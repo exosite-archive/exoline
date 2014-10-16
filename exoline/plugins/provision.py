@@ -216,7 +216,7 @@ class Plugin():
 		def addrange(self, cmd, args, options):
 			pass
 
-		def del(self, cmd, args, options):
+		def delete(self, cmd, args, options):
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
