@@ -25,7 +25,7 @@ Usage:
 	exo [options] provision sn log <model> <sn>
 	exo [options] provision sn create <model> <sn> <ownerRID>
 	exo [options] provision sn remap <model> <new_sn> <old_sn>
-	exo [options] provision sn regenerateCIK <model> <sn>
+	exo [options] provision sn regen <model> <sn>
 	exo [options] provision sn disable <model> <sn>
 
 Command Options:
@@ -135,6 +135,100 @@ class Plugin():
 			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
 			print(mlist.body)
 
+		def add(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<sn>'] is None:
+				raise ExoException("Missing Serial Number")
+
+			mlist = pop.serialnumber_add(key, args['<model>'], args['<sn>'])
+			print(mlist.body)
+
+		def addcsv(self, cmd, args, options):
+			pass
+		def addrange(self, cmd, args, options):
+			pass
+
+		def del(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<sn>'] is None:
+				raise ExoException("Missing Serial Number")
+
+			mlist = pop.serialnumber_remove(key, args['<model>'], args['<sn>'])
+			print(mlist.body)
+
+		def delcsv(self, cmd, args, options):
+			pass
+		def delrange(self, cmd, args, options):
+			pass
+
+		def rids(self, cmd, args, options):
+			pass
+
+		def groups(self, cmd, args, options):
+			pass
+
+		def log(self, cmd, args, options):
+			pass
+
+		def create(self, cmd, args, options):
+			pass
+
+		def remap(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<new_sn>'] is None:
+				raise ExoException("Missing New Serial Number")
+			if args['<old_sn>'] is None:
+				raise ExoException("Missing Old Serial Number")
+
+			mlist = pop.serialnumber_remap(key, args['<model>'], args['<new_sn>'], args['<old_sn>'])
+			print(mlist.body)
+
+
+		def regen(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<sn>'] is None:
+				raise ExoException("Missing Serial Number")
+
+			mlist = pop.serialnumber_reenable(key, args['<model>'], args['<sn>'])
+			print(mlist.body)
+
+		def disable(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<sn>'] is None:
+				raise ExoException("Missing Serial Number")
+
+			mlist = pop.serialnumber_disable(key, args['<model>'], args['<sn>'])
+			print(mlist.body)
 
 
 
