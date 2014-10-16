@@ -241,8 +241,9 @@ class Plugin():
 			if args['<format>'] == 'base10':
 				case = None
 
+			# TODO support entering first and last as the different types
 			data = {'ranges':[{'format': args['<format>'],
-					'length': args['--length'],
+					'length': int(args['--length']),
 					'casing': case,
 					'first': int(args['<first>']),
 					'last': int(args['<last>'])
@@ -283,7 +284,7 @@ class Plugin():
 				case = None
 
 			data = {'ranges':[{'format': args['<format>'],
-					'length': args['--length'],
+					'length': int(args['--length']),
 					'casing': case,
 					'first': int(args['<first>']),
 					'last': int(args['<last>'])
