@@ -231,15 +231,7 @@ class Plugin():
 			print(mlist.body)
 
 		def ranges(self, cmd, args, options):
-			pop = options['pop']
-			exoconfig = options['config']
-			ExoException = options['exception']
-			key = exoconfig.config['vendortoken']
-
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
-			print(mlist.body)
+			raise ExoException("Not implemented.")
 
 		def add(self, cmd, args, options):
 			pop = options['pop']
@@ -256,9 +248,9 @@ class Plugin():
 			print(mlist.body)
 
 		def addcsv(self, cmd, args, options):
-			pass
+			raise ExoException("Not implemented.")
 		def addrange(self, cmd, args, options):
-			pass
+			raise ExoException("Not implemented.")
 
 		def delete(self, cmd, args, options):
 			pop = options['pop']
@@ -275,21 +267,21 @@ class Plugin():
 			print(mlist.body)
 
 		def delcsv(self, cmd, args, options):
-			pass
+			raise ExoException("Not implemented.")
 		def delrange(self, cmd, args, options):
-			pass
+			raise ExoException("Not implemented.")
 
 		def rids(self, cmd, args, options):
-			pass
+			raise ExoException("Not implemented.")
 
 		def groups(self, cmd, args, options):
-			pass
+			raise ExoException("Not implemented.")
 
 		def log(self, cmd, args, options):
-			pass
+			raise ExoException("Not implemented.")
 
 		def create(self, cmd, args, options):
-			pass
+			raise ExoException("Not implemented.")
 
 		def remap(self, cmd, args, options):
 			pop = options['pop']
