@@ -21,7 +21,6 @@ Usage:
     exo [options] provision sn delcsv <model> <file>
     exo [options] provision sn delrange <model> <format> <length> <casing> <first> <last>
     exo [options] provision sn info <model> <sn>
-    exo [options] provision sn groups <model> <sn>
     exo [options] provision sn log <model> <sn>
     exo [options] provision sn remap <model> <new_sn> <old_sn>
     exo [options] provision sn regen <model> <sn>
