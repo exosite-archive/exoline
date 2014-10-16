@@ -11,7 +11,7 @@ Usage:
     exo [options] provision content delete <model> <id>
     exo [options] provision content info <model> <id>
     exo [options] provision content get <model> <id> <file>
-    exo [options] provision content put <model> <id> <file>
+    exo [options] provision content put <model> <id> <file> [--mime=type]
     exo [options] provision sn list <model> [--offset=num] [--limit=num]
     exo [options] provision sn ranges <model>
     exo [options] provision sn add <model> <sn> [<extra>]
@@ -34,6 +34,7 @@ Command Options:
     --nocomments    n
     --nohistory     n
     --protected     m
+	--mime=type     Set the mime type of the uploaded data. Will autodetect is omitted
     --offset=num    Offset to start listing at [default: 0]
     --limit=num     Maximum entries to return [default: 1000]
 
@@ -167,7 +168,19 @@ class Plugin():
 			if args['<file>'] is None:
 				raise ExoException("Missing file")
 
-			print('not implemented yet')
+			# This should be in the pyonep.provision class. It is not.
+			path = '/provision/manage/content/' + args['<model>'] + '/' + args['<id>'] + '?download=true'
+			headers = {"Accept": "*"}
+			mlist = pop._request(path, key, '', 'GET', False, headers)
+
+			try:
+				if args['<file>'] is '-':
+					sys.stdout.write(mlist.body)
+				else:
+					with open(args['<file>'], 'w') as f:
+						f.write(mlist.body)
+			except IOError as ex:
+				raise ExoException("Could not write {0}".format(args['<file>']))
 
 
 		def put(self, cmd, args, options):
@@ -182,15 +195,23 @@ class Plugin():
 			if args['<file>'] is None:
 				raise ExoException("Missing file")
 
+			# whats the max size? Are we going to be ok with the pull it 
+			# all into RAM method?
 			data=''
 			try:
-				with open(args['<file>']) as f:
-					data = f.read()
+				if args['<file>'] == '-':
+					data = sys.stdin.read()
+				else:
+					with open(args['<file>']) as f:
+						data = f.read()
 			except IOError as ex:
 				raise ExoException("Could not read {0}".format(args['<file>']))
 
-			url = urllib.pathname2url(args['<file>'])
-			mime, encoding = mimetypes.guess_type(url)
+			if args['--mime'] is None:
+				url = urllib.pathname2url(args['<file>'])
+				mime, encoding = mimetypes.guess_type(url)
+			else:
+				mime = args['--mime']
 
 			mlist = pop.content_upload(key, args['<model>'], args['<id>'], data, mime)
 			print(mlist.body)
