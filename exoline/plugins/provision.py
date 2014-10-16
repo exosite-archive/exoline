@@ -20,7 +20,6 @@ Usage:
     exo [options] provision sn del <model> <sn>
     exo [options] provision sn delcsv <model> <file>
     exo [options] provision sn delrange <model> <format> <length> <casing> <first> <last>
-    exo [options] provision sn rids <model> <sn>
     exo [options] provision sn groups <model> <sn>
     exo [options] provision sn log <model> <sn>
     exo [options] provision sn create <model> <sn> <ownerRID>
@@ -231,7 +230,19 @@ class Plugin():
 			print(mlist.body)
 
 		def ranges(self, cmd, args, options):
-			raise ExoException("Not implemented.")
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+
+			# This should be in the pyonep.provision class. It is not.
+			path = '/provision/manage/model/' + args['<model>'] + '/?show=ranges'
+			headers = {"Accept": "*"}
+			mlist = pop._request(path, key, '', 'GET', False, headers)
+			print(mlist.body)
+
 
 		def add(self, cmd, args, options):
 			pop = options['pop']
@@ -248,8 +259,11 @@ class Plugin():
 			print(mlist.body)
 
 		def addcsv(self, cmd, args, options):
+			ExoException = options['exception']
 			raise ExoException("Not implemented.")
+
 		def addrange(self, cmd, args, options):
+			ExoException = options['exception']
 			raise ExoException("Not implemented.")
 
 		def delete(self, cmd, args, options):
@@ -267,20 +281,34 @@ class Plugin():
 			print(mlist.body)
 
 		def delcsv(self, cmd, args, options):
+			ExoException = options['exception']
 			raise ExoException("Not implemented.")
 		def delrange(self, cmd, args, options):
-			raise ExoException("Not implemented.")
-
-		def rids(self, cmd, args, options):
+			ExoException = options['exception']
 			raise ExoException("Not implemented.")
 
 		def groups(self, cmd, args, options):
+			ExoException = options['exception']
 			raise ExoException("Not implemented.")
 
 		def log(self, cmd, args, options):
-			raise ExoException("Not implemented.")
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<sn>'] is None:
+				raise ExoException("Missing Serial Number")
+
+			# This should be in the pyonep.provision class. It is not.
+			path = '/provision/manage/model/' + args['<model>'] + '/' + args['<sn>'] + '?show=log'
+			mlist = pop._request(path, key, '', 'GET', False)
+			print(mlist.body)
+
 
 		def create(self, cmd, args, options):
+			ExoException = options['exception']
 			raise ExoException("Not implemented.")
 
 		def remap(self, cmd, args, options):
