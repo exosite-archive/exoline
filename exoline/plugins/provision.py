@@ -47,23 +47,54 @@ class Plugin():
         def list(self, cmd, args, options):
             pop = options['pop']
             exoconfig = options['config']
-
             key = exoconfig.config['vendortoken']
+
             mlist = pop.model_list(key)
             models = mlist.body
             print(models)
 
         def info(self, cmd, args, options):
-            pass
+            pop = options['pop']
+            exoconfig = options['config']
+            ExoException = options['exception']
+            key = exoconfig.config['vendortoken']
+            if args['<model>'] is None:
+                raise ExoException("Missing Model name")
+            else:
+                mlist = pop.model_info(key, args['<model>'])
+                print(mlist.body)
+
         def create(self, cmd, args, options):
             pass
         def delete(self, cmd, args, options):
             pass
 
     class content:
-        pass
+        def list(self, cmd, args, options):
+            pop = options['pop']
+            exoconfig = options['config']
+            ExoException = options['exception']
+            key = exoconfig.config['vendortoken']
+
+            if args['<model>'] is None:
+                raise ExoException("Missing Model name")
+            else:
+                mlist = pop.content_list(key, args['<model>'])
+                print(mlist.body)
+
     class sn:
-        pass
+        def list(self, cmd, args, options):
+            pop = options['pop']
+            exoconfig = options['config']
+            ExoException = options['exception']
+            key = exoconfig.config['vendortoken']
+
+            if args['<model>'] is None:
+                raise ExoException("Missing Model name")
+            else:
+                mlist = pop.serialnumber_list(key, args['<model>'])
+                print(mlist.body)
+
 
 
     def digMethod(self, arglist, robj):
