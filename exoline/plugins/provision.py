@@ -65,6 +65,18 @@ class Plugin():
     class sn:
         pass
 
+
+    def digMethod(self, arglist, robj):
+        for name, obj in inspect.getmembers(robj):
+            #print('=', name)
+            if name == arglist[0]:
+                if inspect.isclass(obj):
+                    return self.digMethod(arglist[1:], obj)
+                elif inspect.ismethod(obj):
+                    return (obj, robj, name)
+                break
+        return ()
+
     def run(self, cmd, args, options):
         cik = options['cik']
         rpc = options['rpc']
@@ -78,19 +90,12 @@ class Plugin():
                                         https=True,
                                         raise_api_exceptions=True)
 
-        found = False
-        for name, obj in inspect.getmembers(self, inspect.isclass):
-            if name == args['<args>'][0]:
-                #print(name)
-                for mame, mobj in inspect.getmembers(obj, inspect.ismethod):
-                    if mame == args['<args>'][1]:
-                        #print(mame)
-                        mobj(obj(), mame, args, options)
-                        found=True
-                        break
-                break
+        meth, obj, name = self.digMethod(args['<args>'], self)
+        if meth is not None and obj is not None:
+            meth(obj(), name, args, options)
+        else:
+            print("not found")
 
-        if not found:
-            print("not found.")
+
 
 #  vim: set ai et sw=4 ts=4 :
