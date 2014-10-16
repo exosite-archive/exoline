@@ -73,7 +73,24 @@ class Plugin():
 			print(mlist.body)
 
 		def create(self, cmd, args, options):
-			pass
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			if args['<model>'] is None:
+				raise ExoException("Missing Model name")
+			if args['<code>'] is not None:
+				raise ExoException("<code> not yet supported.")
+			if args['<rid>'] is None:
+				raise ExoException("Missing Clone RID")
+			
+			mlist = pop.model_create(key, args['<model>'], args['<rid>'],
+					args['--noaliases'] is None,
+					args['--nocomments'] is None,
+					args['--nohistory'] is None)
+			print(mlist.body)
+
 
 		def delete(self, cmd, args, options):
 			pop = options['pop']
