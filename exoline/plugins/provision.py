@@ -67,8 +67,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
 			mlist = pop.model_info(key, args['<model>'])
 			print(mlist.body)
 
