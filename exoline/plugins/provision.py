@@ -14,10 +14,10 @@ Usage:
     exo [options] provision content put <model> <id> <file> [--mime=type]
     exo [options] provision sn list <model> [--offset=num] [--limit=num]
     exo [options] provision sn ranges <model>
-    exo [options] provision sn add <model> <sn> [<extra>]
+    exo [options] provision sn add <model> <sn>...
     exo [options] provision sn addcsv <model> <file>
     exo [options] provision sn addrange <model> <format> <length> <casing> <first> <last>
-    exo [options] provision sn delete <model> <sn>
+    exo [options] provision sn delete <model> <sn>...
     exo [options] provision sn delcsv <model> <file>
     exo [options] provision sn delrange <model> <format> <length> <casing> <first> <last>
     exo [options] provision sn info <model> <sn>
@@ -218,7 +218,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_add(key, args['<model>'], args['<sn>'])
+			mlist = pop.serialnumber_add_batch(key, args['<model>'], args['<sn>'])
 			print(mlist.body)
 
 		def addcsv(self, cmd, args, options):
@@ -235,7 +235,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_remove(key, args['<model>'], args['<sn>'])
+			mlist = pop.serialnumber_remove_batch(key, args['<model>'], args['<sn>'])
 			print(mlist.body)
 
 		def delcsv(self, cmd, args, options):
