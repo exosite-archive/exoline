@@ -16,10 +16,10 @@ Usage:
     exo [options] provision sn ranges <model>
     exo [options] provision sn add <model> <sn>...
     exo [options] provision sn addcsv <model> <file>
-    exo [options] provision sn addrange <model> <format> <length> <casing> <first> <last>
+    exo [options] provision sn addrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn delete <model> <sn>...
     exo [options] provision sn delcsv <model> <file>
-    exo [options] provision sn delrange <model> <format> <length> <casing> <first> <last>
+    exo [options] provision sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn info <model> <sn>
     exo [options] provision sn log <model> <sn>
     exo [options] provision sn remap <model> <new_sn> <old_sn>
@@ -44,6 +44,7 @@ import inspect
 import os
 import sys
 import re
+import json
 from pyonep import provision
 import urllib, mimetypes
 
@@ -226,8 +227,33 @@ class Plugin():
 			raise ExoException("Not implemented.")
 
 		def addrange(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
 			ExoException = options['exception']
-			raise ExoException("Not implemented.")
+			key = exoconfig.config['vendortoken']
+			
+			if args['<format>'] not in ['base10','base16','mac:48','mac-48','mac.48']:
+				raise ExoException('Unknown format type {0}'.format(args['<format>']))
+			case = 'lower'
+			if args['--uppercase'] is not None:
+				case = 'upper'
+
+			if args['<format>'] == 'base10':
+				case = None
+
+			data = {'ranges':[{'format': args['<format>'],
+					'length': args['--length'],
+					'casing': case,
+					'first': int(args['<first>']),
+					'last': int(args['<last>'])
+					}]}
+
+			# This should be in the pyonep.provision class. It is not.
+			path = '/provision/manage/model/' + args['<model>'] + '/'
+			headers = {"Content-Type": "application/javascript; charset=utf-8"}
+			mlist = pop._request(path, key, json.dumps(data), 'POST', False, headers)
+			print(mlist.body)
+
 
 		def delete(self, cmd, args, options):
 			pop = options['pop']
@@ -242,8 +268,33 @@ class Plugin():
 			ExoException = options['exception']
 			raise ExoException("Not implemented.")
 		def delrange(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
 			ExoException = options['exception']
-			raise ExoException("Not implemented.")
+			key = exoconfig.config['vendortoken']
+			
+			if args['<format>'] not in ['base10','base16','mac:48','mac-48','mac.48']:
+				raise ExoException('Unknown format type {0}'.format(args['<format>']))
+			case = 'lower'
+			if args['--uppercase'] is not None:
+				case = 'upper'
+
+			if args['<format>'] == 'base10':
+				case = None
+
+			data = {'ranges':[{'format': args['<format>'],
+					'length': args['--length'],
+					'casing': case,
+					'first': int(args['<first>']),
+					'last': int(args['<last>'])
+					}]}
+
+			# This should be in the pyonep.provision class. It is not.
+			path = '/provision/manage/model/' + args['<model>'] + '/'
+			headers = {"Content-Type": "application/javascript; charset=utf-8"}
+			mlist = pop._request(path, key, json.dumps(data), 'DELETE', False, headers)
+			print(mlist.body)
+
 
 		def groups(self, cmd, args, options):
 			ExoException = options['exception']
@@ -327,7 +378,7 @@ class Plugin():
 										port='443',
 										verbose=True,
 										https=True,
-										raise_api_exceptions=True)
+										raise_api_exceptions=False)
 
 		meth, obj, name = self.digMethod(args['<args>'], self)
 		if meth is not None and obj is not None:
