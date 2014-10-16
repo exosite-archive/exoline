@@ -32,6 +32,7 @@ Command Options:
 
 '''
 from __future__ import unicode_literals
+import inspect
 import os
 import sys
 import re
@@ -42,17 +43,54 @@ class Plugin():
     def command(self):
         return 'provision'
 
+    class model:
+        def list(self, cmd, args, options):
+            pop = options['pop']
+            exoconfig = options['config']
+
+            key = exoconfig.config['vendortoken']
+            mlist = pop.model_list(key)
+            models = mlist.body
+            print(models)
+
+        def info(self, cmd, args, options):
+            pass
+        def create(self, cmd, args, options):
+            pass
+        def delete(self, cmd, args, options):
+            pass
+
+    class content:
+        pass
+    class sn:
+        pass
+
     def run(self, cmd, args, options):
         cik = options['cik']
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
-		exoconfig = options['config']
+        exoconfig = options['config']
 
-        pop = provision.Provision(manage_by_cik=False,
-                                port=DEFAULT_PORT_HTTPS,
-                                verbose=True,
-                                https=True,
-                                raise_api_exceptions=True)
+        options['pop'] = provision.Provision(manage_by_cik=False,
+                                        port='443',
+                                        verbose=True,
+                                        https=True,
+                                        raise_api_exceptions=True)
 
-#  vim: set ai sw=4 ts=4 :
+        found = False
+        for name, obj in inspect.getmembers(self, inspect.isclass):
+            if name == args['<args>'][0]:
+                #print(name)
+                for mame, mobj in inspect.getmembers(obj, inspect.ismethod):
+                    if mame == args['<args>'][1]:
+                        #print(mame)
+                        mobj(obj(), mame, args, options)
+                        found=True
+                        break
+                break
+
+        if not found:
+            print("not found.")
+
+#  vim: set ai et sw=4 ts=4 :
