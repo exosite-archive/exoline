@@ -29,11 +29,11 @@ Usage:
     exo [options] provision sn disable <model> <sn>
 
 Command Options:
-    --shared        something.
-    --noaliases     n
-    --nocomments    n
-    --nohistory     n
-    --protected     m
+    --shared        Not yet implemented
+    --noaliases     Set no aliases option on model create
+    --nocomments    Set no comments option on model create
+    --nohistory     Set no history option on model create
+    --protected     Not yet implemented
 	--mime=type     Set the mime type of the uploaded data. Will autodetect is omitted
     --offset=num    Offset to start listing at [default: 0]
     --limit=num     Maximum entries to return [default: 1000]
