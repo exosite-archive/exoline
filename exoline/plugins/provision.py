@@ -79,13 +79,6 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<code>'] is not None:
-				raise ExoException("<code> not yet supported.")
-			if args['<rid>'] is None:
-				raise ExoException("Missing Clone RID")
-			
 			mlist = pop.model_create(key, args['<model>'], args['<rid>'],
 					args['--noaliases'] is None,
 					args['--nocomments'] is None,
@@ -98,8 +91,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
 			mlist = pop.model_remove(key, args['<model>'])
 			print(mlist.body)
 
@@ -111,8 +102,6 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
 			mlist = pop.content_list(key, args['<model>'])
 			print(mlist.body)
 
@@ -121,10 +110,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<id>'] is None:
-				raise ExoException("Missing content id")
 			mlist = pop.content_info(key, args['<model>'], args['<id>'])
 			print(mlist.body)
 
@@ -133,10 +118,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<id>'] is None:
-				raise ExoException("Missing content id")
 			meta = args['<meta>']
 			if meta is None:
 				meta = ''
@@ -149,10 +130,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<id>'] is None:
-				raise ExoException("Missing content id")
 			mlist = pop.content_remove(key, args['<model>'], args['<id>'])
 			print(mlist.body)
 
@@ -161,12 +138,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<id>'] is None:
-				raise ExoException("Missing content id")
-			if args['<file>'] is None:
-				raise ExoException("Missing file")
 
 			# This should be in the pyonep.provision class. It is not.
 			path = '/provision/manage/content/' + args['<model>'] + '/' + args['<id>'] + '?download=true'
@@ -188,12 +159,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<id>'] is None:
-				raise ExoException("Missing content id")
-			if args['<file>'] is None:
-				raise ExoException("Missing file")
 
 			# whats the max size? Are we going to be ok with the pull it 
 			# all into RAM method?
@@ -225,8 +190,6 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
 			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
 			print(mlist.body)
 
@@ -244,8 +207,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
 
 			# This should be in the pyonep.provision class. It is not.
 			path = '/provision/manage/model/' + args['<model>'] + '/?show=ranges'
@@ -259,11 +220,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<sn>'] is None:
-				raise ExoException("Missing Serial Number")
 
 			mlist = pop.serialnumber_add(key, args['<model>'], args['<sn>'])
 			print(mlist.body)
@@ -281,11 +237,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<sn>'] is None:
-				raise ExoException("Missing Serial Number")
 
 			mlist = pop.serialnumber_remove(key, args['<model>'], args['<sn>'])
 			print(mlist.body)
@@ -306,10 +257,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<sn>'] is None:
-				raise ExoException("Missing Serial Number")
 
 			# This should be in the pyonep.provision class. It is not.
 			path = '/provision/manage/model/' + args['<model>'] + '/' + args['<sn>'] + '?show=log'
@@ -323,13 +270,6 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<new_sn>'] is None:
-				raise ExoException("Missing New Serial Number")
-			if args['<old_sn>'] is None:
-				raise ExoException("Missing Old Serial Number")
-
 			mlist = pop.serialnumber_remap(key, args['<model>'], args['<new_sn>'], args['<old_sn>'])
 			print(mlist.body)
 
@@ -339,11 +279,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<sn>'] is None:
-				raise ExoException("Missing Serial Number")
 
 			mlist = pop.serialnumber_reenable(key, args['<model>'], args['<sn>'])
 			print(mlist.body)
@@ -363,11 +298,6 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-
-			if args['<model>'] is None:
-				raise ExoException("Missing Model name")
-			if args['<sn>'] is None:
-				raise ExoException("Missing Serial Number")
 
 			mlist = pop.serialnumber_disable(key, args['<model>'], args['<sn>'])
 			print(mlist.body)
