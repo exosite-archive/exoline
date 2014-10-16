@@ -237,16 +237,35 @@ class Plugin():
 			case = 'lower'
 			if args['--uppercase'] is not None:
 				case = 'upper'
-
 			if args['<format>'] == 'base10':
 				case = None
 
+			length = None
+			if args['--length'] is not None:
+				length = int(args['--length'],0)
+
+			first = args['<first>']
+			last = args['<last>']
+			#regex_mc48 = re.compile(r'([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}')
+			#regex_md48 = re.compile(r'([0-9A-Fa-f]{2}-){5}[0-9A-Fa-f]{2}')
+			#regex_mp48 = re.compile(r'([0-9A-Fa-f]{4}-){2}[0-9A-Fa-f]{4}')
+
+			if re.match(r'[0-9]+', first):
+				first = int(first)
+			elif re.match(r'(0x)?[0-9A-Fa-f]+', first):
+				first = int(first, 16)
+			
+			if re.match(r'[0-9]+', last):
+				last = int(last)
+			elif re.match(r'(0x)?[0-9A-Fa-f]+', last):
+				last = int(last, 16)
+			
 			# TODO support entering first and last as the different types
 			data = {'ranges':[{'format': args['<format>'],
-					'length': int(args['--length']),
+					'length': length,
 					'casing': case,
-					'first': int(args['<first>']),
-					'last': int(args['<last>'])
+					'first': first,
+					'last': last
 					}]}
 
 			# This should be in the pyonep.provision class. It is not.
@@ -279,12 +298,15 @@ class Plugin():
 			case = 'lower'
 			if args['--uppercase'] is not None:
 				case = 'upper'
-
 			if args['<format>'] == 'base10':
 				case = None
 
+			length = None
+			if args['--length'] is not None:
+				length = int(args['--length'],0)
+
 			data = {'ranges':[{'format': args['<format>'],
-					'length': int(args['--length']),
+					'length': length,
 					'casing': case,
 					'first': int(args['<first>']),
 					'last': int(args['<last>'])
