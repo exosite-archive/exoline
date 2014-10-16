@@ -17,14 +17,15 @@ Usage:
     exo [options] provision sn add <model> <sn> [<extra>]
     exo [options] provision sn addcsv <model> <file>
     exo [options] provision sn addrange <model> <format> <length> <casing> <first> <last>
-    exo [options] provision sn del <model> <sn>
+    exo [options] provision sn delete <model> <sn>
     exo [options] provision sn delcsv <model> <file>
     exo [options] provision sn delrange <model> <format> <length> <casing> <first> <last>
+    exo [options] provision sn info <model> <sn>
     exo [options] provision sn groups <model> <sn>
     exo [options] provision sn log <model> <sn>
-    exo [options] provision sn create <model> <sn> <ownerRID>
     exo [options] provision sn remap <model> <new_sn> <old_sn>
     exo [options] provision sn regen <model> <sn>
+    exo [options] provision sn enable <model> <sn> <rid>
     exo [options] provision sn disable <model> <sn>
 
 Command Options:
@@ -229,6 +230,15 @@ class Plugin():
 			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
 			print(mlist.body)
 
+		def info(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			mlist = pop.serialnumber_info(key, args['<model>'], args['<sn>'])
+			print(mlist.body)
+
 		def ranges(self, cmd, args, options):
 			pop = options['pop']
 			exoconfig = options['config']
@@ -307,10 +317,6 @@ class Plugin():
 			print(mlist.body)
 
 
-		def create(self, cmd, args, options):
-			ExoException = options['exception']
-			raise ExoException("Not implemented.")
-
 		def remap(self, cmd, args, options):
 			pop = options['pop']
 			exoconfig = options['config']
@@ -341,6 +347,16 @@ class Plugin():
 
 			mlist = pop.serialnumber_reenable(key, args['<model>'], args['<sn>'])
 			print(mlist.body)
+
+		def enable(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			mlist = pop.serialnumber_enable(key, args['<model>'], args['<sn>'], args['<rid>'])
+			print(mlist.body)
+
 
 		def disable(self, cmd, args, options):
 			pop = options['pop']
