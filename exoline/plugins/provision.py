@@ -4,7 +4,7 @@
 Usage:
     exo [options] provision model list [--shared]
     exo [options] provision model info <model>
-    exo [options] provision model create (<rid>|<code>) <model_options>...
+    exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
     exo [options] provision model delete <model>
     exo [options] provision content list <model>
     exo [options] provision content create <model> <id> [<meta>] [--protected]
@@ -29,6 +29,14 @@ Usage:
     exo [options] provision sn disable <model> <sn>
 
 Command Options:
+    --shared        something.
+    --noaliases     n
+    --nocomments    n
+    --nohistory     n
+    --protected     m
+    --offset=num    Offset to start listing at [default: 0]
+    --limit=num     Maximum entries to return [default: 1000]
+
 
 '''
 from __future__ import unicode_literals
@@ -43,6 +51,7 @@ class Plugin():
     def command(self):
         return 'provision'
 
+    ########################
     class model:
         def list(self, cmd, args, options):
             pop = options['pop']
@@ -60,15 +69,23 @@ class Plugin():
             key = exoconfig.config['vendortoken']
             if args['<model>'] is None:
                 raise ExoException("Missing Model name")
-            else:
-                mlist = pop.model_info(key, args['<model>'])
-                print(mlist.body)
+            mlist = pop.model_info(key, args['<model>'])
+            print(mlist.body)
 
         def create(self, cmd, args, options):
             pass
-        def delete(self, cmd, args, options):
-            pass
 
+        def delete(self, cmd, args, options):
+            pop = options['pop']
+            exoconfig = options['config']
+            ExoException = options['exception']
+            key = exoconfig.config['vendortoken']
+            if args['<model>'] is None:
+                raise ExoException("Missing Model name")
+            mlist = pop.model_remove(key, args['<model>'])
+            print(mlist.body)
+
+    ########################
     class content:
         def list(self, cmd, args, options):
             pop = options['pop']
@@ -78,10 +95,23 @@ class Plugin():
 
             if args['<model>'] is None:
                 raise ExoException("Missing Model name")
-            else:
-                mlist = pop.content_list(key, args['<model>'])
-                print(mlist.body)
+            mlist = pop.content_list(key, args['<model>'])
+            print(mlist.body)
 
+        def info(self, cmd, args, options):
+            pop = options['pop']
+            exoconfig = options['config']
+            ExoException = options['exception']
+            key = exoconfig.config['vendortoken']
+            if args['<model>'] is None:
+                raise ExoException("Missing Model name")
+            if args['<id>'] is None:
+                raise ExoException("Missing content id")
+            mlist = pop.content_info(key, args['<model>'], args['<id>'])
+            print(mlist.body)
+
+
+    ########################
     class sn:
         def list(self, cmd, args, options):
             pop = options['pop']
@@ -91,12 +121,24 @@ class Plugin():
 
             if args['<model>'] is None:
                 raise ExoException("Missing Model name")
-            else:
-                mlist = pop.serialnumber_list(key, args['<model>'])
-                print(mlist.body)
+            mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
+            print(mlist.body)
+
+        def ranges(self, cmd, args, options):
+            pop = options['pop']
+            exoconfig = options['config']
+            ExoException = options['exception']
+            key = exoconfig.config['vendortoken']
+
+            if args['<model>'] is None:
+                raise ExoException("Missing Model name")
+            mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
+            print(mlist.body)
 
 
 
+
+    ########################################################################
     def digMethod(self, arglist, robj):
         for name, obj in inspect.getmembers(robj):
             #print('=', name)
@@ -125,7 +167,7 @@ class Plugin():
         if meth is not None and obj is not None:
             meth(obj(), name, args, options)
         else:
-            print("not found")
+            raise ExoException("Could not find requested sub command {0}".format(args['<args>']))
 
 
 
