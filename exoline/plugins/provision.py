@@ -48,11 +48,6 @@ import json
 from pyonep import provision
 import urllib, mimetypes
 
-# Too much going on here.
-# What would be nice is to be able to state that a plugin is a subcommand.  
-# So maybe have command() return a list?
-# need to review the plugin loader code.
-
 class Plugin():
 	def command(self):
 		return 'provision'
@@ -143,6 +138,7 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			# This should be in the pyonep.provision class. It is not.
+			# This should loop through chunks, not fully pull the file into RAM.
 			path = '/provision/manage/content/' + args['<model>'] + '/' + args['<id>'] + '?download=true'
 			headers = {"Accept": "*"}
 			mlist = pop._request(path, key, '', 'GET', False, headers)
@@ -164,7 +160,7 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			# whats the max size? Are we going to be ok with the pull it 
-			# all into RAM method?
+			# all into RAM method? Short term, yes. Long term, No.
 			data=''
 			try:
 				if args['<file>'] == '-':
