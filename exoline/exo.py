@@ -244,7 +244,7 @@ Command options:
     exo [options] twee <cik>
 
 Command options:
-    --nocolor      don't use color in output
+    --nocolor      don't use color in output (color is always off in Windows)
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]
 
 Example:
@@ -2471,6 +2471,8 @@ def handle_args(cmd, args):
             er.tree(cik, cli_args=args)
         elif cmd == 'twee':
             args['--values'] = True
+            if platform.system() == 'Windows':
+                args['--nocolor'] = True
             er.tree(cik, cli_args=args)
         elif cmd == 'script':
             # cik is a list of ciks
