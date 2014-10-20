@@ -1116,6 +1116,8 @@ class ExoRPC():
         v = values[0][1]
         if type(v) is float or type(v) is int:
             return str(v)
+        elif type(v) is dict:
+            return str(v)
         else:
             latest = v.replace('\n', r'\n').replace('\r', r'\r')
             out = (latest[:maxlen - 3] + '...') if len(latest) > maxlen else latest
