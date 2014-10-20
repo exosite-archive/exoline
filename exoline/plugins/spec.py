@@ -50,7 +50,7 @@ class Plugin():
         return 'spec'
     def run(self, cmd, args, options):
         if args['--example']:
-            print('''
+            s = '''
 # Example client specification file
 # Specification files are in YAML format (a superset of JSON
 # with more readable syntax and support for comments) and
@@ -119,9 +119,11 @@ scripts:
       # written to each script datarule.
       #
       alias: convert<% id %>.lua
-'''.encode('utf-8'))
+'''
+            if not six.PY3:
+                s = s.encode('utf-8')
+            print(s)
             return
-
 
 
         input_cik = options['cik']
