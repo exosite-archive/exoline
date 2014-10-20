@@ -526,6 +526,10 @@ Build the installer this way:
 - install Inno Setup 5.5.4 from here: http://www.innosetup.com/
 - open innosetup.iss
 - update Source in the Files section to point to dist\exo folder on your system
+- set version number in innosetup.iss
+- press Compile
+- rename Output/setup.exe to Output
+
 
 What's New?
 -----------
