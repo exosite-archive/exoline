@@ -227,6 +227,26 @@ class Plugin():
 			ExoException = options['exception']
 			raise ExoException("Not implemented.")
 
+		def _normalizeRangeEnd(self, string):
+			regex_mac = re.compile(r"""^
+				(([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}) |
+				(([0-9A-Fa-f]{2}-){5}[0-9A-Fa-f]{2}) |
+				(([0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4})
+				$""", re.VERBOSE)
+
+			number = None
+
+			if re.match(r'^[0-9]+$', string):
+				number = int(string)
+			elif re.match(r'^(0x)?[0-9A-Fa-f]+$', string):
+				number = int(string, 16)
+			elif regex_mac.match(string) is not None:
+				number = int( re.sub(r'[^0-9A-Fa-f]', '', string), 16)
+			else:
+				raise ExoException('Range value {0} is not a valid serial number'.format(string))
+			return number
+
+
 		def addrange(self, cmd, args, options):
 			pop = options['pop']
 			exoconfig = options['config']
@@ -245,23 +265,9 @@ class Plugin():
 			if args['--length'] is not None:
 				length = int(args['--length'],0)
 
-			first = args['<first>']
-			last = args['<last>']
-			#regex_mc48 = re.compile(r'([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}')
-			#regex_md48 = re.compile(r'([0-9A-Fa-f]{2}-){5}[0-9A-Fa-f]{2}')
-			#regex_mp48 = re.compile(r'([0-9A-Fa-f]{4}-){2}[0-9A-Fa-f]{4}')
-
-			if re.match(r'[0-9]+', first):
-				first = int(first)
-			elif re.match(r'(0x)?[0-9A-Fa-f]+', first):
-				first = int(first, 16)
+			first = self._normalizeRangeEnd(args['<first>'])
+			last = self._normalizeRangeEnd(args['<last>'])
 			
-			if re.match(r'[0-9]+', last):
-				last = int(last)
-			elif re.match(r'(0x)?[0-9A-Fa-f]+', last):
-				last = int(last, 16)
-			
-			# TODO support entering first and last as the different types
 			data = {'ranges':[{'format': args['<format>'],
 					'length': length,
 					'casing': case,
@@ -306,11 +312,14 @@ class Plugin():
 			if args['--length'] is not None:
 				length = int(args['--length'],0)
 
+			first = self._normalizeRangeEnd(args['<first>'])
+			last = self._normalizeRangeEnd(args['<last>'])
+
 			data = {'ranges':[{'format': args['<format>'],
 					'length': length,
 					'casing': case,
-					'first': int(args['<first>']),
-					'last': int(args['<last>'])
+					'first': first,
+					'last': last
 					}]}
 
 			# This should be in the pyonep.provision class. It is not.
