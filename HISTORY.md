@@ -1,6 +1,11 @@
 History
 =======
 
+0.8.3 (2014-10-20)
+------------------
+
+- Windows support for twee by disabling color
+
 0.8.2 (2014-10-12)
 ------------------
 
