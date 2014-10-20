@@ -224,8 +224,27 @@ class Plugin():
 			print(mlist.body)
 
 		def addcsv(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
 			ExoException = options['exception']
-			raise ExoException("Not implemented.")
+			key = exoconfig.config['vendortoken']
+
+			data=''
+			try:
+				if args['<file>'] == '-':
+					data = sys.stdin.read()
+				else:
+					with open(args['<file>']) as f:
+						data = f.read()
+			except IOError as ex:
+				raise ExoException("Could not read {0}".format(args['<file>']))
+
+			# This should be in the pyonep.provision class. It is not.
+			path = '/provision/manage/model/' + args['<model>'] + '/'
+			headers = {"Content-Type": "text/csv; charset=utf-8"}
+			mlist = pop._request(path, key, data, 'POST', False, headers)
+			print(mlist.body)
+
 
 		def _normalizeRangeEnd(self, string):
 			regex_mac = re.compile(r"""^
@@ -292,8 +311,28 @@ class Plugin():
 			print(mlist.body)
 
 		def delcsv(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
 			ExoException = options['exception']
-			raise ExoException("Not implemented.")
+			key = exoconfig.config['vendortoken']
+
+			data=''
+			try:
+				if args['<file>'] == '-':
+					data = sys.stdin.read()
+				else:
+					with open(args['<file>']) as f:
+						data = f.read()
+			except IOError as ex:
+				raise ExoException("Could not read {0}".format(args['<file>']))
+
+			# This should be in the pyonep.provision class. It is not.
+			path = '/provision/manage/model/' + args['<model>'] + '/'
+			headers = {"Content-Type": "text/csv; charset=utf-8"}
+			mlist = pop._request(path, key, data, 'DELETE', False, headers)
+			print(mlist.body)
+
+
 		def delrange(self, cmd, args, options):
 			pop = options['pop']
 			exoconfig = options['config']
