@@ -48,6 +48,11 @@ import json
 from pyonep import provision
 import urllib, mimetypes
 
+# Too much going on here.
+# What would be nice is to be able to state that a plugin is a subcommand.  
+# So maybe have command() return a list?
+# need to review the plugin loader code.
+
 class Plugin():
 	def command(self):
 		return 'provision'
