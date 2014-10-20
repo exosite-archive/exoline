@@ -229,6 +229,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
+			# This should chunk the file from disk to socket.
 			data=''
 			try:
 				if args['<file>'] == '-':
@@ -316,6 +317,8 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
+			# ??? should this raise or trim columns beyond the first???
+			# This should chunk the file from disk to socket.
 			data=''
 			try:
 				if args['<file>'] == '-':
