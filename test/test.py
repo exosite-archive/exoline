@@ -1304,10 +1304,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         example_spec = basedir + '/files/tmp_examplespec.yaml'
         with open(example_spec, 'w') as f:
             print(r.stdout)
-            if six.PY3:
-                out = r.stdout
-            else:
-                out = r.stdout.encode('utf8')
+            out = r.stdout
             f.write(out)
         r = rpc('spec', cik, example_spec, '--ids=A,B')
         self.ok(r, 'empty client does not match example spec', match='.+')
@@ -1399,10 +1396,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         example_spec = basedir + '/files/tmp_examplespec.yaml'
         with open(example_spec, 'w') as f:
             print(r.stdout)
-            if six.PY3:
-                out = r.stdout
-            else:
-                out = r.stdout.encode('utf8')
+            out = r.stdout
             f.write(out)
 
 
@@ -1476,10 +1470,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         example_spec = basedir + '/files/tmp_examplespec.yaml'
         with open(example_spec, 'w') as f:
             print(r.stdout)
-            if six.PY3:
-                out = r.stdout
-            else:
-                out = r.stdout.encode('utf8')
+            out = r.stdout
             f.write(out)
 
 
