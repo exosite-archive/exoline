@@ -7,11 +7,10 @@ Usage:
     exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
     exo [options] provision model delete <model>
     exo [options] provision content list <model>
-    exo [options] provision content create <model> <id> [<meta>]
+    exo [options] provision content put <model> <id> <file> [--mime=type] [--meta=meta]
+    exo [options] provision content get <model> <id> <file>
     exo [options] provision content delete <model> <id>
     exo [options] provision content info <model> <id>
-    exo [options] provision content get <model> <id> <file>
-    exo [options] provision content put <model> <id> <file> [--mime=type]
     exo [options] provision sn list <model> [--offset=num] [--limit=num]
     exo [options] provision sn ranges <model>
     exo [options] provision sn add <model> (--file=<file> | <sn>...)
@@ -107,18 +106,6 @@ class Plugin():
 			mlist = pop.content_info(key, args['<model>'], args['<id>'])
 			print(mlist.body)
 
-		def create(self, cmd, args, options):
-			pop = options['pop']
-			exoconfig = options['config']
-			ExoException = options['exception']
-			key = exoconfig.config['vendortoken']
-			meta = args['<meta>']
-			if meta is None:
-				meta = ''
-			mlist = pop.content_create(key, args['<model>'], args['<id>'], meta)
-			print(mlist.body)
-
-
 		def delete(self, cmd, args, options):
 			pop = options['pop']
 			exoconfig = options['config']
@@ -154,6 +141,15 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
+
+			# if not exist, create.
+			mlist = pop.content_info(key, args['<model>'], args['<id>'])
+			if mlist.status() == 404:
+				meta = args['--meta']
+				if meta is None:
+					meta = ''
+				mlist = pop.content_create(key, args['<model>'], args['<id>'], meta)
+
 
 			# whats the max size? Are we going to be ok with the pull it 
 			# all into RAM method? Short term, yes. Long term, No.
