@@ -557,9 +557,9 @@ scripts:
                                                     bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.')
                                                 elif 'description' not in meta['datasource']:
                                                     bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.')
-                                                elif meta['datasource']['unit'] != res['unit']:
+                                                elif 'unit' in res and meta['datasource']['unit'] != res['unit']:
                                                     bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
-                                                elif meta['datasource']['description'] != res['description']:
+                                                elif 'description' in res and meta['datasource']['description'] != res['description']:
                                                     bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.'.format(meta['datasource']['description']))
 
 
