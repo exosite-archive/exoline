@@ -50,7 +50,7 @@ class Plugin():
         return 'spec'
     def run(self, cmd, args, options):
         if args['--example']:
-            print('''
+            s = '''
 # Example client specification file
 # Specification files are in YAML format (a superset of JSON
 # with more readable syntax and support for comments) and
@@ -93,6 +93,12 @@ dataports:
                    "properties": {"name": {"type": "string"}},
                    "required": ["name"]}
       initial: '{"name":"John Doe"}'
+    - alias: place
+      # An description of the dataport.
+      description: 'This is a place I have been'
+      # Dataport are private by default,
+      # but if you want to share one with the world
+      public: true
 
     # any dataports not listed but found in the client
     # are ignored. The spec command does not delete things.
@@ -119,9 +125,11 @@ scripts:
       # written to each script datarule.
       #
       alias: convert<% id %>.lua
-'''.encode('utf-8'))
+'''
+            if not six.PY3:
+                s = s.encode('utf-8')
+            print(s)
             return
-
 
 
         input_cik = options['cik']
@@ -201,10 +209,18 @@ scripts:
                                 unit = meta['datasource']['unit']
                                 if len(unit) > 0:
                                     dp['unit'] = unit
+                                desc = meta['datasource']['description']
+                                if len(desc) > 0:
+                                    dp['description'] = desc
                             except:
                                 # assume unit is not present in metadata
                                 pass
                             spec.setdefault('dataports', []).append(dp)
+                            
+                            public = myinfo['description']['public']
+                            if public is not None and public:
+                                dp['public'] = public
+
 
                         elif typ == 'datarule':
                             desc = myinfo['description']
@@ -506,39 +522,60 @@ scripts:
                                                 'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))
 
                                         # check unit
-                                        if 'unit' in res:
+                                        if 'unit' in res or 'description' in res:
                                             meta_string = info['description']['meta']
                                             try:
                                                 meta = json.loads(meta_string)
                                             except:
                                                 meta = None
 
+                                            def bad_desc_msg(s):
+                                                sys.stdout.write('spec expects description for {0} to be {1}, but they are not.'.format(alias, res['description']))
                                             def bad_unit_msg(s):
                                                 sys.stdout.write('spec expects unit for {0} to be {1}, but they are not.'.format(alias, res['unit']))
-                                            def update_meta(meta):
+
+                                            if create:
+                                                if meta is None:
+                                                    meta = {'datasource':{'description':'','unit':''}}
+                                                if 'datasource' not in meta:
+                                                    meta['datasource'] = {'description':'','unit':''}
+                                                if 'unit' in res:
+                                                    meta['datasource']['unit'] = res['unit']
+                                                if 'description:' in res:
+                                                    meta['datasource']['description'] = res['description']
+
                                                 new_desc = info['description'].copy()
                                                 new_desc['meta'] = json.dumps(meta)
                                                 rpc.update(cik, {'alias': alias}, new_desc)
-                                                print('unit value for {0} updated to {1}'.format(alias, meta['datasource']['unit']))
 
-                                            if meta is None:
-                                                if create:
-                                                    update_meta({'datasource':{'description':'','unit':res['unit']}})
-                                                else:
-                                                    bad_unit_msg(', but found has no metadata at all. Pass --create to write metadata with unit.')
-                                            elif 'datasource' not in meta or 'unit' not in meta['datasource']:
-                                                if create:
-                                                    meta.setdefault('datasource', {})
-                                                    meta['datasource']['unit'] = res['unit']
-                                                    update_meta(meta)
-                                                else:
+                                            else:
+                                                if meta is None:
+                                                    sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.')
+                                                elif 'datasource' not in meta:
+                                                    sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.')
+                                                elif 'unit' not in meta['datasource']:
                                                     bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.')
-                                            elif meta['datasource']['unit'] != res['unit']:
-                                                if create:
-                                                    meta['datasource']['unit'] = res['unit']
-                                                    update_meta(meta)
-                                                else:
+                                                elif 'description' not in meta['datasource']:
+                                                    bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.')
+                                                elif 'unit' in res and meta['datasource']['unit'] != res['unit']:
                                                     bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
+                                                elif 'description' in res and meta['datasource']['description'] != res['description']:
+                                                    bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.'.format(meta['datasource']['description']))
+
+
+                                        if 'public' in res:
+                                            resPub = res['public']
+                                            public = info['description']['public']
+                                            if public is None:
+                                                if create:
+                                                    new_desc = info['description'].copy()
+                                                    new_desc['public'] = respub
+                                                    rpc.update(cik, {'alias': alias}, new_desc)
+                                                else:
+                                                    sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
+                                            elif public != resPub:
+                                                sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
+
 
                                         if 'subscribe' in res:
                                             # Alias *must* be local to this CIK
