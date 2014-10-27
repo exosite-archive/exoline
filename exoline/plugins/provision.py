@@ -2,23 +2,21 @@
 '''Provisioning. (alpha)
 
 Usage:
-    exo [options] provision model list [--shared]
+    exo [options] provision model list
     exo [options] provision model info <model>
     exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
     exo [options] provision model delete <model>
     exo [options] provision content list <model>
-    exo [options] provision content create <model> <id> [<meta>] [--protected]
+    exo [options] provision content create <model> <id> [<meta>]
     exo [options] provision content delete <model> <id>
     exo [options] provision content info <model> <id>
     exo [options] provision content get <model> <id> <file>
     exo [options] provision content put <model> <id> <file> [--mime=type]
     exo [options] provision sn list <model> [--offset=num] [--limit=num]
     exo [options] provision sn ranges <model>
-    exo [options] provision sn add <model> <sn>...
-    exo [options] provision sn addcsv <model> <file>
+    exo [options] provision sn add <model> (--file=<file> | <sn>...)
+    exo [options] provision sn delete <model> (--file=<file> | <sn>...)
     exo [options] provision sn addrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
-    exo [options] provision sn delete <model> <sn>...
-    exo [options] provision sn delcsv <model> <file>
     exo [options] provision sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn info <model> <sn>
     exo [options] provision sn log <model> <sn>
@@ -28,12 +26,10 @@ Usage:
     exo [options] provision sn disable <model> <sn>
 
 Command Options:
-    --shared        Not yet implemented
     --noaliases     Set no aliases option on model create
     --nocomments    Set no comments option on model create
     --nohistory     Set no history option on model create
-    --protected     Not yet implemented
-	--mime=type     Set the mime type of the uploaded data. Will autodetect is omitted
+    --mime=type     Set the mime type of the uploaded data. Will autodetect if omitted
     --offset=num    Offset to start listing at [default: 0]
     --limit=num     Maximum entries to return [default: 1000]
 
@@ -219,32 +215,55 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
+			
+			if args['--file'] is None:
+				mlist = pop.serialnumber_add_batch(key, args['<model>'], args['<sn>'])
+				print(mlist.body)
+			else:
+				# This should chunk the file from disk to socket.
+				data=''
+				try:
+					if args['--file'] == '-':
+						data = sys.stdin.read()
+					else:
+						with open(args['--file']) as f:
+							data = f.read()
+				except IOError as ex:
+					raise ExoException("Could not read {0}".format(args['--file']))
 
-			mlist = pop.serialnumber_add_batch(key, args['<model>'], args['<sn>'])
-			print(mlist.body)
+				# This should be in the pyonep.provision class. It is not.
+				path = '/provision/manage/model/' + args['<model>'] + '/'
+				headers = {"Content-Type": "text/csv; charset=utf-8"}
+				mlist = pop._request(path, key, data, 'POST', False, headers)
+				print(mlist.body)
 
-		def addcsv(self, cmd, args, options):
+		def delete(self, cmd, args, options):
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			# This should chunk the file from disk to socket.
-			data=''
-			try:
-				if args['<file>'] == '-':
-					data = sys.stdin.read()
-				else:
-					with open(args['<file>']) as f:
-						data = f.read()
-			except IOError as ex:
-				raise ExoException("Could not read {0}".format(args['<file>']))
+			if args['--file'] is None:
+				mlist = pop.serialnumber_remove_batch(key, args['<model>'], args['<sn>'])
+				print(mlist.body)
+			else:
+				# ??? should this raise or trim columns beyond the first???
+				# This should chunk the file from disk to socket.
+				data=''
+				try:
+					if args['<file>'] == '-':
+						data = sys.stdin.read()
+					else:
+						with open(args['<file>']) as f:
+							data = f.read()
+				except IOError as ex:
+					raise ExoException("Could not read {0}".format(args['<file>']))
 
-			# This should be in the pyonep.provision class. It is not.
-			path = '/provision/manage/model/' + args['<model>'] + '/'
-			headers = {"Content-Type": "text/csv; charset=utf-8"}
-			mlist = pop._request(path, key, data, 'POST', False, headers)
-			print(mlist.body)
+				# This should be in the pyonep.provision class. It is not.
+				path = '/provision/manage/model/' + args['<model>'] + '/'
+				headers = {"Content-Type": "text/csv; charset=utf-8"}
+				mlist = pop._request(path, key, data, 'DELETE', False, headers)
+				print(mlist.body)
 
 
 		def _normalizeRangeEnd(self, string):
@@ -265,7 +284,6 @@ class Plugin():
 			else:
 				raise ExoException('Range value {0} is not a valid serial number'.format(string))
 			return number
-
 
 		def addrange(self, cmd, args, options):
 			pop = options['pop']
@@ -301,41 +319,6 @@ class Plugin():
 			mlist = pop._request(path, key, json.dumps(data), 'POST', False, headers)
 			print(mlist.body)
 
-
-		def delete(self, cmd, args, options):
-			pop = options['pop']
-			exoconfig = options['config']
-			ExoException = options['exception']
-			key = exoconfig.config['vendortoken']
-
-			mlist = pop.serialnumber_remove_batch(key, args['<model>'], args['<sn>'])
-			print(mlist.body)
-
-		def delcsv(self, cmd, args, options):
-			pop = options['pop']
-			exoconfig = options['config']
-			ExoException = options['exception']
-			key = exoconfig.config['vendortoken']
-
-			# ??? should this raise or trim columns beyond the first???
-			# This should chunk the file from disk to socket.
-			data=''
-			try:
-				if args['<file>'] == '-':
-					data = sys.stdin.read()
-				else:
-					with open(args['<file>']) as f:
-						data = f.read()
-			except IOError as ex:
-				raise ExoException("Could not read {0}".format(args['<file>']))
-
-			# This should be in the pyonep.provision class. It is not.
-			path = '/provision/manage/model/' + args['<model>'] + '/'
-			headers = {"Content-Type": "text/csv; charset=utf-8"}
-			mlist = pop._request(path, key, data, 'DELETE', False, headers)
-			print(mlist.body)
-
-
 		def delrange(self, cmd, args, options):
 			pop = options['pop']
 			exoconfig = options['config']
@@ -370,10 +353,6 @@ class Plugin():
 			mlist = pop._request(path, key, json.dumps(data), 'DELETE', False, headers)
 			print(mlist.body)
 
-
-		def groups(self, cmd, args, options):
-			ExoException = options['exception']
-			raise ExoException("Not implemented.")
 
 		def log(self, cmd, args, options):
 			pop = options['pop']
