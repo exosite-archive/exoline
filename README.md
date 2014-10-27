@@ -563,3 +563,6 @@ TODO
 - marketing stuff (blog post)
 - make exoline<tab> autocompletion work in iPython
 - support PIKs in place of CIKs
+- fix error handling for "Command line error: Failed to connect to https://portals.exosite.com"
+- support passing certs at the command line for https (portals and onep) when behind VPNs
+- support embedding scripts directly into YAML, if that's possible.
