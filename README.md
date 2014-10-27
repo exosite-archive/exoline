@@ -413,6 +413,29 @@ $ exo revoke 0a35320000000000000000000000000000000000 --share=e9a52a000000000000
 ok
 ```
 
+Provisioning
+------------
+
+The `provision` command can be used to do fleet management operations-- everything related to serial numbers, firmware content, and client models. To use it, you need to configure Exoline with a vendor token. This requires having administrator access to a subdomain. If you have that level of access on a subdomain, log in to portals and go to https://<yoursubdomain>.exosite.com/admin/home and copy the thing called the "Vendor API Token" to your Exoline config file. 
+
+```
+echo "vendortoken: 30c8b0123456789abcdef0123456789abcdef012" >> ~/.exoline
+```
+
+Once you do this, the provisioning commands work:
+
+```
+$ exo provision model list
+testmodel
+testmodelapi
+TestModel2
+```
+
+There is a limit of one `vendortoken` per config file. If you're working with multiple subdomains, you'll need to create multiple Exoline config files and pass them in at the command line. For example:
+
+```
+$ exo --config=~/.exoline-another model list 
+```
 
 Environment Variables
 ---------------------
@@ -443,7 +466,7 @@ For help, run each command with -h from the command line.
 Portals
 -------
 
-Portals caches One Platform data, so changes made in Exoline may take up to 15 minutes to show up in Portals. You can work around this by passing `--clearcache` (or `-c`). This option tells Exoline to clear the relevent cached information in Portals.
+Portals caches One Platform data, so changes made in Exoline may take up to 15 minutes to show up in Portals. You can work around this by passing `--clearcache` (or `-c`). This option tells Exoline to clear the relevant cached information in Portals.
 
 ```
 $ exo --clearcache create <cik> --type=client
@@ -542,16 +565,12 @@ TODO
 
 - differentiate dataport and client shares in tree command (this is important now that I'm using non-deprecated form of listing command)
 - --name parameter to copy command so names don't conflict
-- add raw command, taking full RPC json from stdin
-- Make the info command take multiple rids (or stdin)
 - delete serial number when dropping device
 - add --howmany option to create command
 - tab completion for commands and shortcuts
 - add dataport creation shorthand: "exo create <cik> <alias and name> [datatype]". `exo create mydevice foo` would create a dataport of format string with alias and name both set to foo. `exo create mydevice bar float` would create a float-valued dataport.
 - add test for --tz option
 - add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
-- create executable and installer for a better Windows experience
-- support datasources with subscribe
 - new command to do resource ancestry lookup 
 - add a --monitor (or --follow) option to script command
 - add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
@@ -563,6 +582,6 @@ TODO
 - marketing stuff (blog post)
 - make exoline<tab> autocompletion work in iPython
 - support PIKs in place of CIKs
-- fix error handling for "Command line error: Failed to connect to https://portals.exosite.com"
+- better error handling for "Command line error: Failed to connect to https://portals.exosite.com"
 - support passing certs at the command line for https (portals and onep) when behind VPNs
 - support embedding scripts directly into YAML, if that's possible.

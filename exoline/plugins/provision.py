@@ -146,7 +146,7 @@ class Plugin():
 				mlist = pop.content_create(key, args['<model>'], args['<id>'], meta)
 
 
-			# whats the max size? Are we going to be ok with the pull it 
+			# whats the max size? Are we going to be ok with the pull it
 			# all into RAM method? Short term, yes. Long term, No.
 			data=''
 			try:
@@ -206,7 +206,7 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			
+
 			if args['--file'] is None:
 				mlist = pop.serialnumber_add_batch(key, args['<model>'], args['<sn>'])
 				print(mlist.body)
@@ -281,7 +281,7 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			
+
 			if args['<format>'] not in ['base10','base16','mac:48','mac-48','mac.48']:
 				raise ExoException('Unknown format type {0}'.format(args['<format>']))
 			case = 'lower'
@@ -296,7 +296,7 @@ class Plugin():
 
 			first = self._normalizeRangeEnd(args['<first>'])
 			last = self._normalizeRangeEnd(args['<last>'])
-			
+
 			data = {'ranges':[{'format': args['<format>'],
 					'length': length,
 					'casing': case,
@@ -315,7 +315,7 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
-			
+
 			if args['<format>'] not in ['base10','base16','mac:48','mac-48','mac.48']:
 				raise ExoException('Unknown format type {0}'.format(args['<format>']))
 			case = 'lower'
@@ -417,7 +417,7 @@ class Plugin():
 		exoconfig = options['config']
 
 		if 'vendortoken' not in exoconfig.config:
-			raise ExoException("Vender Token is not defined!")
+			raise ExoException("This command requires a vendor token in your Exoline config. See http://github.com/exosite/exoline#provisioning for instructions.")
 
 		options['pop'] = provision.Provision(manage_by_cik=False,
 										port='443',
