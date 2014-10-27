@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 '''Provisioning. (alpha)
+See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
 
 Usage:
     exo [options] provision model list
