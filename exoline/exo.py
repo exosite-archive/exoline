@@ -415,7 +415,10 @@ if platform.system() != 'Windows':
             try:
                 plugin = importlib.import_module('plugins.' + module_name)
             except:
-                plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
+                try:
+                    plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
+                except:
+                    plugin = importlib.import_module('exoline.plugins.' + module_name)
 
             # instantiate plugin
             p = plugin.Plugin()
