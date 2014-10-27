@@ -12,16 +12,12 @@ Usage:
     exo [options] provision content delete <model> <id>
     exo [options] provision content info <model> <id>
     exo [options] provision sn list <model> [--offset=num] [--limit=num]
-    exo [options] provision sn ranges <model>
     exo [options] provision sn add <model> (--file=<file> | <sn>...)
     exo [options] provision sn delete <model> (--file=<file> | <sn>...)
+    exo [options] provision sn ranges <model>
     exo [options] provision sn addrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
-    exo [options] provision sn info <model> <sn>
-    exo [options] provision sn log <model> <sn>
-    exo [options] provision sn remap <model> <new_sn> <old_sn>
     exo [options] provision sn regen <model> <sn>
-    exo [options] provision sn enable <model> <sn> <rid>
     exo [options] provision sn disable <model> <sn>
 
 Command Options:
@@ -31,7 +27,6 @@ Command Options:
     --mime=type     Set the mime type of the uploaded data. Will autodetect if omitted
     --offset=num    Offset to start listing at [default: 0]
     --limit=num     Maximum entries to return [default: 1000]
-
 
 '''
 from __future__ import unicode_literals
