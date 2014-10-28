@@ -107,8 +107,9 @@ Command options:
     --sort=<order>           asc or desc [default: desc]
     --selection=all|autowindow|givenwindow  downsample method [default: all]
     --format=csv|raw         output format [default: csv]
-    --timeformat=unix|human|iso8601
-                             unix timestamp or human-readable? [default: human]
+    --timeformat=unix|human|iso8601|excel
+                             unix timestamp, human-readable, or spreadsheet-
+                             compatible? [default: human]
     --header=name|rid        include a header row
     --chunksize=<size>       [default: 212] break read into requests of
                              length <size>, printing data as it is received.
@@ -2112,6 +2113,14 @@ def read_cmd(er, cik, rids, args):
                 dt = timestamp
             elif timeformat == 'iso8601':
                 dt = datetime.isoformat(pytz.utc.localize(datetime.utcfromtimestamp(timestamp)))
+            elif timeformat == 'excel':
+                #temp = datetime(1899, 12, 31)
+                #delta = datetime.utcfromtimestamp(timestamp)- temp
+                #dt = float(delta.days) + (float(delta.seconds) / 86400)
+                # This seems to work in Excel, with a Custom Format set to m/d/yy h:mm
+                # e.g. 3/13/14 15:53    1
+                dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).strftime('%m/%d/%y %H:%M:%S')
+                #dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).strftime('%Y-%m-%d %I:%M:%S %p')
             else:
                 dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).astimezone(tz)
 

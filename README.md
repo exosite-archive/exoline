@@ -518,6 +518,52 @@ rpc.upload_script(ciks=['ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa'],
                   filename='scripts/myscript.lua')
 ```
 
+Spreadsheet Import
+------------------
+
+You can use the `read` command with the option `--timeformat=excel` to export time series data from the One Platform to a format compatible with Excel or Google Docs.
+
+```
+$ exo read sensor1 methane --timeformat=excel --limit=10000 > ~/Documents/methane.csv
+```
+
+Microsoft Excel:
+
+    - select File -> Import
+    - select CSV file
+    - navigate to the file `methane.csv` and press Get Data
+    - you should be able to press Finish because the defaults work, but in case your defaults are different here are the explicit settings
+
+        - select Delimited and press Next
+        - select Tab as a delimiter
+        - select General as the column format
+        - Press Finish
+
+    - Press OK to import into A1 of the existing sheet
+    - Select columns A and B
+    - In the Chart ribbon, select Scatter -> Marked Scatter
+    - The result looks like this:
+
+![Excel time series graph example](images/excel_chart.png)
+
+Google Docs:
+
+    - select File -> Import
+    - select the Upload tab
+    - select CSV file
+    - navigate to `methane.csv` and press Open
+    - select Create New Spreadsheet and Detect automatically and press Import
+    - press Open now
+    - select columns A and B
+    - select Insert -> Chart
+    - select Charts tab
+    - select Scatter
+    - select the top chart option
+    - press Insert
+    - the result looks like this:
+
+![Google Docs time series graph example](images/docs_chart.png)
+
 
 Issues/Feature Requests
 -----------------------
