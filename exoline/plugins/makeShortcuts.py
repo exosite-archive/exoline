@@ -78,6 +78,8 @@ class Plugin():
                 p.append(alias)
                 printnodes(child, p )
 
+        # This craps out too easily.
+        # TODO: Need to switch to using the nodeidfn
         tree = rpc._infotree(cik, level=level)
         tree['info']['key'] = cik
         if rpc.regex_rid.match(args['<cik>']) is None:
