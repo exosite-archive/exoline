@@ -609,7 +609,6 @@ For information about what features are in what Exoline versions look [here](HIS
 TODO
 ----
 
-- differentiate dataport and client shares in tree command (this is important now that I'm using non-deprecated form of listing command)
 - --name parameter to copy command so names don't conflict
 - delete serial number when dropping device
 - add --howmany option to create command
@@ -620,7 +619,6 @@ TODO
 - new command to do resource ancestry lookup 
 - add a --monitor (or --follow) option to script command
 - add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
-- add --timeformat=excel option for Excel import. Instead of "2014-03-13 15:53:20-05:00,<value>" it would output "2014-03-13 15:53:20,-05:00,<value>"
 - make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
 - fix install warning: "UserWarning: Unknown distribution option: 'console'"
 - support 'brew install exoline' in OSX
