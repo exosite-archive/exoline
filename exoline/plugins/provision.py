@@ -20,6 +20,7 @@ Usage:
     exo [options] provision sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn regen <model> <sn>
     exo [options] provision sn disable <model> <sn>
+	exo [options] provision sn activate <vendor> <model> <sn>
 
 Command Options:
     --noaliases     Set no aliases option on model create
@@ -396,6 +397,14 @@ class Plugin():
 			mlist = pop.serialnumber_disable(key, args['<model>'], args['<sn>'])
 			print(mlist.body)
 
+		def activate(self, cmd, args, options):
+			pop = options['pop']
+			exoconfig = options['config']
+			ExoException = options['exception']
+			key = exoconfig.config['vendortoken']
+
+			mlist = pop.serialnumber_activate(key, args['<model>'], args['<sn>'], args['<vendor>'])
+			print(mlist.body)
 
 
 	########################################################################
