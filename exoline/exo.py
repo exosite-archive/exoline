@@ -2114,13 +2114,8 @@ def read_cmd(er, cik, rids, args):
             elif timeformat == 'iso8601':
                 dt = datetime.isoformat(pytz.utc.localize(datetime.utcfromtimestamp(timestamp)))
             elif timeformat == 'excel':
-                #temp = datetime(1899, 12, 31)
-                #delta = datetime.utcfromtimestamp(timestamp)- temp
-                #dt = float(delta.days) + (float(delta.seconds) / 86400)
-                # This seems to work in Excel, with a Custom Format set to m/d/yy h:mm
-                # e.g. 3/13/14 15:53    1
+                # This date format seems to work out of the box for Excel scatter plots
                 dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).strftime('%m/%d/%y %H:%M:%S')
-                #dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).strftime('%Y-%m-%d %I:%M:%S %p')
             else:
                 dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).astimezone(tz)
 

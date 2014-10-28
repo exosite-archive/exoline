@@ -532,7 +532,7 @@ Microsoft Excel:
 - select File -> Import
 - select CSV file
 - navigate to the file `methane.csv` and press Get Data
-- you should be able to press Finish because the defaults work, but in case your defaults are different here are the explicit settings
+- you should be able to press Finish because the defaults work, but in case your defaults are different here are the explicit settings:
 
     - select Delimited and press Next
     - select Tab as a delimiter
