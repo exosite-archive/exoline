@@ -1220,8 +1220,8 @@ class ExoRPC():
 
 
             displaymodel = ''
-            if 'sn' in opt:
-                displaymodel = ' (sn:' + opt['sn'] + ')'
+            if 'sn' in opt and 'model' in opt:
+                displaymodel = ' (' + opt['model'] + '#' + opt['sn'] + ')'
 
             self._print_tree_line(
                 bcolors.SPACER +
