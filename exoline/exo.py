@@ -469,13 +469,37 @@ class ExoConfig:
     regex_rid = re.compile("[0-9a-fA-F]{40}")
 
     def __init__(self, configfile='~/.exoline'):
-        configfile = expanduser(configfile)
+        configfile = self.realConfigFile(configfile)
+        self.loadConfig(configfile)
+
+    def realConfigFile(self, configfile):
+        '''Find real path for a config file'''
+        # Does the file as passed exist?
+        cfgf = os.path.expanduser(configfile)
+        if os.path.exists(cfgf):
+            return cfgf
+
+        # Is it in the exoline folder?
+        cfgf = os.path.join('~/.exoline', configfile)
+        cfgf = os.path.expanduser(cfgf)
+        if os.path.exists(cfgf):
+            return cfgf
+
+        # Or is it a dashed file?
+        cfgf = '~/.exoline-' + configfile
+        cfgf = os.path.expanduser(cfgf)
+        if os.path.exists(cfgf):
+            return cfgf
+
+        # No such file to load.
+        return None
+
+    def loadConfig(self, configfile):
         try:
             with open(configfile) as f:
                 self.config = yaml.safe_load(f)
         except IOError as ex:
             self.config = {}
-            #raise ExoException('Couldn\'t open config file at {0}'.format(configfile))
 
     def lookup_shortcut(self, cik):
         '''Look up what was passed for cik in config file
@@ -2722,9 +2746,9 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if args['--port'] is None:
         args['--port'] = os.environ.get('EXO_PORT', None)
 
-	# substitute config variables.
-	if args['--vendortoken'] is not None:
-		exoconfig.config['vendortoken'] = args['--vendortoken']
+    # substitute config variables.
+    if args['--vendortoken'] is not None:
+            exoconfig.config['vendortoken'] = args['--vendortoken']
 
 
     try:
