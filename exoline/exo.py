@@ -22,6 +22,7 @@ Options:
   --discreet           Obfuscate RIDs in stdout and stderr
   -c --clearcache      Invalidate Portals cache after running command
   --portals=<server>   Portals server [default: https://portals.exosite.com]
+  --vendortoken=<vt>   Vendor Token. See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
   -h --help            Show this screen
   -v --version         Show version
 
@@ -2741,6 +2742,11 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         args['--host'] = os.environ.get('EXO_HOST', DEFAULT_HOST)
     if args['--port'] is None:
         args['--port'] = os.environ.get('EXO_PORT', None)
+	
+	# substitute config variables.
+	if args['--vendortoken'] is not None:
+		exoconfig.config['vendortoken'] = args['--vendortoken']
+
 
     try:
         handle_args(cmd, args)
