@@ -2096,7 +2096,10 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            print(val[0])
+            if not six.PY3:
+                print(val[0].encode('utf-8'))
+            else:
+                print(val[0])
         else:
             if timeformat == 'unix':
                 dt = timestamp
@@ -2624,7 +2627,7 @@ def handle_args(cmd, args):
                             'rpc': er,
                             'exception': ExoException,
                             'utils': ExoUtilities,
-							'config': exoconfig
+                            'config': exoconfig
                             }
                     try:
                         options['data'] = ed
@@ -2722,10 +2725,9 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if args['--port'] is None:
         args['--port'] = os.environ.get('EXO_PORT', None)
 
-	# substitute config variables.
-	if args['--vendortoken'] is not None:
-		exoconfig.config['vendortoken'] = args['--vendortoken']
-
+    # substitute config variables.
+    if args['--vendortoken'] is not None:
+        exoconfig.config['vendortoken'] = args['--vendortoken']
 
     try:
         handle_args(cmd, args)
