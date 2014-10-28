@@ -222,7 +222,10 @@ Command options:
 
 Command options:
     --all-children  drop all children of the resource.
-    {{ helpoption }}'''),
+    {{ helpoption }}
+
+Warning: if the resource is a client with a serial number
+associated with it, the serial number is not released.'''),
     ('flush',
         '''Remove time series data from a resource.\n\nUsage:
     exo [options] flush <cik> [<rid>]
@@ -333,10 +336,6 @@ Command options:
     If only --read arguments are specified, the call is a read.
     If both --write and --read arguments are specified, the hybrid
         write/read API is used. Writes are executed before reads.'''),
-    # provision activate
-    #('activate', '''Activate a model-backed device, based on vendor name,
-    #vendor model and serial number.\n\nUsage:
-    #exo [options] activate <vendor> <model> <sn>'''),
     ('portals', '''Invalidate the Portals cache for a CIK by telling Portals
     a particular procedure was taken on client identified by <cik>.\n\nUsage:
     exo [options] portals clearcache <cik> [<procedure> ...]
@@ -354,12 +353,15 @@ Command options:
 
     Pass --meta to associate a metadata string with the share.
     Pass --share to update metadata for an existing share.'''),
-    ('revoke', '''Revoke a share code or CIK\n\nUsage:
-    exo [options] revoke <cik> (--client=<cik> | --share=<code>)'''),
-    ('activate', '''Activate a share code or CIK\n\nUsage:
-    exo [options] activate <cik> (--client=<child-cik> | --share=<code>)'''),
-    ('deactivate', '''Deactivate a share code or expire a CIK\n\nUsage:
-    exo [options] deactivate <cik> (--client=<cik> | --share=<code>)'''),
+    ('revoke', '''Revoke a share code\n\nUsage:
+    exo [options] revoke <cik> --share=<code>'''),
+    ('activate', '''Activate a share code\n\nUsage:
+    exo [options] activate <cik> --share=<code>
+
+If you want to activate a *device*, use the "provision activate"
+     command instead'''),
+    ('deactivate', '''Deactivate a share code\n\nUsage:
+    exo [options] deactivate <cik> --share=<code>'''),
     ('clone', '''Create a clone of a client\n\nUsage:
     exo [options] clone <cik> (--rid=<rid> | --share=<code>)
 
@@ -380,9 +382,7 @@ Command options:
      create (clone) functionality, which is more full featured.
      https://github.com/exosite/docs/tree/master/rpc#create-clone
 
-     Use the clone command except if you need to copy a device to another portal.'''),
-    #('tag', '''Add a tag to a resource\n\nUsage:
-    #exo [options] tag <cik> [<rid> ...] [--add=<tag1,tag2>]'''),
+     Use the clone command except if you need to copy a device to another portal.''')
     ])
 
 # shared sections of documentation
@@ -971,18 +971,6 @@ class ExoRPC():
         isok, response = self.exo.create(cik, 'clone', options)
         self._raise_for_response(isok, response)
         return response
-
-    #def tag(self, cik, rids, addtags=[], removetags=[]):
-    #    cmds = []
-    #    for c in itertools.chain(*[[['map', 'tag', rid, t]
-    #                               for t in addtags]
-    #                              for rid in rids]):
-    #        cmds.append(c)
-    #
-    #    if len(cmds) == 0:
-    #        raise ExoException('No tags to add specified')
-    #    pprint(cmds)
-    #    self._exomult(cik, cmds)
 
     def _print_tree_line(self, line):
         if sys.version_info < (3, 0):
@@ -2625,15 +2613,6 @@ def handle_args(cmd, args):
                 # for convenience, look up the cik
                 pr('cik: {0}'.format(copycik))
 
-        #elif cmd == 'tag':
-            # One Platform does not yet support removing tags.
-            #removetags = args['--remove']
-            #removetags = removetags.split(',') if removetags is not None else []
-        #    removetags = []
-        #    addtags = args['--add']
-        #    addtags = addtags.split(',') if addtags is not None else []
-            # TODO: if --add and --remove are not specified, list tags
-        #    er.tag(cik, rids, removetags=removetags, addtags=addtags)
         else:
             # search plugins
             handled = False
@@ -2742,7 +2721,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         args['--host'] = os.environ.get('EXO_HOST', DEFAULT_HOST)
     if args['--port'] is None:
         args['--port'] = os.environ.get('EXO_PORT', None)
-	
+
 	# substitute config variables.
 	if args['--vendortoken'] is not None:
 		exoconfig.config['vendortoken'] = args['--vendortoken']
