@@ -20,6 +20,7 @@ from __future__ import unicode_literals
 import os
 import sys
 import re
+import json
 
 
 class Plugin():
@@ -53,6 +54,17 @@ class Plugin():
                 pp = args['--sep'].join(path)
                 pp = removeWhite(pp)
                 print("  '{0}': {1}".format(pp, cik))
+                try:
+                    if len(node['info']['description']['meta']) > 0:
+                        meta = json.loads(node['info']['description']['meta'])
+                        if 'device' in meta:
+                            device = meta['device']
+                            if 'model' in device and 'sn' in device:
+                                pp = device['model'] + '#' + device['sn']
+                                print("  '{0}': {1}".format(pp, cik))
+                except:
+                    pass
+
             children = node['info']['children']
             for child in children:
                 rid = child['rid']
