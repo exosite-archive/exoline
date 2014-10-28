@@ -2271,6 +2271,9 @@ def handle_args(cmd, args):
         elif cmd == 'write':
             if args['-']:
                 val = sys.stdin.read()
+                # remove extra newline
+                if val[-1] == '\n':
+                    val = val[:-1]
                 er.write(cik, rids[0], val)
             else:
                 er.write(cik, rids[0], args['--value'])
