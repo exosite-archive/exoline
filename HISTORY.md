@@ -1,6 +1,20 @@
 History
 =======
 
+0.9.0 (2014-10-21)
+------------------
+
+- add provision command with support for activate, model, sn, content
+- support read --timeformat=excel for spreadsheet import
+- --config option to support multiple exoline config files
+- fix using Exoline as a library in Python 3.4
+- fix piping read - with unicode 
+  (https://github.com/exosite/exoline/issues/48)
+- show model name in twee output for clients
+- (breaking change) remove CIK activation, to avoid confusion with 
+  provision activate
+
+
 0.8.3 (2014-10-20)
 ------------------
 

@@ -2120,7 +2120,7 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            if not six.PY3:
+            if not six.PY3 and isinstance(val[0], six.string_types):
                 print(val[0].encode('utf-8'))
             else:
                 print(val[0])
