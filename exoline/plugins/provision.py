@@ -104,9 +104,9 @@ class Plugin():
 				return "{0}B".format(size)
 
 			mlist = pop.content_list(key, args['<model>'])
-			if args['--long'] is None:
+			if not args['--long']:
 				files = mlist.body
-				print(models)
+				print(files)
 			else:
 				files = mlist.body.splitlines()
 				for afile in files:
