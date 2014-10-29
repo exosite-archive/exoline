@@ -597,7 +597,7 @@ Build the installer this way:
 - update Source in the Files section to point to dist\exo folder on your system
 - set version number in innosetup.iss
 - press Compile
-- rename Output/setup.exe to Output
+- rename Output/setup.exe to Output/exoline-<version>-setup.exe
 
 
 What's New?

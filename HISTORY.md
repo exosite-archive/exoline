@@ -1,7 +1,7 @@
 History
 =======
 
-0.9.0 (2014-10-21)
+0.9.0 (2014-10-29)
 ------------------
 
 - add provision command with support for activate, model, sn, content
