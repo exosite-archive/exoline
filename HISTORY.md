@@ -11,8 +11,10 @@ History
 - fix piping read - with unicode 
   (https://github.com/exosite/exoline/issues/48)
 - show model name in twee output for clients
+- script support for passing RID/alias of script
 - (breaking change) remove CIK activation, to avoid confusion with 
   provision activate
+- (breaking change) trim final newline from stdin for write -
 
 
 0.8.3 (2014-10-20)
