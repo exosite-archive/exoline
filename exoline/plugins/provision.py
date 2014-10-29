@@ -7,7 +7,7 @@ Usage:
     exo [options] provision model info <model>
     exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
     exo [options] provision model delete <model>
-    exo [options] provision content list <model>
+    exo [options] provision content list <model> [-l]
     exo [options] provision content put <model> <id> <file> [--mime=type] [--meta=meta]
     exo [options] provision content get <model> <id> <file>
     exo [options] provision content delete <model> <id>
@@ -90,10 +90,27 @@ class Plugin():
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
+			ExoUtilities = options['utils']
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.content_list(key, args['<model>'])
-			print(mlist.body)
+			if args['-l'] is None:
+				files = mlist.body
+				print(models)
+			else:
+				files = mlist.body.splitlines()
+				for afile in files:
+					mlist = pop.content_info(key, args['<model>'], afile)
+					mime,size,updated,meta,protected = mlist.body.strip().split(',')
+					
+					# Format into human sizes
+					#size
+					# Format into Human time
+					#updated = ExoUtilities.format_time(int(updated))
+
+					res = "\t".join([afile, size, updated, protected, mime, meta])
+					print(res)
+
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
