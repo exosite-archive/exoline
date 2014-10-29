@@ -20,7 +20,7 @@ Usage:
     exo [options] provision sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn regen <model> <sn>
     exo [options] provision sn disable <model> <sn>
-	exo [options] provision sn activate <vendor> <model> <sn>
+    exo [options] provision sn activate <vendor> <model> <sn>
 
 Command Options:
     -l --long       Long listing
@@ -39,7 +39,11 @@ import sys
 import re
 import json
 import urllib, mimetypes
-import urlparse
+import six
+if six.PY3:
+	import urllib.parse as urlparse
+else:
+	import urlparse
 import time
 
 class Plugin():
@@ -126,7 +130,7 @@ class Plugin():
 				for afile in files:
 					mlist = pop.content_info(key, args['<model>'], afile)
 					mime,size,updated,meta,protected = mlist.body.strip().split(',')
-					
+
 					# Format into human sizes
 					size = humanSize(size)
 					# Format into Human time
