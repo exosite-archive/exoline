@@ -2130,7 +2130,16 @@ def read_cmd(er, cik, rids, args):
     def printline(timestamp, val):
         if fmt == 'raw':
             if not six.PY3 and isinstance(val[0], six.string_types):
-                print(val[0].encode('utf-8'))
+                # Beer bounty for anyone who can tell me how to make
+                # both of these work without this awkward try: except:
+                # $ ./testone.sh utf8_test -e py27
+                # $ exoline/exo.py read myClient foo --format=raw | tail -100
+                try:
+                    # this works with stdout piped to
+                    print(val[0])
+                except UnicodeEncodeError:
+                    # this works from inside test using StringIO
+                    print(val[0].encode('utf-8'))
             else:
                 print(val[0])
         else:
@@ -2815,7 +2824,7 @@ def run(argv, stdin=None):
             if six.PY3:
                 sio.write(stdin)
             else:
-                sio.write(stdin.encode('utf8'))
+                sio.write(stdin.encode('utf-8'))
             sio.seek(0)
             stdin = sio
         stdout = StringIO()
@@ -2824,9 +2833,6 @@ def run(argv, stdin=None):
         exitcode = cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
         stdout.seek(0)
         stdout = stdout.read().strip()  # strip to get rid of leading newline
-        # TODO: encode output as unicode
-        #if not six.PY3:
-        #    stdout = unicode(stdout)
         stderr.seek(0)
         stderr = stderr.read().strip()
     finally:
