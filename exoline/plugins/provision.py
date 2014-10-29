@@ -37,7 +37,6 @@ import os
 import sys
 import re
 import json
-from pyonep import provision
 import urllib, mimetypes
 
 class Plugin():
@@ -422,6 +421,7 @@ class Plugin():
 	def run(self, cmd, args, options):
 		cik = options['cik']
 		rpc = options['rpc']
+		provision = options['provision']
 		ExoException = options['exception']
 		ExoUtilities = options['utils']
 		exoconfig = options['config']

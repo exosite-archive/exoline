@@ -74,6 +74,7 @@ import yaml
 import importlib
 
 from pyonep import onep
+from pyonep import provision
 import pyonep
 
 try:
@@ -2665,7 +2666,8 @@ def handle_args(cmd, args):
                             'rpc': er,
                             'exception': ExoException,
                             'utils': ExoUtilities,
-                            'config': exoconfig
+                            'config': exoconfig,
+                            'provision': provision
                             }
                     try:
                         options['data'] = ed
