@@ -12,7 +12,7 @@ Usage:
     exo [options] provision content get <model> <id> <file>
     exo [options] provision content delete <model> <id>
     exo [options] provision content info <model> <id>
-    exo [options] provision sn list <model> [--offset=num] [--limit=num]
+    exo [options] provision sn list <model> [--long] [--offset=num] [--limit=num]
     exo [options] provision sn add <model> (--file=<file> | <sn>...)
     exo [options] provision sn delete <model> (--file=<file> | <sn>...)
     exo [options] provision sn ranges <model>
@@ -222,7 +222,15 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
-			print(mlist.body)
+			lines = mlist.body.splitlines()
+			for line in lines:
+				sn, rid, extra = line.split(',')
+				if not args['--long']:
+					print(sn)
+				else:
+					if rid == '':
+						rid = '<>'
+					print("\t".join([sn,rid,extra]))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
