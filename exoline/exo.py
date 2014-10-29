@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Exosite RPC API Command Line Interface
-   Provides command line access to the Remote Procedure Call API:
-   https://github.com/exosite/docs/tree/master/rpc
+"""Exoline - a CLI for Exosite's IoT platform
+   Provides command line access to APIs documented here:
+   https://github.com/exosite/docs
 
 Usage:
   exo [--help] [options] <command> [<args> ...]
@@ -74,6 +74,7 @@ import yaml
 import importlib
 
 from pyonep import onep
+from pyonep import provision
 import pyonep
 
 try:
@@ -291,10 +292,14 @@ Example:
     #('ut', '''Display a tree as fast as possible\n\nUsage:
     #exo [options] ut <cik>'''),
     ('script', '''Upload a Lua script\n\nUsage:
-    exo [options] script <cik> --file=<script-file>
+    exo [options] script <cik> [<rid>] --file=<script-file>
     exo [options] script <script-file> <cik> ...
 
-    All three forms do the same thing, but --file or - are the recommended forms
+    Both forms do the same thing, but --file is the recommended one.
+    If <rid> is omitted, the file name part of <script-file> is used
+    as both the alias and name of the script. This convention helps
+    when working with scripts in Portals, since it shows the script
+    resource's name but not its alias.
 
 Command options:
     --name=<name>  script name, if different from script filename. The name
@@ -1464,7 +1469,8 @@ probably not valid.".format(cik))
                       name=None,
                       recursive=False,
                       create=False,
-                      filterfn=lambda script: script):
+                      filterfn=lambda script: script,
+                      rid=None):
         try:
             f = open(filename)
         except IOError:
@@ -1476,19 +1482,22 @@ probably not valid.".format(cik))
                     # if no name is specified, use the file name as a name
                     name = os.path.basename(filename)
                 for cik in ciks:
-                    def up(cik):
-                        rid = self._lookup_rid_by_name(cik, name)
-                        if rid is not None or create:
+                    def up(cik, rid):
+                        if rid is not None:
                             self._upload_script(cik, name, text, rid=rid)
                         else:
-                            print("Skipping CIK: {0} -- {1} not found".format(cik, name))
-                            if not create:
-                                    print('Pass --create to create it')
+                            rid = self._lookup_rid_by_name(cik, name)
+                            if rid is not None or create:
+                                self._upload_script(cik, name, text, rid=rid)
+                            else:
+                                print("Skipping CIK: {0} -- {1} not found".format(cik, name))
+                                if not create:
+                                        print('Pass --create to create it')
 
                     if recursive:
-                        self.cik_recursive(cik, up)
+                        self.cik_recursive(cik, lambda cik: up(cik, rid))
                     else:
-                        up(cik)
+                        up(cik, rid)
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'], options={})
@@ -2120,7 +2129,10 @@ def read_cmd(er, cik, rids, args):
 
     def printline(timestamp, val):
         if fmt == 'raw':
-            print(val[0])
+            if not six.PY3 and isinstance(val[0], six.string_types):
+                print(val[0].encode('utf-8'))
+            else:
+                print(val[0])
         else:
             if timeformat == 'unix':
                 dt = timestamp
@@ -2292,6 +2304,9 @@ def handle_args(cmd, args):
         elif cmd == 'write':
             if args['-']:
                 val = sys.stdin.read()
+                # remove extra newline
+                if val[-1] == '\n':
+                    val = val[:-1]
                 er.write(cik, rids[0], val)
             else:
                 er.write(cik, rids[0], args['--value'])
@@ -2502,10 +2517,13 @@ def handle_args(cmd, args):
                 filename = args['--file']
             else:
                 filename = args['<script-file>']
-            er.upload_script(cik, filename,
-                            name=args['--name'],
-                            recursive=args['--recursive'],
-                            create=args['--create'])
+            rid = None if '<rid>' not in args else args['<rid>']
+            er.upload_script(cik,
+                filename,
+                name=args['--name'],
+                recursive=args['--recursive'],
+                create=args['--create'],
+                rid=rid)
         elif cmd == 'spark':
             days = int(args['--days'])
             end = ExoUtilities.parse_ts_tuple(datetime.now().timetuple())
@@ -2648,7 +2666,8 @@ def handle_args(cmd, args):
                             'rpc': er,
                             'exception': ExoException,
                             'utils': ExoUtilities,
-							'config': exoconfig
+                            'config': exoconfig,
+                            'provision': provision
                             }
                     try:
                         options['data'] = ed
@@ -2748,8 +2767,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
 
     # substitute config variables.
     if args['--vendortoken'] is not None:
-            exoconfig.config['vendortoken'] = args['--vendortoken']
-
+        exoconfig.config['vendortoken'] = args['--vendortoken']
 
     try:
         handle_args(cmd, args)
@@ -2806,6 +2824,9 @@ def run(argv, stdin=None):
         exitcode = cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
         stdout.seek(0)
         stdout = stdout.read().strip()  # strip to get rid of leading newline
+        # TODO: encode output as unicode
+        #if not six.PY3:
+        #    stdout = unicode(stdout)
         stderr.seek(0)
         stderr = stderr.read().strip()
     finally:

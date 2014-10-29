@@ -53,3 +53,5 @@ Icon
 
 # virtual environment
 vepython*
+
+test/testperf.json

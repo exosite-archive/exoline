@@ -661,6 +661,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('script', cik, '--file='+lua1['path'], '--name=' + lua1['name'] + 'form2', '--create')
         self.ok(r, 'upload new script with new argument form succeeds')
         self.assertEqual(readscript(cik, lua1['name'] + 'form2'), lua1['content'], 'create script with new argument form')
+        # test passing RID
+        r = rpc('script', cik, 'scriptByRID', '--file='+lua1['path'], '--name=' + lua1['name'] + 'form2', '--create')
+        self.ok(r, 'upload new script with new argument form succeeds')
+        self.assertEqual(readscript(cik, lua1['name'] + 'form2'), lua1['content'], 'create script with new argument form')
 
         # test --recursive
         r = rpc('read', childcik1, lua1['name'])
