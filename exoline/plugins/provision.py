@@ -3,16 +3,16 @@
 See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
 
 Usage:
-    exo [options] provision model list
+    exo [options] provision model list [--long]
     exo [options] provision model info <model>
     exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
     exo [options] provision model delete <model>
-    exo [options] provision content list <model>
+    exo [options] provision content list <model> [--long]
     exo [options] provision content put <model> <id> <file> [--mime=type] [--meta=meta]
     exo [options] provision content get <model> <id> <file>
     exo [options] provision content delete <model> <id>
     exo [options] provision content info <model> <id>
-    exo [options] provision sn list <model> [--offset=num] [--limit=num]
+    exo [options] provision sn list <model> [--long] [--offset=num] [--limit=num]
     exo [options] provision sn add <model> (--file=<file> | <sn>...)
     exo [options] provision sn delete <model> (--file=<file> | <sn>...)
     exo [options] provision sn ranges <model>
@@ -23,6 +23,7 @@ Usage:
 	exo [options] provision sn activate <vendor> <model> <sn>
 
 Command Options:
+    -l --long       Long listing
     --noaliases     Set no aliases option on model create
     --nocomments    Set no comments option on model create
     --nohistory     Set no history option on model create
@@ -38,6 +39,8 @@ import sys
 import re
 import json
 import urllib, mimetypes
+import urlparse
+import time
 
 class Plugin():
 	def command(self):
@@ -51,8 +54,22 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.model_list(key)
-			models = mlist.body
-			print(models)
+			if not args['--long']:
+				models = mlist.body
+				print(models)
+			else:
+				models = mlist.body.splitlines()
+				for model in models:
+					mlist = pop.model_info(key, model)
+					res = urlparse.parse_qs(mlist.body)
+					out = [model]
+					if 'code' in res:
+						out.append(u'code.{0}'.format(res['code'][0]))
+					elif 'rid' in res:
+						out.append(u'rid.{0}'.format(res['rid']))
+					if 'options[]' in res:
+						out.extend(res['options[]'])
+					print("\t".join(out))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
@@ -89,10 +106,36 @@ class Plugin():
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
+			ExoUtilities = options['utils']
 			key = exoconfig.config['vendortoken']
 
+			def humanSize(size):
+				size = int(size)
+				if size > (1024*1024):
+					return "{0}M".format(size/(1024*1024))
+				elif size > 1024:
+					return "{0}k".format(size/(1024))
+				return "{0}B".format(size)
+
 			mlist = pop.content_list(key, args['<model>'])
-			print(mlist.body)
+			if not args['--long']:
+				files = mlist.body
+				print(files)
+			else:
+				files = mlist.body.splitlines()
+				for afile in files:
+					mlist = pop.content_info(key, args['<model>'], afile)
+					mime,size,updated,meta,protected = mlist.body.strip().split(',')
+					
+					# Format into human sizes
+					size = humanSize(size)
+					# Format into Human time
+					#updated = time.strftime('%Y-%m-%dT%H:%M:%S%Z', time.localtime(int(updated)))
+					updated = time.strftime('%c', time.localtime(int(updated)))
+
+					res = "\t".join([afile, size, updated, protected, mime, meta])
+					print(res)
+
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
@@ -178,7 +221,15 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
-			print(mlist.body)
+			lines = mlist.body.splitlines()
+			for line in lines:
+				sn, rid, extra = line.split(',')
+				if not args['--long']:
+					print(sn)
+				else:
+					if rid == '':
+						rid = '<>'
+					print("\t".join([sn,rid,extra]))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
