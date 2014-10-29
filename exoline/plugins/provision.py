@@ -5,7 +5,7 @@ See http://github.com/exosite/exoline#provisioning for vendor token setup instru
 Usage:
     exo [options] provision model list [--long]
     exo [options] provision model info <model>
-    exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
+    exo [options] provision model create <model> (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
     exo [options] provision model delete <model>
     exo [options] provision content list <model> [--long]
     exo [options] provision content put <model> <id> <file> [--mime=type] [--meta=meta]
@@ -19,6 +19,7 @@ Usage:
     exo [options] provision sn addrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn regen <model> <sn>
+	exo [options] provision sn enable <model> <sn> <rid>
     exo [options] provision sn disable <model> <sn>
     exo [options] provision sn activate <vendor> <model> <sn>
 
@@ -30,6 +31,7 @@ Command Options:
     --mime=type     Set the mime type of the uploaded data. Will autodetect if omitted
     --offset=num    Offset to start listing at [default: 0]
     --limit=num     Maximum entries to return [default: 1000]
+{{ helpoption }}
 
 '''
 from __future__ import unicode_literals
@@ -70,7 +72,7 @@ class Plugin():
 					if 'code' in res:
 						out.append(u'code.{0}'.format(res['code'][0]))
 					elif 'rid' in res:
-						out.append(u'rid.{0}'.format(res['rid']))
+						out.append(u'rid.{0}'.format(res['rid'][0]))
 					if 'options[]' in res:
 						out.extend(res['options[]'])
 					print("\t".join(out))
@@ -455,9 +457,8 @@ class Plugin():
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
-			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_activate(key, args['<model>'], args['<sn>'], args['<vendor>'])
+			mlist = pop.serialnumber_activate(args['<model>'], args['<sn>'][0], args['<vendor>'])
 			print(mlist.body)
 
 

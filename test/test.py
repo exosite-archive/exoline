@@ -16,6 +16,8 @@ import logging
 from unittest import TestCase
 import itertools
 import os
+import random
+import string
 
 import six
 import yaml
@@ -80,6 +82,9 @@ def rpc(*args, **kwargs):
         log.debug('    stdin: ' + abbrev(stdin))
     return exo.run(argv, stdin=stdin)
 
+def prv(*args):
+    '''wrapper for provision calls'''
+    return rpc('--vendortoken=' + config['vendortoken'], 'provision', *args)
 
 class Resource():
     '''Contains information for creating and testing resource.'''
@@ -1780,6 +1785,72 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         cik = self.client.cik()
         r = rpc('--discreet', 'tree', cik)
         self.ok(r, search='cik: ' + cik[:20] + '01234567890123456789')
+
+    def provision_test(self):
+        '''provision model, provision sn'''
+        cik = self.client.cik()
+        rid = self.client.rid
+
+        # create a model
+        id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        model = 'testmodel' + id
+        sn = 'testsn' + id
+
+        r = prv('model', 'create', model, rid)
+        self.ok(r, 'model was created')
+
+        # list models
+        r = prv('model', 'list')
+        self.ok(r, 'model is listed', search=model)
+
+        # get info for model
+        r = prv('model', 'info', model)
+        self.ok(r, 'model info includes RID', search=rid)
+
+        # add sn
+        r = prv('sn', 'add', model, sn)
+        self.ok(r, 'add sn')
+
+        # list sn
+        r = prv('sn', 'list', model)
+        self.ok(r, 'list sn', match=sn)
+
+        # TODO: test ranges, addrange, delrange
+
+        # TODO: test --file
+
+        # TODO: enable serialnumber, create client, activate client
+        # looks like provision doesnt' support enabling a serialnumber...?
+
+        # activate (create a new clone of the model and return the cik)
+        #r = prv('sn', 'activate', config['vendor'], model, sn)
+        #self.ok(r, 'activate sn', match=self.RE_RID)
+        #clonecik = r.stdout.strip()
+        #r = rpc('info', clonecik)
+        #self.ok(r, 'info on device cloned from model')
+        #info = json.loads(r.stdout)
+        #meta = json.loads(info['description']['meta'])
+        #self.assertEqual(meta['device']['vendor'], config['vendor'], 'clone meta vendor is correct')
+        #self.assertEqual(meta['device']['model'], model, 'clone meta model is correct')
+        #self.assertEqual(meta['device']['sn'], sn, 'clone meta sn is correct')
+
+        # delete sn
+        r = prv('sn', 'delete', model, sn)
+        self.ok(r, 'sn is deleted')
+        r = prv('sn', 'list', model)
+        self.ok(r, 'list sn after deletion')
+        self.assertTrue(sn not in r.stdout, 'deleted serial number is not in listing')
+
+        # delete model
+        r = prv('model', 'delete', model)
+        self.ok(r, 'model is deleted')
+        r = prv('model', 'list')
+        self.assertTrue(model not in r.stdout, 'deleted model is not in listing')
+
+    def provision_content_test(self):
+        '''provision content'''
+        pass
+
 
 def tearDownModule(self):
     '''Do final things'''

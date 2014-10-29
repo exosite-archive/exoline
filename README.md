@@ -54,9 +54,10 @@ Usage
 -----
 
 ```
-Exosite RPC API Command Line Interface
-   Provides command line access to the Remote Procedure Call API:
-   https://github.com/exosite/docs/tree/master/rpc
+$ exo -h
+Exoline - a CLI for Exosite's IoT platform
+   Provides command line access to APIs documented here:
+   https://github.com/exosite/docs
 
 Usage:
   exo [--help] [options] <command> [<args> ...]
@@ -87,12 +88,14 @@ Commands:
   portals        Invalidate the Portals cache for a CIK by telling Portals
                  a particular procedure was taken on client identified by <cik>.
   share          Generate a code that allows non-owners to access resources
-  revoke         Revoke a share code or CIK
-  activate       Activate a share code or CIK
-  deactivate     Deactivate a share code or expire a CIK
+  revoke         Revoke a share code
+  activate       Activate a share code
+  deactivate     Deactivate a share code
   clone          Create a clone of a client
   makeShortcuts  Build a list of shortcuts from a client
   ndup           Duplicate a value in a dataport
+  provision      Provisioning. (alpha)
+             See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
   spec           Determine whether a client matches a specification (beta)
   transform      Transform data on in a dataport by mapping all values (alpha)
 
@@ -109,10 +112,12 @@ Options:
   --discreet           Obfuscate RIDs in stdout and stderr
   -c --clearcache      Invalidate Portals cache after running command
   --portals=<server>   Portals server [default: https://portals.exosite.com]
+  --vendortoken=<vt>   Vendor Token. See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
   -h --help            Show this screen
   -v --version         Show version
 
 See 'exo <command> --help' for more information on a specific command.
+
 ```
 
 
@@ -179,10 +184,10 @@ Record a bunch of data without timestamps
     $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
 ```
 
-Dump data from multiple dataports to CSV
+Dump data from multiple dataports to Excel-compatible CSV
 
 ```
-    $ time ./exo.py read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --start=5/1/2013 --end=8/1/2013 --chunkhours=24 > alldata.csv
+    $ time ./exo.py read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
 
     real    1m58.377s
     user    0m10.981s
@@ -191,6 +196,25 @@ Dump data from multiple dataports to CSV
     $ wc -l alldata.csv
       316705 alldata.csv
 ```
+
+Make a client model out of a generic client
+
+```
+    TODO
+```
+
+Provision a new device based on a client model
+
+```
+    TODO
+```
+
+Write some firmware content, read it back, and verify it
+
+```
+    TODO
+```
+
 
 Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
 
