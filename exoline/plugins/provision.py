@@ -3,11 +3,11 @@
 See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
 
 Usage:
-    exo [options] provision model list
+    exo [options] provision model list [--long]
     exo [options] provision model info <model>
     exo [options] provision model create (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
     exo [options] provision model delete <model>
-    exo [options] provision content list <model> [-l]
+    exo [options] provision content list <model> [--long]
     exo [options] provision content put <model> <id> <file> [--mime=type] [--meta=meta]
     exo [options] provision content get <model> <id> <file>
     exo [options] provision content delete <model> <id>
@@ -23,6 +23,7 @@ Usage:
 	exo [options] provision sn activate <vendor> <model> <sn>
 
 Command Options:
+    -l --long       Long listing
     --noaliases     Set no aliases option on model create
     --nocomments    Set no comments option on model create
     --nohistory     Set no history option on model create
@@ -39,6 +40,7 @@ import re
 import json
 from pyonep import provision
 import urllib, mimetypes
+import time
 
 class Plugin():
 	def command(self):
@@ -93,8 +95,16 @@ class Plugin():
 			ExoUtilities = options['utils']
 			key = exoconfig.config['vendortoken']
 
+			def humanSize(size):
+				size = int(size)
+				if size > (1024*1024):
+					return "{0}M".format(size/(1024*1024))
+				elif size > 1024:
+					return "{0}k".format(size/(1024))
+				return "{0}B".format(size)
+
 			mlist = pop.content_list(key, args['<model>'])
-			if args['-l'] is None:
+			if args['--long'] is None:
 				files = mlist.body
 				print(models)
 			else:
@@ -104,9 +114,10 @@ class Plugin():
 					mime,size,updated,meta,protected = mlist.body.strip().split(',')
 					
 					# Format into human sizes
-					#size
+					size = humanSize(size)
 					# Format into Human time
-					#updated = ExoUtilities.format_time(int(updated))
+					#updated = time.strftime('%Y-%m-%dT%H:%M:%S%Z', time.localtime(int(updated)))
+					updated = time.strftime('%c', time.localtime(int(updated)))
 
 					res = "\t".join([afile, size, updated, protected, mime, meta])
 					print(res)
