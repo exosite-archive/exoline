@@ -40,6 +40,7 @@ import re
 import json
 from pyonep import provision
 import urllib, mimetypes
+import urlparse
 import time
 
 class Plugin():
@@ -54,8 +55,22 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.model_list(key)
-			models = mlist.body
-			print(models)
+			if not args['--long']:
+				models = mlist.body
+				print(models)
+			else:
+				models = mlist.body.splitlines()
+				for model in models:
+					mlist = pop.model_info(key, model)
+					res = urlparse.parse_qs(mlist.body)
+					out = [model]
+					if 'code' in res:
+						out.append(u'code.{0}'.format(res['code'][0]))
+					elif 'rid' in res:
+						out.append(u'rid.{0}'.format(res['rid']))
+					if 'options[]' in res:
+						out.extend(res['options[]'])
+					print("\t".join(out))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
