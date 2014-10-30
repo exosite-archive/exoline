@@ -233,9 +233,22 @@ class Plugin():
 				if not args['--long']:
 					print(sn)
 				else:
+					status=''
+					mlist = pop.serialnumber_info(key, args['<model>'], sn)
+					if mlist.status() == 204:
+						status = 'unused'
+					elif mlist.status() == 404:
+						status = 'unused'
+					elif mlist.status() == 409: 
+						status = 'orphaned'
+					else:
+						status = mlist.body.split(',')[0]
+						if status == '':
+							status = 'unused'
 					if rid == '':
 						rid = '<>'
-					print("\t".join([sn,rid,extra]))
+
+					print("\t".join([sn,status,rid,extra]))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
