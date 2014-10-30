@@ -448,6 +448,10 @@ class Plugin():
 			print(mlist.body)
 
 		def enable(self, cmd, args, options):
+			'''Enable is the wrong name for this.
+			This is creating a clone of the model under the portal RID given.
+			**BUT** it doesn't do a complete create! Things are missing.
+			'''
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
