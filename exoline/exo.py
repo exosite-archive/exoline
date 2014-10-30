@@ -521,6 +521,24 @@ class ExoConfig:
         else:
             return cik
 
+    def mingleArguments(self, args):
+        '''This mixes the settings applied from the configfile and the command line.
+        Part of this is making those items availible in both places.
+        Command line always overrides configfile.
+        '''
+        # This ONLY works with options that take a parameter.
+        toMingle = ['host', 'port', 'httptimeout', 'useragent', 'portals', 'vendortoken', 'timeformat']
+        # args overrule config.
+        # If not in arg but in config: copy to arg.
+        for arg in toMingle:
+            if arg in self.config and args['--'+arg] is None:
+                args['--'+arg] = self.config[arg]
+
+        # copy args to config.
+        for arg in toMingle:
+            self.config[arg] = args['--'+arg]
+
+
 exoconfig = ExoConfig()
 
 class ExolineOnepV1(onep.OnepV1):
@@ -2774,9 +2792,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if args['--port'] is None:
         args['--port'] = os.environ.get('EXO_PORT', None)
 
-    # substitute config variables.
-    if args['--vendortoken'] is not None:
-        exoconfig.config['vendortoken'] = args['--vendortoken']
+    exoconfig.mingleArguments(args)
 
     try:
         handle_args(cmd, args)
@@ -2845,3 +2861,5 @@ def run(argv, stdin=None):
 
 if __name__ == '__main__':
     sys.exit(cmd(sys.argv))
+
+#  vim: set ai noet sw=4 ts=8 :
