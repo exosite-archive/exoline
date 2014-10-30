@@ -528,7 +528,7 @@ class ExoConfig:
         Command line always overrides configfile.
         '''
         # This ONLY works with options that take a parameter.
-        toMingle = ['host', 'port', 'httptimeout', 'useragent', 'portals', 'vendortoken', 'timeformat']
+        toMingle = ['host', 'port', 'httptimeout', 'useragent', 'portals', 'vendortoken']
         # args overrule config.
         # If not in arg but in config: copy to arg.
         for arg in toMingle:
