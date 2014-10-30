@@ -1598,7 +1598,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'create a client and clear portals cache')
         # TODO: verify client displays in Portals
 
-        r = rpc('-c',
+        r = rpc('-e',
                 '--portals=https://weaver.exosite.com',
                 'create',
                 cik,

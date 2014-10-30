@@ -10,21 +10,22 @@ Usage:
 Commands:
 {{ command_list }}
 Options:
-  --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
-  --port=<port>        OneP port. Default is $EXO_PORT or 443
-  --config=<file>      Config file [default: ~/.exoline]
-  --httptimeout=<sec>  HTTP timeout [default: 60] (default for copy is 480)
-  --https              Enable HTTPS (deprecated, HTTPS is default)
-  --http               Disable HTTPS
-  --useragent=<ua>     Set User-Agent Header for outgoing requests
-  --debug              Show debug info (stack traces on exceptions)
-  -d --debughttp       Turn on debug level logging in pyonep
-  --discreet           Obfuscate RIDs in stdout and stderr
-  -c --clearcache      Invalidate Portals cache after running command
-  --portals=<server>   Portals server [default: https://portals.exosite.com]
-  --vendortoken=<vt>   Vendor Token. See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
-  -h --help            Show this screen
-  -v --version         Show version
+  --host=<host>          OneP host. Default is $EXO_HOST or m2.exosite.com
+  --port=<port>          OneP port. Default is $EXO_PORT or 443
+  -c --config=<file>     Config file [default: ~/.exoline]
+  --httptimeout=<sec>    HTTP timeout [default: 60] (default for copy is 480)
+  --https                Enable HTTPS (deprecated, HTTPS is default)
+  --http                 Disable HTTPS
+  --useragent=<ua>       Set User-Agent Header for outgoing requests
+  --debug                Show debug info (stack traces on exceptions)
+  -d --debughttp         Turn on debug level logging in pyonep
+  --discreet             Obfuscate RIDs in stdout and stderr
+  -e --clearcache        Invalidate Portals cache after running command
+  --portals=<server>     Portals server [default: https://portals.exosite.com]
+  -t --vendortoken=<vt>  Vendor Token.
+    See http://github.com/exosite/exoline#provisioning to learn about vendor tokens
+  -h --help              Show this screen
+  -v --version           Show version
 
 See 'exo <command> --help' for more information on a specific command.
 """
