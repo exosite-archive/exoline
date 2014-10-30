@@ -243,7 +243,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_info(key, args['<model>'], args['<sn>'])
+			mlist = pop.serialnumber_info(key, args['<model>'], args['<sn>'][0])
 			print(mlist.body)
 
 		def ranges(self, cmd, args, options):
@@ -410,7 +410,7 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			# This should be in the pyonep.provision class. It is not.
-			path = '/provision/manage/model/' + args['<model>'] + '/' + args['<sn>'] + '?show=log'
+			path = '/provision/manage/model/' + args['<model>'] + '/' + args['<sn>'][0] + '?show=log'
 			mlist = pop._request(path, key, '', 'GET', False)
 			print(mlist.body)
 
@@ -431,7 +431,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_reenable(key, args['<model>'], args['<sn>'])
+			mlist = pop.serialnumber_reenable(key, args['<model>'], args['<sn>'][0])
 			print(mlist.body)
 
 		def enable(self, cmd, args, options):
@@ -440,7 +440,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_enable(key, args['<model>'], args['<sn>'], args['<rid>'])
+			mlist = pop.serialnumber_enable(key, args['<model>'], args['<sn>'][0], args['<rid>'])
 			print(mlist.body)
 
 
@@ -450,7 +450,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_disable(key, args['<model>'], args['<sn>'])
+			mlist = pop.serialnumber_disable(key, args['<model>'], args['<sn>'][0])
 			print(mlist.body)
 
 		def activate(self, cmd, args, options):
