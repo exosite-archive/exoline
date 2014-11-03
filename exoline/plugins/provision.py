@@ -233,9 +233,22 @@ class Plugin():
 				if not args['--long']:
 					print(sn)
 				else:
+					status=''
+					mlist = pop.serialnumber_info(key, args['<model>'], sn)
+					if mlist.status() == 204:
+						status = 'unused'
+					elif mlist.status() == 404:
+						status = 'unused'
+					elif mlist.status() == 409: 
+						status = 'orphaned'
+					else:
+						status = mlist.body.split(',')[0]
+						if status == '':
+							status = 'unused'
 					if rid == '':
 						rid = '<>'
-					print("\t".join([sn,rid,extra]))
+
+					print("\t".join([sn,status,rid,extra]))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
@@ -243,7 +256,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_info(key, args['<model>'], args['<sn>'])
+			mlist = pop.serialnumber_info(key, args['<model>'], args['<sn>'][0])
 			print(mlist.body)
 
 		def ranges(self, cmd, args, options):
@@ -410,7 +423,7 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			# This should be in the pyonep.provision class. It is not.
-			path = '/provision/manage/model/' + args['<model>'] + '/' + args['<sn>'] + '?show=log'
+			path = '/provision/manage/model/' + args['<model>'] + '/' + args['<sn>'][0] + '?show=log'
 			mlist = pop._request(path, key, '', 'GET', False)
 			print(mlist.body)
 
@@ -431,16 +444,20 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_reenable(key, args['<model>'], args['<sn>'])
+			mlist = pop.serialnumber_reenable(key, args['<model>'], args['<sn>'][0])
 			print(mlist.body)
 
 		def enable(self, cmd, args, options):
+			'''Enable is the wrong name for this.
+			This is creating a clone of the model under the portal RID given.
+			**BUT** it doesn't do a complete create! Things are missing.
+			'''
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_enable(key, args['<model>'], args['<sn>'], args['<rid>'])
+			mlist = pop.serialnumber_enable(key, args['<model>'], args['<sn>'][0], args['<rid>'])
 			print(mlist.body)
 
 
@@ -450,7 +467,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_disable(key, args['<model>'], args['<sn>'])
+			mlist = pop.serialnumber_disable(key, args['<model>'], args['<sn>'][0])
 			print(mlist.body)
 
 		def activate(self, cmd, args, options):
