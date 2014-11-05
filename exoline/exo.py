@@ -501,11 +501,14 @@ class ExoConfig:
         return None
 
     def loadConfig(self, configfile):
-        try:
-            with open(configfile) as f:
-                self.config = yaml.safe_load(f)
-        except IOError as ex:
+	if configfile is None:
             self.config = {}
+	else:
+	    try:
+		with open(configfile) as f:
+		    self.config = yaml.safe_load(f)
+	    except IOError as ex:
+		self.config = {}
 
     def lookup_shortcut(self, cik):
         '''Look up what was passed for cik in config file
