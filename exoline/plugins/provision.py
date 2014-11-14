@@ -227,28 +227,28 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
-			lines = mlist.body.splitlines()
-			for line in lines:
-				sn, rid, extra = line.split(',')
-				if not args['--long']:
-					print(sn)
-				else:
-					status=''
-					mlist = pop.serialnumber_info(key, args['<model>'], sn)
-					if mlist.status() == 204:
-						status = 'unused'
-					elif mlist.status() == 404:
-						status = 'unused'
-					elif mlist.status() == 409: 
-						status = 'orphaned'
+			if mlist.status() == 200:
+				lines = mlist.body.splitlines()
+				for line in lines:
+					sn, rid, extra = line.split(',')
+					if not args['--long']:
+						print(sn)
 					else:
-						status = mlist.body.split(',')[0]
-						if status == '':
+						status=''
+						mlist = pop.serialnumber_info(key, args['<model>'], sn)
+						if mlist.status() == 204:
 							status = 'unused'
-					if rid == '':
-						rid = '<>'
-
-					print("\t".join([sn,status,rid,extra]))
+						elif mlist.status() == 404:
+							status = 'unused'
+						elif mlist.status() == 409: 
+							status = 'orphaned'
+						else:
+							status = mlist.body.split(',')[0]
+							if status == '':
+								status = 'unused'
+						if rid == '':
+							rid = '<>'
+						print("\t".join([sn,status,rid,extra]))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
