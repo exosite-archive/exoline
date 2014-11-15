@@ -19,9 +19,9 @@ Usage:
     exo [options] provision sn addrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
     exo [options] provision sn regen <model> <sn>
-	exo [options] provision sn enable <model> <sn> <rid>
+    exo [options] provision sn enable <model> <sn> <portal-cik> [--portal-rid=<portal-rid>]
     exo [options] provision sn disable <model> <sn>
-    exo [options] provision sn activate <vendor> <model> <sn>
+    exo [options] provision sn activate <model> <sn>
 
 Command Options:
     -l --long       Long listing
@@ -36,7 +36,6 @@ Command Options:
 '''
 from __future__ import unicode_literals
 import inspect
-import os
 import sys
 import re
 import json
@@ -70,12 +69,12 @@ class Plugin():
 					res = urlparse.parse_qs(mlist.body)
 					out = [model]
 					if 'code' in res:
-						out.append(u'code.{0}'.format(res['code'][0]))
+						out.append('code.{0}'.format(res['code'][0]))
 					elif 'rid' in res:
-						out.append(u'rid.{0}'.format(res['rid'][0]))
+						out.append('rid.{0}'.format(res['rid'][0]))
 					if 'options[]' in res:
 						out.extend(res['options[]'])
-					print("\t".join(out))
+					print(",".join(out))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
@@ -92,9 +91,9 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.model_create(key, args['<model>'], args['<rid>'],
-					args['--noaliases'] is None,
-					args['--nocomments'] is None,
-					args['--nohistory'] is None)
+				aliases=not args['--noaliases'],
+				comments=not args['--nocomments'],
+				historical=not args['--nohistory'])
 			print(mlist.body)
 
 
@@ -139,7 +138,7 @@ class Plugin():
 					#updated = time.strftime('%Y-%m-%dT%H:%M:%S%Z', time.localtime(int(updated)))
 					updated = time.strftime('%c', time.localtime(int(updated)))
 
-					res = "\t".join([afile, size, updated, protected, mime, meta])
+					res = ",".join([afile, size, updated, protected, mime, meta])
 					print(res)
 
 
@@ -240,7 +239,7 @@ class Plugin():
 							status = 'unused'
 						elif mlist.status() == 404:
 							status = 'unused'
-						elif mlist.status() == 409: 
+						elif mlist.status() == 409:
 							status = 'orphaned'
 						else:
 							status = mlist.body.split(',')[0]
@@ -248,7 +247,7 @@ class Plugin():
 								status = 'unused'
 						if rid == '':
 							rid = '<>'
-						print("\t".join([sn,status,rid,extra]))
+						print(",".join([sn,status,rid,extra]))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
@@ -448,18 +447,43 @@ class Plugin():
 			print(mlist.body)
 
 		def enable(self, cmd, args, options):
-			'''Enable is the wrong name for this.
-			This is creating a clone of the model under the portal RID given.
-			**BUT** it doesn't do a complete create! Things are missing.
-			'''
+			'''This hard-to-name command does multiple things:
+			 - create a new client by cloning a client model,
+			   under the portal RID given
+			 - assign a previously added serial number
+			 - opens a 24 hour window during which a device
+			   can call activate and get a CIK'''
+
 			pop = options['pop']
 			exoconfig = options['config']
+			rpc = options['rpc']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			mlist = pop.serialnumber_enable(key, args['<model>'], args['<sn>'][0], args['<rid>'])
-			print(mlist.body)
+			# --portalrid is optional, but passing
+			# it saves one lookup
+			portal_cik = args['<portal-cik>']
+			portal_rid = args['--portal-rid']
+			if portal_rid is None:
+				portal_rid = rpc.lookup(portal_cik, '')
+			mlist = pop.serialnumber_enable(key, args['<model>'], args['<sn>'][0], portal_rid)
 
+			if mlist.status() != 200:
+				raise ExoException(mlist.body)
+			else:
+				# write Portals-like meta fields
+				rid = mlist.body
+				# raise ExoException('got here. rid of clone is ' + rid + ' portal cik is ' + portal_cik)
+				meta = {
+					"device": {
+						"type": "vendor",
+						"model": args['<model>'],
+						"vendor": exoconfig.config['vendor'],
+						"sn": args['<sn>'][0]
+					}
+				}
+				rpc.update(portal_cik, rid, {'meta': json.dumps(meta)})
+				print(rid)
 
 		def disable(self, cmd, args, options):
 			pop = options['pop']
@@ -475,7 +499,7 @@ class Plugin():
 			exoconfig = options['config']
 			ExoException = options['exception']
 
-			mlist = pop.serialnumber_activate(args['<model>'], args['<sn>'][0], args['<vendor>'])
+			mlist = pop.serialnumber_activate(args['<model>'], args['<sn>'][0], exoconfig.config['vendor'])
 			print(mlist.body)
 
 
@@ -486,7 +510,9 @@ class Plugin():
 			if name == arglist[0]:
 				if inspect.isclass(obj):
 					return self.digMethod(arglist[1:], obj)
-				elif inspect.ismethod(obj):
+				# ismethod() for python2 compatibility
+				# http://stackoverflow.com/a/17019983/81346
+				elif inspect.ismethod(obj) or inspect.isfunction(obj):
 					return (obj, robj, name)
 				break
 		return ()
@@ -499,18 +525,26 @@ class Plugin():
 		ExoUtilities = options['utils']
 		exoconfig = options['config']
 
-		if 'vendortoken' not in exoconfig.config:
-			raise ExoException("This command requires a vendor token in your Exoline config. See http://github.com/exosite/exoline#provisioning for instructions.")
+		err = "This command requires 'vendor' and 'vendortoken' in your Exoline config. See http://github.com/exosite/exoline#provisioning"
+		if 'vendortoken' not in exoconfig.config or exoconfig.config['vendortoken'] is None:
+			raise ExoException(err)
+		if 'vendor' not in exoconfig.config or exoconfig.config['vendor'] is None:
+			raise ExoException(err)
 
 		options['pop'] = provision.Provision(manage_by_cik=False,
 										port='443',
 										verbose=True,
 										https=True,
-										raise_api_exceptions=False)
+										raise_api_exceptions=False,
+									    curldebug=args['--curl'])
 
-		meth, obj, name = self.digMethod(args['<args>'], self)
-		if meth is not None and obj is not None:
-			meth(obj(), name, args, options)
+		methodInfo = self.digMethod(args['<args>'], self)
+		if len(methodInfo) == 3:
+			meth, obj, name = methodInfo
+			if meth is not None and obj is not None:
+				meth(obj(), name, args, options)
+			else:
+				raise ExoException("Could not find requested sub command {0}".format(args['<args>']))
 		else:
 			raise ExoException("Could not find requested sub command {0}".format(args['<args>']))
 

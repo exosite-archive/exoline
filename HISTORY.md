@@ -1,6 +1,12 @@
 History
 =======
 
+NEXT
+----
+
+- many fixes to provision model and sn commands
+- support --curl option for viewing requests in curl format
+
 0.9.0 (2014-10-29)
 ------------------
 
@@ -15,7 +21,6 @@ History
 - (breaking change) remove CIK activation, to avoid confusion with 
   provision activate
 - (breaking change) trim final newline from stdin for write -
-
 
 0.8.3 (2014-10-20)
 ------------------

@@ -19,11 +19,13 @@ Options:
   --useragent=<ua>       Set User-Agent Header for outgoing requests
   --debug                Show debug info (stack traces on exceptions)
   -d --debughttp         Turn on debug level logging in pyonep
+  --curl                 Show curl calls for requests. Implies --debughttp
   --discreet             Obfuscate RIDs in stdout and stderr
   -e --clearcache        Invalidate Portals cache after running command
   --portals=<server>     Portals server [default: https://portals.exosite.com]
-  -t --vendortoken=<vt>  Vendor Token.
+  -t --vendortoken=<vt>  Vendor Token (/admin/home in Portals)
     See http://github.com/exosite/exoline#provisioning to learn about vendor tokens
+  -n --vendor=<vendor>   Vendor identifier (/admin/managemodels in Portals)
   -h --help              Show this screen
   -v --version           Show version
 
@@ -501,14 +503,14 @@ class ExoConfig:
         return None
 
     def loadConfig(self, configfile):
-	if configfile is None:
+        if configfile is None:
             self.config = {}
-	else:
-	    try:
-		with open(configfile) as f:
-		    self.config = yaml.safe_load(f)
-	    except IOError as ex:
-		self.config = {}
+        else:
+            try:
+                with open(configfile) as f:
+                    self.config = yaml.safe_load(f)
+            except IOError as ex:
+                self.config = {}
 
     def lookup_shortcut(self, cik):
         '''Look up what was passed for cik in config file
@@ -531,7 +533,7 @@ class ExoConfig:
         Command line always overrides configfile.
         '''
         # This ONLY works with options that take a parameter.
-        toMingle = ['host', 'port', 'httptimeout', 'useragent', 'portals', 'vendortoken']
+        toMingle = ['host', 'port', 'httptimeout', 'useragent', 'portals', 'vendortoken', 'vendor']
         # args overrule config.
         # If not in arg but in config: copy to arg.
         for arg in toMingle:
@@ -582,19 +584,22 @@ class ExoRPC():
                  https=False,
                  verbose=True,
                  logrequests=False,
-                 user_agent=None):
+                 user_agent=None,
+		 curldebug=False):
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
         if user_agent is None:
             user_agent = "Exoline {0}".format(__version__)
-        self.exo = ExolineOnepV1(host=host,
-                               port=port,
-                               httptimeout=httptimeout,
-                               https=https,
-                               agent=user_agent,
-                               reuseconnection=True,
-                               logrequests=logrequests)
+        self.exo = ExolineOnepV1(
+	    host=host,
+	    port=port,
+	    httptimeout=httptimeout,
+	    https=https,
+	    agent=user_agent,
+	    reuseconnection=True,
+	    logrequests=logrequests,
+	    curldebug=curldebug)
 
     def _raise_for_response(self, isok, response, call=None):
         if not isok:
@@ -2263,19 +2268,13 @@ def handle_args(cmd, args):
                 https=use_https,
                 httptimeout=args['--httptimeout'],
                 logrequests=args['--clearcache'],
-                user_agent=args['--useragent'])
+                user_agent=args['--useragent'],
+		curldebug=args['--curl'])
     if cmd in ['ip', 'data']:
-        if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
+        if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True or args['--curl'] is True:
             # TODO: support these
-            raise ExoException('--https, --port, and --debughttp are not supported for ip and data commands.')
+            raise ExoException('--https, --port, --debughttp, and --curl are not supported for ip and data commands.')
         ed = ExoData(url='http://' + args['--host'])
-
-    # activate relates to shares, not provisioning
-    #if cmd in ['activate']:
-    #    if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
-    #        # TODO: support these
-    #        raise ExoException('--https, --port, and --debughttp are not supported for provisioning commands.')
-    #    ep = ExoProvision(url='http://' + args['--host'])
 
     if cmd in ['portals'] or args['--clearcache']:
         portals = ExoPortals(args['--portals'])
@@ -2786,9 +2785,9 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     # configure logging
     logging.basicConfig(stream=sys.stderr)
     logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
-    if args['--debughttp']:
-        # TODO: log debug level messages to stdout
+    if args['--debughttp'] or args['--curl']:
         logging.getLogger("pyonep.onep").setLevel(logging.DEBUG)
+        logging.getLogger("pyonep.provision").setLevel(logging.DEBUG)
 
     # substitute environment variables
     if args['--host'] is None:

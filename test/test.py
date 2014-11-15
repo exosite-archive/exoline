@@ -84,7 +84,7 @@ def rpc(*args, **kwargs):
 
 def prv(*args):
     '''wrapper for provision calls'''
-    return rpc('--vendortoken=' + config['vendortoken'], 'provision', *args)
+    return rpc('--vendortoken=' + config['vendortoken'], '--vendor=' + config['vendor'], 'provision', *args)
 
 class Resource():
     '''Contains information for creating and testing resource.'''
@@ -149,13 +149,11 @@ class TestRPC(TestCase):
         if search is not None:
             self.assertTrue(
                 re.search(search, std, flags=re.MULTILINE) is not None,
-                msg + ' - failed to find in {1}:\n{2}\nsearch expression:'
-                + '\n{0}\nlengths: {3} (search) vs. {4} ({1})'.format(
+                msg + ' - failed to find in {1}:\n{2}\nsearch expression:\n{0}\nlengths: {3} (search) vs. {4} ({1})'.format(
                     search, label, std, len(search), len(std)))
         if match is not None:
             self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
-                msg + ' - failed to match in {1}:\n{2}\nmatch expression:'
-                + '\n{0}\nlengths: {3} (match) vs. {4} ({1})'.format(
+                msg + ' - failed to match in {1}:\n{2}\nmatch expression:\n{0}\nlengths: {3} (match) vs. {4} ({1})'.format(
                     match, label, std, len(match), len(std)))
 
     def notok(self, response, msg='', search=None, match=None):
@@ -1787,16 +1785,19 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, search='cik: ' + cik[:20] + '01234567890123456789')
 
     def provision_test(self):
-        '''provision model, provision sn'''
+        '''Provision model, provision sn'''
         cik = self.client.cik()
         rid = self.client.rid
+
+        childrid = self._createMultiple(cik, [
+            Resource(cik, 'client', {'name': '你好世界'})])[0]
 
         # create a model
         id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         model = 'testmodel' + id
         sn = 'testsn' + id
 
-        r = prv('model', 'create', model, rid)
+        r = prv('model', 'create', model, childrid)
         self.ok(r, 'model was created')
 
         # list models
@@ -1805,7 +1806,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         # get info for model
         r = prv('model', 'info', model)
-        self.ok(r, 'model info includes RID', search=rid)
+        self.ok(r, 'model info includes RID', search=childrid)
 
         # add sn
         r = prv('sn', 'add', model, sn)
@@ -1819,20 +1820,33 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         # TODO: test --file
 
-        # TODO: enable serialnumber, create client, activate client
-        # looks like provision doesnt' support enabling a serialnumber...?
+        # enable. This creates a clone in a particular portal,
+        # associates it with a serial number, and opens a 24
+        # hour window for device activation.
+        r = prv('sn', 'enable', model, sn, cik)
+        self.ok(r, 'enable sn/create a new clone')
 
-        # activate (create a new clone of the model and return the cik)
-        #r = prv('sn', 'activate', config['vendor'], model, sn)
-        #self.ok(r, 'activate sn', match=self.RE_RID)
-        #clonecik = r.stdout.strip()
-        #r = rpc('info', clonecik)
-        #self.ok(r, 'info on device cloned from model')
-        #info = json.loads(r.stdout)
-        #meta = json.loads(info['description']['meta'])
-        #self.assertEqual(meta['device']['vendor'], config['vendor'], 'clone meta vendor is correct')
-        #self.assertEqual(meta['device']['model'], model, 'clone meta model is correct')
-        #self.assertEqual(meta['device']['sn'], sn, 'clone meta sn is correct')
+        clonerid = r.stdout.strip()
+        r = rpc('info', cik, clonerid, '--include=description,basic')
+        self.ok(r, 'info on clone before activation')
+        info = json.loads(r.stdout)
+        meta = json.loads(info['description']['meta'])
+        self.assertEqual(meta['device']['vendor'], config['vendor'], 'clone meta vendor is correct')
+        self.assertEqual(meta['device']['model'], model, 'clone meta model is correct')
+        self.assertEqual(meta['device']['sn'], sn, 'clone meta sn is correct')
+        self.assertEqual(info['basic']['status'], 'notactivated', 'clone is not activated')
+
+        # activate (this would normally be done by a device)
+        r = prv('sn', 'activate', model, sn)
+        self.ok(r, 'activate sn', match=self.RE_RID)
+        clonecik = r.stdout.strip()
+
+        r = rpc('info', clonecik, '--include=description,basic')
+        self.ok(r, 'info on device cloned from model')
+        info = json.loads(r.stdout)
+
+        self.assertEqual(info['basic']['status'], 'activated', 'clone is now activated')
+
 
         # delete sn
         r = prv('sn', 'delete', model, sn)

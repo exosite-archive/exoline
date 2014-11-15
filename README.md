@@ -440,10 +440,11 @@ ok
 Provisioning
 ------------
 
-The `provision` command can be used to do fleet management operations-- everything related to serial numbers, firmware content, and client models. To use it, you need to configure Exoline with a vendor token. This requires having administrator access to a subdomain. If you have that level of access on a subdomain, log in to portals and go to https://<yoursubdomain>.exosite.com/admin/home and copy the thing called the "Vendor API Token" to your Exoline config file. 
+The `provision` command can be used to do fleet management operations-- everything related to serial numbers, firmware content, and client models. To use it, you need to configure Exoline with a vendor identifier and vendor token. This requires having administrator access to a subdomain. If you have that level of access on a subdomain, log in to portals and go to `https://<yoursubdomain>.exosite.com/admin/home` and copy the thing called the "Vendor API Token" to your Exoline config file. You'll also need your vendor identification, which can be found at `https://<yoursubdomain>.exosite.com/admin/managemodels`.
 
 ```
 echo "vendortoken: 30c8b0123456789abcdef0123456789abcdef012" >> ~/.exoline
+echo "vendor: myvendor" >> ~/.exoline
 ```
 
 Once you do this, the provisioning commands work:
@@ -455,11 +456,18 @@ testmodelapi
 TestModel2
 ```
 
-There is a limit of one `vendortoken` per config file. If you're working with multiple subdomains, you'll need to create multiple Exoline config files and pass them in at the command line. For example:
+There is a limit of one `vendor` and `vendortoken` per config file. If you're working with multiple subdomains, you'll need to create multiple Exoline config files and pass them in at the command line. For example:
 
 ```
 $ exo --config=~/.exoline-another model list 
 ```
+
+You can also pass the vendor token and vendor identifier at the command line like this:
+
+```
+$ exo --vendor=myvendor --vendortoken=30c8b0123456789abcdef0123456789abcdef012 model list
+```
+
 
 Environment Variables
 ---------------------
