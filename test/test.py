@@ -1842,18 +1842,41 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'info on device cloned from model')
         info = json.loads(r.stdout)
 
-        self.assertEqual(info['basic']['status'], 'activated', 'clone is now activated')
+        self.assertEqual(info['basic']['status'], 'activated',
+                         'clone is now activated')
 
         # delete sn
         r = prv('sn', 'delete', model, sn)
         self.ok(r, 'sn is deleted')
         r = prv('sn', 'list', model)
         self.ok(r, 'list sn after deletion')
-        self.assertTrue(sn not in r.stdout, 'deleted serial number is not in listing')
+        self.assertTrue(sn not in r.stdout,
+                        'deleted serial number is not in listing')
+
+        # test two ways of adding multiple serial numbers at once
+        r = prv('sn', 'add', model, '--file=test/files/serialnumbers')
+        self.ok(r, 'add a file full of serial numbers')
+        r = prv('sn', 'add', model, '011', '012')
+        self.ok(r, 'add multiple serial numbers at command line')
+        # load serial numbers a page at a time
+        r = prv('sn', 'list', model, '--limit=6')
+        self.ok(r, 'get first page of serial numbers',
+                match='\n'.join(['[0-9]{3}' for n in range(6)]))
+        r2 = prv('sn', 'list', model, '--offset=6')
+        self.ok(r2, 'get second page of serial numbers',
+                match='\n'.join(['[0-9]{3}' for n in range(6, 12)]))
+        sns = sorted((r.stdout + '\n' + r2.stdout).split('\n'))
+        self.assertEquals(sns, ['{0:03d}'.format(n + 1) for n in range(12)],
+                          'full list of serial numbers matches')
+        r = prv('sn', 'delete', model, '--file=test/files/serialnumbers')
+        self.ok(r, 'delete serial numbers with --file')
+        r = prv('sn', 'delete', model, '011', '012')
+        self.ok(r, 'delete the remaining serial numbers')
+        r = prv('sn', 'list', model)
+        self.ok(r, 'list of serial numbers is empty', match='')
 
         # TODO: test ranges, addrange, delrange
 
-        # TODO: test --file
 
         # delete model
         r = prv('model', 'delete', model)

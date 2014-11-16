@@ -330,13 +330,13 @@ class Plugin():
 				# This should chunk the file from disk to socket.
 				data=''
 				try:
-					if args['<file>'] == '-':
+					if args['--file'] == '-':
 						data = sys.stdin.read()
 					else:
-						with open(args['<file>']) as f:
+						with open(args['--file']) as f:
 							data = f.read()
 				except IOError as ex:
-					raise ExoException("Could not read {0}".format(args['<file>']))
+					raise ExoException("Could not read {0}".format(args['--file']))
 
 				# This should be in the pyonep.provision class. It is not.
 				path = '/provision/manage/model/' + args['<model>'] + '/'
