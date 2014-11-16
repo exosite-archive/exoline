@@ -1877,28 +1877,6 @@ class ExoData():
         return r.text
 
 
-class ExoProvision():
-    '''Implements the Provision API
-    https://github.com/exosite/docs/tree/master/provision'''
-
-    def __init__(self, url='http://m2.exosite.com'):
-        self.url = url
-
-    def raise_for_status(self, r):
-        try:
-            r.raise_for_status()
-        except Exception as ex:
-            raise ExoException(str(ex))
-
-    def activate(self, vendor, model, serialnumber):
-        headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
-                   'Accept': 'application/x-www-form-urlencoded; charset=utf-8'}
-        url = self.url + '/provision/activate'
-        data = {'vendor': vendor, 'model': model, 'sn': serialnumber}
-        r = requests.post(url, headers=headers, data=data)
-        self.raise_for_status(r)
-        return r.text
-
 class ExoPortals():
     '''Provides access to the Portals APIs'''
 
@@ -2695,6 +2673,7 @@ def handle_args(cmd, args):
                             'rids': rids,
                             'rpc': er,
                             'exception': ExoException,
+			    'provision-exception': pyonep.exceptions.ProvisionException,
                             'utils': ExoUtilities,
                             'config': exoconfig,
                             'provision': provision
@@ -2806,6 +2785,17 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     except ExoRPC.RPCException as ex:
         # pyonep library call signaled an error in return values
         sys.stderr.write("One Platform error: {0}\r\n".format(ex))
+        return 1
+    except pyonep.exceptions.ProvisionException as ex:
+        # if the body of the provision response is something other
+        # than a repeat of the status and reason, show it
+        showBody = str(ex).strip() != "HTTP/1.1 {0} {1}".format(
+            ex.response.status(),
+            ex.response.reason())
+        sys.stderr.write(
+            "One Platform provisioning exception: {0}{1}\r\n".format(
+                ex,
+                ' (' + str(ex.response.body).strip() + ')' if showBody else ''))
         return 1
     except pyonep.exceptions.OnePlatformException as ex:
         # pyonep library call threw an exception on purpose

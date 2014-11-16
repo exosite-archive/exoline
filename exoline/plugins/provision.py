@@ -43,8 +43,13 @@ import urllib, mimetypes
 import six
 if six.PY3:
 	import urllib.parse as urlparse
+	pathname2url = urllib.request.pathname2url
+	unquote = urllib.parse.unquote
 else:
 	import urlparse
+	pathname2url = urllib.pathname2url
+	unquote = urllib.unquote
+
 import time
 
 class Plugin():
@@ -61,7 +66,8 @@ class Plugin():
 			mlist = pop.model_list(key)
 			if not args['--long']:
 				models = mlist.body
-				print(models)
+				if len(models.strip()) > 0:
+					print(models)
 			else:
 				models = mlist.body.splitlines()
 				for model in models:
@@ -82,7 +88,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 			mlist = pop.model_info(key, args['<model>'])
-			print(mlist.body)
+			print(unquote(mlist.body))
 
 		def create(self, cmd, args, options):
 			pop = options['pop']
@@ -125,7 +131,8 @@ class Plugin():
 			mlist = pop.content_list(key, args['<model>'])
 			if not args['--long']:
 				files = mlist.body
-				print(files)
+				if len(files.strip()) > 0:
+					print(files)
 			else:
 				files = mlist.body.splitlines()
 				for afile in files:
@@ -148,7 +155,7 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 			mlist = pop.content_info(key, args['<model>'], args['<id>'])
-			print(mlist.body)
+			print(unquote(mlist.body))
 
 		def delete(self, cmd, args, options):
 			pop = options['pop']
@@ -174,7 +181,7 @@ class Plugin():
 				if args['<file>'] is '-':
 					sys.stdout.write(mlist.body)
 				else:
-					with open(args['<file>'], 'w') as f:
+					with open(args['<file>'], 'wb') as f:
 						f.write(mlist.body)
 			except IOError as ex:
 				raise ExoException("Could not write {0}".format(args['<file>']))
@@ -184,16 +191,20 @@ class Plugin():
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
+			ProvisionException = options['provision-exception']
 			key = exoconfig.config['vendortoken']
 
 			# if not exist, create.
-			mlist = pop.content_info(key, args['<model>'], args['<id>'])
-			if mlist.status() == 404:
-				meta = args['--meta']
-				if meta is None:
-					meta = ''
-				mlist = pop.content_create(key, args['<model>'], args['<id>'], meta)
-
+			try:
+				mlist = pop.content_info(key, args['<model>'], args['<id>'])
+			except ProvisionException as pe:
+				if pe.response.status() == 404:
+					meta = args['--meta']
+					if meta is None:
+						meta = ''
+					mlist = pop.content_create(key, args['<model>'], args['<id>'], meta)
+				else:
+					raise
 
 			# whats the max size? Are we going to be ok with the pull it
 			# all into RAM method? Short term, yes. Long term, No.
@@ -208,13 +219,14 @@ class Plugin():
 				raise ExoException("Could not read {0}".format(args['<file>']))
 
 			if args['--mime'] is None:
-				url = urllib.pathname2url(args['<file>'])
+				url = pathname2url(args['<file>'])
 				mime, encoding = mimetypes.guess_type(url)
 			else:
 				mime = args['--mime']
 
 			mlist = pop.content_upload(key, args['<model>'], args['<id>'], data, mime)
-			print(mlist.body)
+			if len(mlist.body.strip()) > 0:
+				print(mlist.body)
 
 
 	########################
@@ -223,31 +235,37 @@ class Plugin():
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
+			ProvisionException = options['provision-exception']
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
-			if mlist.status() == 200:
-				lines = mlist.body.splitlines()
-				for line in lines:
-					sn, rid, extra = line.split(',')
-					if not args['--long']:
-						print(sn)
-					else:
-						status=''
+			lines = mlist.body.splitlines()
+			for line in lines:
+				sn, rid, extra = line.split(',')
+				if not args['--long']:
+					print(sn)
+				else:
+					status=''
+					try:
 						mlist = pop.serialnumber_info(key, args['<model>'], sn)
 						if mlist.status() == 204:
 							status = 'unused'
-						elif mlist.status() == 404:
-							status = 'unused'
-						elif mlist.status() == 409:
-							status = 'orphaned'
 						else:
 							status = mlist.body.split(',')[0]
 							if status == '':
 								status = 'unused'
-						if rid == '':
-							rid = '<>'
-						print(",".join([sn,status,rid,extra]))
+					except ProvisionException as pe:
+						if pe.response.status() == 404:
+							status = 'unused'
+						elif pe.response.status() == 409:
+							status = 'orphaned'
+						else:
+							status = pe.response.body.split(',')[0]
+							if status == '':
+								status = 'unused'
+					if rid == '':
+						rid = '<>'
+					print(",".join([sn,status,rid,extra]))
 
 		def info(self, cmd, args, options):
 			pop = options['pop']
@@ -256,7 +274,7 @@ class Plugin():
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.serialnumber_info(key, args['<model>'], args['<sn>'][0])
-			print(mlist.body)
+			print(unquote(mlist.body))
 
 		def ranges(self, cmd, args, options):
 			pop = options['pop']
@@ -468,22 +486,19 @@ class Plugin():
 				portal_rid = rpc.lookup(portal_cik, '')
 			mlist = pop.serialnumber_enable(key, args['<model>'], args['<sn>'][0], portal_rid)
 
-			if mlist.status() != 200:
-				raise ExoException(mlist.body)
-			else:
-				# write Portals-like meta fields
-				rid = mlist.body
-				# raise ExoException('got here. rid of clone is ' + rid + ' portal cik is ' + portal_cik)
-				meta = {
-					"device": {
-						"type": "vendor",
-						"model": args['<model>'],
-						"vendor": exoconfig.config['vendor'],
-						"sn": args['<sn>'][0]
-					}
+			# write Portals-like meta fields
+			rid = mlist.body
+			# raise ExoException('got here. rid of clone is ' + rid + ' portal cik is ' + portal_cik)
+			meta = {
+				"device": {
+					"type": "vendor",
+					"model": args['<model>'],
+					"vendor": exoconfig.config['vendor'],
+					"sn": args['<sn>'][0]
 				}
-				rpc.update(portal_cik, rid, {'meta': json.dumps(meta)})
-				print(rid)
+			}
+			rpc.update(portal_cik, rid, {'meta': json.dumps(meta)})
+			print(rid)
 
 		def disable(self, cmd, args, options):
 			pop = options['pop']
@@ -521,6 +536,7 @@ class Plugin():
 		cik = options['cik']
 		rpc = options['rpc']
 		provision = options['provision']
+		ProvisionException = options['provision-exception']
 		ExoException = options['exception']
 		ExoUtilities = options['utils']
 		exoconfig = options['config']
@@ -535,7 +551,7 @@ class Plugin():
 										port='443',
 										verbose=True,
 										https=True,
-										raise_api_exceptions=False,
+										raise_api_exceptions=True,
 									    curldebug=args['--curl'])
 
 		methodInfo = self.digMethod(args['<args>'], self)

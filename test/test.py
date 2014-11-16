@@ -18,6 +18,7 @@ import itertools
 import os
 import random
 import string
+import filecmp
 
 import six
 import yaml
@@ -1785,7 +1786,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, search='cik: ' + cik[:20] + '01234567890123456789')
 
     def provision_test(self):
-        '''Provision model, provision sn'''
+        '''Provision model, provision sn commands'''
         cik = self.client.cik()
         rid = self.client.rid
 
@@ -1816,10 +1817,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = prv('sn', 'list', model)
         self.ok(r, 'list sn', match=sn)
 
-        # TODO: test ranges, addrange, delrange
-
-        # TODO: test --file
-
         # enable. This creates a clone in a particular portal,
         # associates it with a serial number, and opens a 24
         # hour window for device activation.
@@ -1847,7 +1844,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         self.assertEqual(info['basic']['status'], 'activated', 'clone is now activated')
 
-
         # delete sn
         r = prv('sn', 'delete', model, sn)
         self.ok(r, 'sn is deleted')
@@ -1855,16 +1851,75 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'list sn after deletion')
         self.assertTrue(sn not in r.stdout, 'deleted serial number is not in listing')
 
+        # TODO: test ranges, addrange, delrange
+
+        # TODO: test --file
+
         # delete model
         r = prv('model', 'delete', model)
         self.ok(r, 'model is deleted')
         r = prv('model', 'list')
         self.assertTrue(model not in r.stdout, 'deleted model is not in listing')
 
-    def provision_content_test(self):
-        '''provision content'''
-        pass
 
+    def provision_content_test(self):
+        '''Provision content commands'''
+        cik = self.client.cik()
+        rid = self.client.rid
+
+        childrid = self._createMultiple(cik, [
+            Resource(cik, 'client', {'name': '你好世界'})])[0]
+
+        # create a model
+        id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        model = 'testmodel' + id
+        sn = 'testsn' + id
+        r = prv('model', 'create', model, childrid)
+        self.ok(r, 'model was created')
+
+        # list content
+        r = prv('content', 'list', model)
+        self.ok(r, 'no content was listed', match='')
+
+        def content(file, id, type):
+            # put content
+            r = prv('content', 'put', model, id, file, '--meta=thisissometa')
+            self.ok(r, 'put content', match='')
+
+            # list content
+            r = prv('content', 'list', model)
+            self.ok(r, 'model was listed', match=id)
+
+            # get content info
+            r = prv('content', 'info', model, id)
+            # e.g. application/octet-stream,1024,1416147370,,false
+            self.ok(r,
+                    'got content info',
+                    match=type + ',[0-9]+,[0-9]+,thisissometa,(true|false)')
+
+            # get content blob
+            r = prv('content', 'get', model, id, 'content')
+            self.ok(r, 'get content', match='')
+
+            # files should match
+            self.assertTrue(filecmp.cmp(file, 'content', shallow=False),
+                            'content files match')
+
+            # delete content
+            r = prv('content', 'delete', model, id)
+            self.ok(r, 'deleted content', match='')
+            r = prv('content', 'list', model)
+            self.ok(r, 'list content after deletion')
+            self.assertTrue(id not in r.stdout)
+            r = prv('content', 'info', model, id)
+            self.notok(r, 'no info found', search='404 Not Found')
+
+
+        # test various file types
+        content('test/files/content.json', 'content.json', 'application/json')
+        #content('test/files/content.bin', 'content.bin', 'application/octet-stream')
+        # TODO: get binary file working. Seems to work
+        # at the command line, but not from the test.
 
 def tearDownModule(self):
     '''Do final things'''
