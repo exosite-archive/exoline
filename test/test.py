@@ -1785,8 +1785,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('--discreet', 'tree', cik)
         self.ok(r, search='cik: ' + cik[:20] + '01234567890123456789')
 
-    def provision_test(self):
-        '''Provision model, provision sn commands'''
+    def _createModel(self):
         cik = self.client.cik()
         rid = self.client.rid
 
@@ -1796,10 +1795,14 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # create a model
         id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         model = 'testmodel' + id
-        sn = 'testsn' + id
 
         r = prv('model', 'create', model, childrid)
         self.ok(r, 'model was created')
+        return model, childrid
+
+    def provision_model_test(self):
+        '''Provision model command'''
+        model, childrid = self._createModel()
 
         # list models
         r = prv('model', 'list')
@@ -1808,6 +1811,18 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # get info for model
         r = prv('model', 'info', model)
         self.ok(r, 'model info includes RID', search=childrid)
+
+        # delete model
+        r = prv('model', 'delete', model)
+        self.ok(r, 'model is deleted')
+        r = prv('model', 'list')
+        self.assertTrue(model not in r.stdout, 'deleted model is not in listing')
+
+    def provision_sn_test(self):
+        '''Provision sn command'''
+        cik = self.client.cik()
+        model, childrid = self._createModel()
+        sn = 'sn' + model
 
         # add sn
         r = prv('sn', 'add', model, sn)
@@ -1875,15 +1890,24 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = prv('sn', 'list', model)
         self.ok(r, 'list of serial numbers is empty', match='')
 
-        # TODO: test ranges, addrange, delrange
-
-
-        # delete model
-        r = prv('model', 'delete', model)
-        self.ok(r, 'model is deleted')
-        r = prv('model', 'list')
-        self.assertTrue(model not in r.stdout, 'deleted model is not in listing')
-
+        # test ranges
+        r = prv('sn', 'ranges', model)
+        self.ok(r, 'list of ranges is empty', match='')
+        prefix = '01:02:03:04:05:'
+        rangeinfo = ['mac:48', prefix + '00', prefix + 'ff']
+        r = prv('sn', 'addrange', model, *rangeinfo)
+        self.ok(r, 'add range of mac addresses')
+        r = prv('sn', 'ranges', model)
+        self.ok(r, 'list ranges after adding one')
+        ranges = json.loads(r.stdout)
+        self.assertEqual(len(ranges), 1, 'one range in list')
+        self.assertEqual(
+            ranges[0],
+            {"format":"mac:48","length":None,"casing":"upper","first":1108152157440,"last":1108152157695},
+            'range looks right in list')
+        r = prv('sn', 'delrange', model, *rangeinfo)
+        r = prv('sn', 'ranges', model)
+        self.ok(r, 'list of ranges is empty', match='')
 
     def provision_content_test(self):
         '''Provision content commands'''
@@ -1937,16 +1961,13 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             r = prv('content', 'info', model, id)
             self.notok(r, 'no info found', search='404 Not Found')
 
-
         # test various file types
         content('test/files/content.json', 'content.json', 'application/json')
-        #content('test/files/content.bin', 'content.bin', 'application/octet-stream')
-        # TODO: get binary file working. Seems to work
+        # TODO: get binary files working. Seems to work
         # at the command line, but not from the test.
+        #content('test/files/content.bin', 'content.bin', 'application/octet-stream')
 
 def tearDownModule(self):
     '''Do final things'''
     with open('test/testperf.json', 'w') as f:
         f.write(json.dumps(exo.PERF_DATA))
-
-

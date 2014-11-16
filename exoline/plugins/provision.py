@@ -178,7 +178,7 @@ class Plugin():
 			mlist = pop._request(path, key, '', 'GET', False, headers)
 
 			try:
-				if args['<file>'] is '-':
+				if args['<file>'] == '-':
 					sys.stdout.write(mlist.body)
 				else:
 					with open(args['<file>'], 'wb') as f:
@@ -370,8 +370,9 @@ class Plugin():
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
-			if args['<format>'] not in ['base10','base16','mac:48','mac-48','mac.48']:
-				raise ExoException('Unknown format type {0}'.format(args['<format>']))
+			formats = ['base10','base16','mac:48','mac-48','mac.48']
+			if args['<format>'] not in formats:
+				raise ExoException('Unknown <format> {0}. Options are: {1}'.format(args['<format>'], formats))
 			case = 'lower'
 			if args['--uppercase'] is not None:
 				case = 'upper'
