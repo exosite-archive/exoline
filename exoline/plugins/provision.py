@@ -1,39 +1,5 @@
 # -*- coding: utf-8 -*-
-'''Provisioning. (alpha)
-See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
-
-Usage:
-    exo [options] provision model list [--long]
-    exo [options] provision model info <model>
-    exo [options] provision model create <model> (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
-    exo [options] provision model delete <model>
-    exo [options] provision content list <model> [--long]
-    exo [options] provision content put <model> <id> <file> [--mime=type] [--meta=meta]
-    exo [options] provision content get <model> <id> <file>
-    exo [options] provision content delete <model> <id>
-    exo [options] provision content info <model> <id>
-    exo [options] provision sn list <model> [--long] [--offset=num] [--limit=num]
-    exo [options] provision sn add <model> (--file=<file> | <sn>...)
-    exo [options] provision sn delete <model> (--file=<file> | <sn>...)
-    exo [options] provision sn ranges <model>
-    exo [options] provision sn addrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
-    exo [options] provision sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
-    exo [options] provision sn regen <model> <sn>
-    exo [options] provision sn enable <model> <sn> <portal-cik> [--portal-rid=<portal-rid>]
-    exo [options] provision sn disable <model> <sn>
-    exo [options] provision sn activate <model> <sn>
-
-Command Options:
-    -l --long       Long listing
-    --noaliases     Set no aliases option on model create
-    --nocomments    Set no comments option on model create
-    --nohistory     Set no history option on model create
-    --mime=type     Set the mime type of the uploaded data. Will autodetect if omitted
-    --offset=num    Offset to start listing at [default: 0]
-    --limit=num     Maximum entries to return [default: 1000]
-{{ helpoption }}
-
-'''
+'''Provisioning commands'''
 from __future__ import unicode_literals
 import inspect
 import sys
@@ -54,7 +20,64 @@ import time
 
 class Plugin():
 	def command(self):
-		return 'provision'
+		return ['model', 'sn', 'content']
+
+	def doc(self, command):
+		if command == 'model':
+			return '''Create and manage client models (alpha)
+
+Usage:
+    exo [options] model list [--long]
+    exo [options] model info <model>
+    exo [options] model create <model> (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
+    exo [options] model delete <model>
+
+Command Options:
+    -l --long       Long listing
+    --noaliases     Set no aliases option on model create
+    --nocomments    Set no comments option on model create
+    --nohistory     Set no history option on model create
+{{ helpoption }}
+
+See http://github.com/exosite/exoline#provisioning for setup instructions.'''
+		elif command == 'content':
+			return '''Manage content, e.g. firmware images, for a model (alpha)
+
+Usage:
+    exo [options] content list <model> [--long]
+    exo [options] content put <model> <id> <file> [--mime=type] [--meta=meta]
+    exo [options] content get <model> <id> <file>
+    exo [options] content delete <model> <id>
+    exo [options] content info <model> <id>
+
+Command Options:
+    -l --long       Long listing
+    --mime=type     Set the mime type of the uploaded data. Will autodetect if omitted
+{{ helpoption }}
+
+See http://github.com/exosite/exoline#provisioning for setup instructions.'''
+		elif command == 'sn':
+			return '''Manage serial numbers (alpha)
+
+Usage:
+    exo [options] sn list <model> [--long] [--offset=num] [--limit=num]
+    exo [options] sn add <model> (--file=<file> | <sn>...)
+    exo [options] sn delete <model> (--file=<file> | <sn>...)
+    exo [options] sn ranges <model>
+    exo [options] sn addrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
+    exo [options] sn delrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]
+    exo [options] sn regen <model> <sn>
+    exo [options] sn enable <model> <sn> <portal-cik> [--portal-rid=<portal-rid>]
+    exo [options] sn disable <model> <sn>
+    exo [options] sn activate <model> <sn>
+
+Command Options:
+    -l --long       Long listing
+    --offset=num    Offset to start listing at [default: 0]
+    --limit=num     Maximum entries to return [default: 1000]
+{{ helpoption }}
+
+See http://github.com/exosite/exoline#provisioning for setup instructions.'''
 
 	########################
 	class model:
@@ -555,7 +578,7 @@ class Plugin():
 										raise_api_exceptions=True,
 									    curldebug=args['--curl'])
 
-		methodInfo = self.digMethod(args['<args>'], self)
+		methodInfo = self.digMethod([cmd] + args['<args>'], self)
 		if len(methodInfo) == 3:
 			meth, obj, name = methodInfo
 			if meth is not None and obj is not None:

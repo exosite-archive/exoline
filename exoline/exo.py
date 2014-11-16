@@ -435,7 +435,12 @@ if platform.system() != 'Windows':
             plugins.append(p)
 
             # get documentation
-            cmd_doc[p.command()] = plugin.__doc__
+            command = p.command()
+            if isinstance(command, six.string_types):
+                cmd_doc[command] = plugin.__doc__
+            else:
+                for c in command:
+                    cmd_doc[c] = p.doc(c)
 else:
     # plugin support for Windows executable build
     try:

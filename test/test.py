@@ -85,7 +85,7 @@ def rpc(*args, **kwargs):
 
 def prv(*args):
     '''wrapper for provision calls'''
-    return rpc('--vendortoken=' + config['vendortoken'], '--vendor=' + config['vendor'], 'provision', *args)
+    return rpc('--vendortoken=' + config['vendortoken'], '--vendor=' + config['vendor'], *args)
 
 class Resource():
     '''Contains information for creating and testing resource.'''
