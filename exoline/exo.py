@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Exoline - a CLI for Exosite's IoT platform
-   Provides command line access to APIs documented here:
-   https://github.com/exosite/docs
+"""Exoline - Exosite IoT Command Line Interface
+https://github.com/exosite/exoline
 
 Usage:
   exo [--help] [options] <command> [<args> ...]
@@ -23,9 +22,9 @@ Options:
   --discreet             Obfuscate RIDs in stdout and stderr
   -e --clearcache        Invalidate Portals cache after running command
   --portals=<server>     Portals server [default: https://portals.exosite.com]
-  -t --vendortoken=<vt>  Vendor Token (/admin/home in Portals)
-    See http://github.com/exosite/exoline#provisioning to learn about vendor tokens
+  -t --vendortoken=<vt>  Vendor token (/admin/home in Portals)
   -n --vendor=<vendor>   Vendor identifier (/admin/managemodels in Portals)
+			 (See http://github.com/exosite/exoline#provisioning)
   -h --help              Show this screen
   -v --version           Show version
 
@@ -424,7 +423,10 @@ if platform.system() != 'Windows':
         for module_name in plugin_names:
             try:
                 plugin = importlib.import_module('plugins.' + module_name)
-            except:
+            except Exception as ex:
+		# TODO: only catch the not found exception, for plugin
+		# debugging
+		#print(ex)
                 try:
                     plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
                 except:
@@ -461,6 +463,16 @@ else:
         p = transform.Plugin()
         plugins.append(p)
         cmd_doc[p.command()] = transform.__doc__
+
+        # transform plugin
+        try:
+            from ..exoline.plugins import provision
+        except:
+            from exoline.plugins import provision
+        p = provision.Plugin()
+        plugins.append(p)
+        for c in p.command():
+            cmd_doc[c] = p.doc(c)
 
     except Exception as ex:
         import traceback
@@ -2755,7 +2767,12 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     cmd = args['<command>']
     argv = [cmd] + args['<args>']
     if cmd in cmd_doc:
-        args_cmd = docopt(cmd_doc[cmd], argv=argv)
+        # if doc expects yet another command, pass options_first=True
+        options_first = True if re.search(
+	    '^Commands:$',
+            cmd_doc[cmd],
+            re.MULTILINE) else False
+        args_cmd = docopt(cmd_doc[cmd], argv=argv, options_first=options_first)
     else:
         print('Unknown command {0}. Try "exo --help"'.format(cmd))
         return 1
