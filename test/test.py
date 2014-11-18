@@ -1866,6 +1866,40 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertEqual(info['basic']['status'], 'activated',
                          'clone is now activated')
 
+        # regenerate
+        r = prv('sn', 'regen', model, sn)
+        self.ok(r, 'regenerate CIK', match='')
+        time.sleep(1)
+        r = rpc('info', clonecik, '--include=basic')
+        self.notok(r, 'info fails on previous cik', search='401')
+        r = rpc('info', cik, clonerid, '--include=basic')
+        self.ok(r, 'info succeeds')
+        info = json.loads(r.stdout)
+        self.assertEqual(info['basic']['status'], 'notactivated', 'status after regen');
+        r = prv('sn', 'activate', model, sn)
+        self.ok(r, 're-activate', match=self.RE_RID)
+        newcik = r.stdout.strip()
+        self.assertNotEqual(clonecik, newcik)
+        r = rpc('info', newcik, '--include=basic')
+        self.ok(r, 'info succeeds on new, re-activated cik')
+
+        # disable
+        r = prv('sn', 'disable', model, sn)
+        self.ok(r, 'disable client', match='')
+        r = rpc('info', cik, clonerid, '--include=basic')
+        self.ok(r, 'info succeeds')
+        info = json.loads(r.stdout)
+        self.assertEqual(info['basic']['status'], 'expired', 'status after disable');
+        r = prv('sn', 'regen', model, sn)
+        self.ok(r, 'regenerate CIK', match='')
+        r = prv('sn', 'activate', model, sn)
+        self.ok(r, 're-activate', match=self.RE_RID)
+        newcik = r.stdout.strip()
+        r = rpc('info', cik, clonerid, '--include=basic')
+        self.ok(r, 'info succeeds')
+        info = json.loads(r.stdout)
+        self.assertEqual(info['basic']['status'], 'activated', 'status after activate');
+
         # delete sn
         r = prv('sn', 'delete', model, sn)
         self.ok(r, 'sn is deleted')

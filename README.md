@@ -188,7 +188,7 @@ Record a bunch of data without timestamps
 Dump data from multiple dataports to Excel-compatible CSV
 
 ```
-    $ time ./exo.py read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
+    $ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
 
     real    1m58.377s
     user    0m10.981s
@@ -242,7 +242,7 @@ Show differences between two clients
     $ exo diff 3ae52bdd5280d7cb96a2077b0cd5aaaaaaaaaaaa cc080a86b1c9b53d5371e0fa793f1daaaaaaaaaa
     $ exo create cc080a86b1c9b53d5371e0fa793f1aaaaaaaaaaa --type=dataport --format=float --name=Humidity
     rid: 6a8974d3d7d1f0ffd28385c90a1bebaaaaaaaaaa
-    $ ../exoline/exo.py diff 3ae52bdd5280d7cb96a2077b0cd5dbaaaaaaaaaa cc080a86b1c9b53d5371e0fa793f1daaaaaaaaaa
+    $ exo diff 3ae52bdd5280d7cb96a2077b0cd5dbaaaaaaaaaa cc080a86b1c9b53d5371e0fa793f1daaaaaaaaaa
     {
         "<<RID>>": {
         "aliases": {
@@ -504,6 +504,53 @@ $ exo content get PetFoodDispenserModel firmware.bin firmware.bin.downloaded
 $ diff firmware.bin.downloaded random_firmware.bin
 ```
 
+Generate a new CIK for a client. Its status becomes `notactivated`. Activate it again and see its status becomes `activated` and the 24 hour activation window closes. A second call to `activate` shows that the window is closed.
+
+```
+$ exo twee myportal
+My Portal    cl cik: f9586af62f8517b24a5f01234567890123456789
+  └─Dispenser    cl cik: d3846d708c9e6efab8ec01234567890123456789 (PetFoodDispenserModel#00000001)
+      └─Percent Full  dp.i percentFull:
+$ exo sn regen PetFoodDispenserModel 00000001
+$ DeviceRID=`exo lookup d3846d708c9e6efab8ec01234567890123456789`
+$ exo info myportal $DeviceRID --include=basic
+{"basic": {"status": "notactivated", "type": "client", "modified": 1416281490, "subscribers": 0}}
+$ exo twee myportal
+My Portal    cl cik: f9586af62f8517b24a5f01234567890123456789
+  └─Dispenser    cl cik: 70522b0830b8e4c4574f01234567890123456789 (PetFoodDispenserModel#00000001)
+      └─Percent Full  dp.i percentFull: 100 (14 hours ago)
+$ exo sn activate PetFoodDispenserModel 00000001
+70522b0830b8e4c4574f01234567890123456789
+$ exo info myportal $DeviceRID --include=basic
+{"basic": {"status": "activated", "type": "client", "modified": 1416281490, "subscribers": 0}}
+$ exo sn activate PetFoodDispenserModel 00000001
+One Platform provisioning exception: 409 Conflict (HTTP/1.1 409 Conflict)
+```
+
+Disable a client based on its serial number. Its status becomes `expired`. Then call `regen` to regenerate its CIK and activate to activate it.
+
+```
+$ exo sn disable PetFoodDispenserModel 00000001
+$ exo info myportal $DeviceRID --include=basic
+{"basic": {"status": "expired", "type": "client", "modified": 1416281490, "subscribers": 0}}
+$ exo sn activate PetFoodDispenserModel 00000001
+One Platform provisioning exception: 409 Conflict (HTTP/1.1 409 Conflict)
+$ exo sn regen PetFoodDispenserModel 00000001
+$ exo sn activate PetFoodDispenserModel 00000001
+40368ebd8f9923fb189b01234567890123456789
+$ exo info myportal $DeviceRID --include=basic
+{"basic": {"status": "activated", "type": "client", "modified": 1416281490, "subscribers": 0}}
+```
+
+Get a log of activations for a serial number
+
+```
+$ exo sn log PetFoodDispenserModel 00000001
+1416281778,127.0.0.1,model=PetFoodDispenserModel&vendor=weaver&sn=00000001
+1416332704,127.0.0.1,model=PetFoodDispenserModel&vendor=weaver&sn=00000001
+1416333004,127.0.0.1,model=PetFoodDispenserModel&vendor=weaver&sn=00000001
+```
+
 
 Environment Variables
 ---------------------
@@ -648,7 +695,7 @@ To run Exoline's integration tests, see [test/README.md](test/README.md).
 Building for Windows
 --------------------
 
-You can build Exoline as a Windows executable. On a Windows machine, do this:
+If you want to build your own Exoline Window executable and/or installer instead of using a [pre-built one](https://github.com/exosite/exoline/releases/), do this:
 
 - install Python (make sure bitness matches the machine. pywin32 cares about this.)
 - [pip-win](https://sites.google.com/site/pydatalog/python/pip-for-windows)
@@ -693,7 +740,8 @@ TODO
 - add command line interaction animated gif to README
 - marketing stuff (blog post)
 - make exoline<tab> autocompletion work in iPython
-- support PIKs in place of CIKs
+- support [PIKs](https://exositejs.herokuapp.com) in place of CIKs
 - better error handling for "Command line error: Failed to connect to https://portals.exosite.com"
 - support passing certs at the command line for https (portals and onep) when behind VPNs
 - support embedding scripts directly into YAML, if that's possible.
+- "did you mean" output when command is not found

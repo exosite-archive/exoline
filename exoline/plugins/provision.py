@@ -316,7 +316,8 @@ Command options:
 	class sn(Subcommand):
 		subcommands = ['list', 'add', 'delete', 'ranges',
 				       'addrange', 'delrange', 'regen',
-					   'enable', 'disable', 'activate']
+					   'enable', 'disable', 'activate',
+					   'log']
 
 		@classmethod
 		def doc(cls):
@@ -578,16 +579,23 @@ Usage:
 
 
 		def log(self, cmd, args, options):
-			'''Read the activation log (TODO: document)'''
+			'''Read a serial number's activation log.
+
+Usage:
+    exo [options] sn log <model> <sn>
+
+Output is comma-separated lines in this format:
+<timestamp>,<connection-info>,<log-entry>
+'''
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 
 			# This should be in the pyonep.provision class. It is not.
-			path = '/provision/manage/model/' + args['<model>'] + '/' + args['<sn>'][0] + '?show=log'
+			path = '/provision/manage/model/' + args['<model>'] + '/' + args['<sn>'] + '?show=log'
 			mlist = pop._request(path, key, '', 'GET', False)
-			print(mlist.body)
+			print(mlist.body.strip())
 
 
 		def remap(self, cmd, args, options):
@@ -602,7 +610,9 @@ Usage:
 
 
 		def regen(self, cmd, args, options):
-			'''Regenerate CIK for serial number.
+			'''Regenerate CIK for serial number, deactivate the client,
+and open a 24 hour window for device to call activate
+and get its CIK.
 
 Usage:
     exo [options] sn regen <model> <sn>'''
@@ -612,7 +622,8 @@ Usage:
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.serialnumber_reenable(key, args['<model>'], args['<sn>'])
-			print(mlist.body)
+			if len(mlist.body.strip()) > 0:
+				print(mlist.body.strip())
 
 		def enable(self, cmd, args, options):
 			'''Clone a new client from a client model inside
@@ -656,7 +667,7 @@ Usage:
 			print(rid)
 
 		def disable(self, cmd, args, options):
-			'''Disable a client CIK
+			'''Disable a client CIK.
 
 Usage:
 	exo [options] sn disable <model> <sn>'''
