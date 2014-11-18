@@ -1797,7 +1797,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         # create a model
         id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-        model = 'testmodel' + id
+        model = 'exolinetestmodel' + id
 
         pop.model_create(config['vendortoken'], model, childrid,
             aliases=True,
@@ -2051,7 +2051,7 @@ def tearDownModule(self):
     response = pop.model_list(config['vendortoken'])
     models = response.body.splitlines()
     for model in models:
-        if model.startswith('testmodel'):
+        if model.startswith('exolinetestmodel'):
             response = pop.model_remove(config['vendortoken'], model)
     # drop all test clients
     rpc('drop', config['portalcik'], '--all-children')
