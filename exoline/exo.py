@@ -365,7 +365,7 @@ Command options:
     ('activate', '''Activate a share code\n\nUsage:
     exo [options] activate <cik> --share=<code>
 
-If you want to activate a *device*, use the "provision activate"
+If you want to activate a *device*, use the "sn activate"
      command instead'''),
     ('deactivate', '''Deactivate a share code\n\nUsage:
     exo [options] deactivate <cik> --share=<code>'''),
@@ -464,7 +464,7 @@ else:
         plugins.append(p)
         cmd_doc[p.command()] = transform.__doc__
 
-        # transform plugin
+        # provision plugin
         try:
             from ..exoline.plugins import provision
         except:
@@ -477,9 +477,7 @@ else:
     except Exception as ex:
         import traceback
         traceback.print_exc()
-        print("Couldn't import spec......")
         pprint(ex)
-        print('yup, that was an exception.')
 
 # perform substitutions on command documentation
 for k in cmd_doc:
@@ -2258,13 +2256,27 @@ def handle_args(cmd, args):
         if args['<command>'] == 'copy':
             args['--httptimeout'] == '480'
 
+    port = args['--port']
+    if port is None:
+        port = DEFAULT_PORT_HTTPS if use_https else DEFAULT_PORT
+
     er = ExoRPC(host=args['--host'],
-                port=args['--port'],
+                port=port,
                 https=use_https,
                 httptimeout=args['--httptimeout'],
                 logrequests=args['--clearcache'],
                 user_agent=args['--useragent'],
 		curldebug=args['--curl'])
+
+    pop = provision.Provision(
+	host=args['--host'],
+	manage_by_cik=False,
+	port=port,
+	verbose=True,
+	https=use_https,
+	raise_api_exceptions=True,
+	curldebug=args['--curl'])
+
     if cmd in ['ip', 'data']:
         if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True or args['--curl'] is True:
             # TODO: support these
@@ -2683,28 +2695,30 @@ def handle_args(cmd, args):
         else:
             # search plugins
             handled = False
+            exitcode = 1
             for plugin in plugins:
                 if cmd in plugin.command():
                     options = {
                             'cik': cik,
                             'rids': rids,
                             'rpc': er,
+                            'provision': pop,
                             'exception': ExoException,
-			    'provision-exception': pyonep.exceptions.ProvisionException,
+                            'provision-exception': pyonep.exceptions.ProvisionException,
                             'utils': ExoUtilities,
-                            'config': exoconfig,
-                            'provision': provision
+                            'config': exoconfig
                             }
                     try:
                         options['data'] = ed
                     except NameError:
                         # no problem
                         pass
-                    plugin.run(cmd, args, options)
+                    exitcode = plugin.run(cmd, args, options)
                     handled = True
                     break
             if not handled:
                 raise ExoException("Command not handled")
+            return exitcode
     finally:
         if args['--clearcache']:
             for req in er.exo.loggedrequests():
@@ -2755,10 +2769,14 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         for line in lines[1:]:
             command_list += ' ' * max_cmd_length + line + '\n'
     doc = __doc__.replace('{{ command_list }}', command_list)
-    args = docopt(
-        doc,
-        version="Exosite Command Line {0}".format(__version__),
-        options_first=True)
+
+    try:
+        args = docopt(
+            doc,
+            version="Exosite Command Line {0}".format(__version__),
+            options_first=True)
+    except SystemExit as ex:
+        return ex.code
 
     global exoconfig
     exoconfig = ExoConfig(args['--config'])
@@ -2769,10 +2787,13 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if cmd in cmd_doc:
         # if doc expects yet another command, pass options_first=True
         options_first = True if re.search(
-	    '^Commands:$',
+            '^Commands:$',
             cmd_doc[cmd],
-            re.MULTILINE) else False
-        args_cmd = docopt(cmd_doc[cmd], argv=argv, options_first=options_first)
+            flags=re.MULTILINE) else False
+        try:
+            args_cmd = docopt(cmd_doc[cmd], argv=argv, options_first=options_first)
+        except SystemExit as ex:
+            return ex.code
     else:
         print('Unknown command {0}. Try "exo --help"'.format(cmd))
         return 1
@@ -2799,7 +2820,11 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     exoconfig.mingleArguments(args)
 
     try:
-        handle_args(cmd, args)
+        exitcode = handle_args(cmd, args)
+        if exitcode is None:
+            return 0
+        else:
+            return exitcode
     except ExoException as ex:
         # command line tool threw an exception on purpose
         sys.stderr.write("Command line error: {0}\r\n".format(ex))

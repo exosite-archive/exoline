@@ -51,7 +51,7 @@ class Plugin():
 
 	########################
 	class model(Subcommand):
-		subcommands = ['list', 'info', 'create', 'delete']
+		subcommands = ['list', 'info']
 		@classmethod
 		def doc(cls):
 			return '''Manage client models for a subdomain (alpha)
@@ -66,13 +66,13 @@ Commands:
 	INSTRUCTIONS.format('model'))
 
 		def list(self, cmd, args, options):
-			'''List models for a vendor
+			'''List models for a vendor.
 
 Usage:
     exo [options] model list [--long]
 
 Command options:
-    -l --long  show model RID, noaliases, nocomment, nohistorical
+    -l --long  Show model RID, noaliases, nocomment, nohistorical
     -h --help  Show this screen'''
 			pop = options['pop']
 			exoconfig = options['config']
@@ -109,15 +109,25 @@ Usage:
 			print(unquote(mlist.body))
 
 		def create(self, cmd, args, options):
-			'''Create a client model.
+			'''Create a client model based on a clone template client
+WARNING: models created this way are NOT compatible with Portals
+without some manual steps.
 
 Usage:
     exo [options] model create <model> (<rid>|<code>) [--noaliases] [--nocomments] [--nohistory]
 
-Command Options:
+Command options:
     --noaliases     Set no aliases option on model create
     --nocomments    Set no comments option on model create
-    --nohistory     Set no history option on model create'''
+    --nohistory     Set no history option on model create
+
+To make a model created with Exoline work in Portals:
+1. Go to https://<your subdomain>.exosite.com/admin/managemodels
+2. Click the edit button next to this model
+3. Enter a Model Name and re-enter the clone template device.
+
+Models created in Portals work just fine in Exoline.
+'''
 
 			pop = options['pop']
 			exoconfig = options['config']
@@ -133,6 +143,8 @@ Command Options:
 
 		def delete(self, cmd, args, options):
 			'''Delete a model, including all its content and serial numbers.
+WARNING: if you're using Portals, you should use Portals to
+delete the model instead of this command.
 
 Usage:
     exo [options] model delete <model>'''
@@ -141,7 +153,7 @@ Usage:
 			ExoException = options['exception']
 			key = exoconfig.config['vendortoken']
 			mlist = pop.model_remove(key, args['<model>'])
-			print(mlist.body)
+			print(mlist.body.strip())
 
 	########################
 	class content(Subcommand):
@@ -165,8 +177,8 @@ Commands:
 Usage:
     exo [options] content list <model> [--long]
 
-Command Options:
-    -l --long       Long listing'''
+Command options:
+    -l --long  Long listing: name, size, updated, protected, mime, meta'''
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
@@ -189,7 +201,7 @@ Command Options:
 				files = mlist.body.splitlines()
 				for afile in files:
 					mlist = pop.content_info(key, args['<model>'], afile)
-					mime,size,updated,meta,protected = mlist.body.strip().split(',')
+					mime, size, updated, meta, protected = mlist.body.strip().split(',')
 
 					# Format into human sizes
 					size = humanSize(size)
@@ -256,7 +268,7 @@ Usage:
 Usage:
     exo [options] content put <model> <id> <file> [--mime=type] [--meta=meta]
 
-Command Options:
+Command options:
     --mime=type     Set the mime type of the uploaded data. Will autodetect if omitted'''
 
 			pop = options['pop']
@@ -321,12 +333,12 @@ Commands:
 
 		def list(self, cmd, args, options):
 			'''List individual serial numbers added to a model,
-not including serial number ranges (see ranges command)
+not including serial number ranges (see ranges command).
 
 Usage:
     exo [options] sn list <model> [--long] [--offset=num] [--limit=num]
 
-Command Options:
+Command options:
     -l --long       Long listing
     --offset=num    Offset to start listing at [default: 0]
     --limit=num     Maximum entries to return [default: 1000]'''
@@ -367,7 +379,7 @@ Command Options:
 					print(",".join([sn,status,rid,extra]))
 
 		def info(self, cmd, args, options):
-			'''Get information about a serial number'''
+			'''Get information about a serial number.'''
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
@@ -377,7 +389,7 @@ Command Options:
 			print(unquote(mlist.body))
 
 		def ranges(self, cmd, args, options):
-			'''List serial number ranges supported by
+			'''List serial number ranges added to a model.
 
 Usage:
     exo [options] sn ranges <model>'''
@@ -477,10 +489,21 @@ Usage:
 			return number
 
 		def addrange(self, cmd, args, options):
-			'''Add a range of serial numbers to the model.
+			'''Add a range of serial numbers to the model. This makes
+the numbers in the specified range available for enabling devices.
 
 Usage:
-    exo [options] sn addrange <model> <format> <first> <last> [--length=<digits>] [(--uppercase | --lowercase)]'''
+    exo [options] sn addrange <model> <format> <first> <last> [(--uppercase | --lowercase)]
+
+Command options:
+    --length=<digits>  Require specific number length. Not applicable in mac?48 formats
+
+Details:
+    <format> is one of: base10, base16, mac:48, mac-48, mac.48
+    <first> is the first number in the range, e.g. 01:01:01:01:00
+    <last> is the last number in the range, e.g. 01:01:01:01:ff
+    --uppercase and --lowercase specify hex letter case for base16/mac?48
+'''
 			pop = options['pop']
 			exoconfig = options['config']
 			ExoException = options['exception']
@@ -592,16 +615,18 @@ Usage:
 			print(mlist.body)
 
 		def enable(self, cmd, args, options):
-			'''Clone a new client from a client model under
-<portal-cik>, assign serial number <sn> to it, open
-a 24 hour window during which a device may call
-activate and get a CIK.
+			'''Clone a new client from a client model inside
+<portal-cik>, assign serial number <sn> to it, and open
+a 24 hour window during which a device may call activate
+and get a CIK. <portal-cik> must be part of the subdomain
+for the model. If successful, output is the RID of the new
+client.
 
 Usage:
     exo [options] sn enable <model> <sn> <portal-cik> [--portal-rid=<portal-rid>]
 
---portal-rid, if supplied, makes the enable a little faster
-  by saving a lookup request for the portal.'''
+--portal-rid, if supplied, makes the command go a bit
+  faster by saving a lookup request for the portal.'''
 			pop = options['pop']
 			exoconfig = options['config']
 			rpc = options['rpc']
@@ -610,7 +635,7 @@ Usage:
 
 			# --portalrid is optional, but passing
 			# it saves one lookup
-			portal_cik = args['<portal-cik>']
+			portal_cik = exoconfig.lookup_shortcut(args['<portal-cik>'])
 			portal_rid = args['--portal-rid']
 			if portal_rid is None:
 				portal_rid = rpc.lookup(portal_cik, '')
@@ -686,24 +711,17 @@ http://docs.exosite.com/provision/device/#provisionactivate'''
 	def run(self, cmd, args, options):
 		cik = options['cik']
 		rpc = options['rpc']
-		provision = options['provision']
 		ProvisionException = options['provision-exception']
 		ExoException = options['exception']
 		ExoUtilities = options['utils']
 		exoconfig = options['config']
+		options['pop'] = options['provision']
 
 		err = "This command requires 'vendor' and 'vendortoken' in your Exoline config. See http://github.com/exosite/exoline#provisioning"
 		if 'vendortoken' not in exoconfig.config or exoconfig.config['vendortoken'] is None:
 			raise ExoException(err)
 		if 'vendor' not in exoconfig.config or exoconfig.config['vendor'] is None:
 			raise ExoException(err)
-
-		options['pop'] = provision.Provision(manage_by_cik=False,
-										port='443',
-										verbose=True,
-										https=True,
-										raise_api_exceptions=True,
-									    curldebug=args['--curl'])
 
 		argv = [cmd, args['<command>']] + args['<args>']
 		methodInfo = self.digMethod(argv, self)
@@ -712,11 +730,15 @@ http://docs.exosite.com/provision/device/#provisionactivate'''
 			if meth is not None and obj is not None:
 				if args['<command>'] in obj.subcommands:
 					doc = meth.__doc__
-					args_cmd = docopt(doc, argv=argv)
+					try:
+						args_cmd = docopt(doc, argv=argv)
+					except SystemExit as ex:
+						print(str(ex))
+						return 1 # ex.code
+					return meth(obj(), name, args_cmd, options)
 				else:
-					raise ExoException('Unknown command {0}. Try "exo --help"'.format(cmd))
+					raise ExoException('Unknown command {0}. Try "exo --help"'.format(args['<command>']))
 
-				meth(obj(), name, args_cmd, options)
 			else:
 				raise ExoException("Could not find requested sub command {0}".format(args['<command>']))
 		else:
@@ -724,6 +746,7 @@ http://docs.exosite.com/provision/device/#provisionactivate'''
 			if ('-h' in argv or '--help' in argv):
 				cls = self.findSubcommandClass(argv, self)
 				print(cls.doc())
+				return 1
 			else:
 				raise ExoException("Could not find requested sub command {0}".format(args['<command>']))
 

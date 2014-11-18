@@ -28,6 +28,7 @@ from dateutil import parser
 from exoline import exo
 from exoline.exo import ExolineOnepV1
 from exoline import timezone
+from pyonep import provision
 
 basedir = 'test'
 
@@ -50,6 +51,12 @@ logging.getLogger("run").setLevel(logging.DEBUG)
 logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
 log = logging.getLogger("run")
 
+pop = provision.Provision(host=config['host'],
+                          manage_by_cik=False,
+                          port=config['port'],
+                          verbose=True,
+                          https=config['https'],
+                          raise_api_exceptions=True)
 
 def abbrev(s, length=1000):
     if len(s) > length:
@@ -831,24 +838,23 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'time series data was not copied when --nohistorical was specified', match='')
 
         # clone dataport
-        '''copyrid = clone_helper(cik, 'foo')
-        self.ok(r, 'copy a dataport')
-
-        r = rpc('diff', cik, copycik)
-        if sys.version_info < (2, 7):
-            self.notok(r, 'diff not supported with Python <2.7')
-        else:
-            self.ok(r, 'diff after cloning dataport in only one of two clones, notices differences', match='.+')
-
-        copyrid = clone_helper(copycik, 'foo')
-        self.ok(r, 'copy another dataport')
-
-        r = rpc('diff', cik, copycik)
-        if sys.version_info < (2, 7):
-            self.notok(r, 'diff not supported with Python <2.7')
-        else:
-            self.ok(r, 'diff after cloning dataport in two clones, no differences', match='')'''
-
+        #copyrid = clone_helper(cik, 'foo')
+        #self.ok(r, 'copy a dataport')
+        #
+        #r = rpc('diff', cik, copycik)
+        #if sys.version_info < (2, 7):
+        #    self.notok(r, 'diff not supported with Python <2.7')
+        #else:
+        #    self.ok(r, 'diff after cloning dataport in only one of two clones, notices differences', match='.+')
+        #
+        #copyrid = clone_helper(copycik, 'foo')
+        #self.ok(r, 'copy another dataport')
+        #
+        #r = rpc('diff', cik, copycik)
+        #if sys.version_info < (2, 7):
+        #    self.notok(r, 'diff not supported with Python <2.7')
+        #else:
+        #    self.ok(r, 'diff after cloning dataport in two clones, no differences', match='')'''
         # TODO: test --noaliases
 
     def copy_diff_test(self):
@@ -909,19 +915,17 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         else:
             self.ok(r, 'aliases match now', match='')
 
-        '''
-        r = rpc('copy', cik, cik, '--cikonly')
-        self.ok(r, 'copy client into itself', match=self.RE_RID)
-        innercik = r.stdout
-
-        r = rpc('copy', copycik, copycik, '--cikonly')
-        self.ok(r, 'copy client copy into itself', match=self.RE_RID)
-        innercopycik = r.stdout
-
-        r = rpc('lookup', innercopycik, 'string_port_alias')
-        self.ok(r, 'lookup dataport on inner cik copy', match=self.RE_RID)
-        innercopydataportrid = r.stdout
-        '''
+        #r = rpc('copy', cik, cik, '--cikonly')
+        #self.ok(r, 'copy client into itself', match=self.RE_RID)
+        #innercik = r.stdout
+        #
+        #r = rpc('copy', copycik, copycik, '--cikonly')
+        #self.ok(r, 'copy client copy into itself', match=self.RE_RID)
+        #innercopycik = r.stdout
+        #
+        #r = rpc('lookup', innercopycik, 'string_port_alias')
+        #self.ok(r, 'lookup dataport on inner cik copy', match=self.RE_RID)
+        #innercopydataportrid = r.stdout
 
     def _stddesc(self, name):
         return {'limits': {'client': 'inherit',
@@ -1787,7 +1791,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def _createModel(self):
         cik = self.client.cik()
-        rid = self.client.rid
 
         childrid = self._createMultiple(cik, [
             Resource(cik, 'client', {'name': '你好世界'})])[0]
@@ -1796,13 +1799,16 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         model = 'testmodel' + id
 
-        r = prv('model', 'create', model, childrid)
-        self.ok(r, 'model was created')
+        pop.model_create(config['vendortoken'], model, childrid,
+            aliases=True,
+            comments=True,
+            historical=True)
+
         return model, childrid
 
     def provision_model_test(self):
         '''Provision model command'''
-        model, childrid = self._createModel()
+        model, modelrid = self._createModel()
 
         # list models
         r = prv('model', 'list')
@@ -1810,18 +1816,18 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         # get info for model
         r = prv('model', 'info', model)
-        self.ok(r, 'model info includes RID', search=childrid)
+        self.ok(r, 'model info includes RID', search=modelrid)
 
-        # delete model
-        r = prv('model', 'delete', model)
-        self.ok(r, 'model is deleted')
-        r = prv('model', 'list')
-        self.assertTrue(model not in r.stdout, 'deleted model is not in listing')
+    def provision_unknown_command(self):
+        '''Provision unknown subcommand'''
+        r = prv('blarg')
+        self.notok(r, 'unknown command', search='blarg')
 
     def provision_sn_test(self):
         '''Provision sn command'''
         cik = self.client.cik()
-        model, childrid = self._createModel()
+        model, modelrid = self._createModel()
+
         sn = 'sn' + model
 
         # add sn
@@ -1911,18 +1917,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def provision_content_test(self):
         '''Provision content commands'''
-        cik = self.client.cik()
-        rid = self.client.rid
-
-        childrid = self._createMultiple(cik, [
-            Resource(cik, 'client', {'name': '你好世界'})])[0]
 
         # create a model
-        id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-        model = 'testmodel' + id
-        sn = 'testsn' + id
-        r = prv('model', 'create', model, childrid)
-        self.ok(r, 'model was created')
+        model, rid = self._createModel()
 
         # list content
         r = prv('content', 'list', model)
@@ -1967,7 +1964,60 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # at the command line, but not from the test.
         #content('test/files/content.bin', 'content.bin', 'application/octet-stream')
 
+    def help_test(self):
+        '''Test -h for all commands'''
+        def check_help(r, command):
+            self.notok(r, 'error exit code')
+            self.assertTrue(
+                re.search(command, r.stdout, re.MULTILINE) is not None,
+                'help text is returned (no error)')
+            self.assertTrue(
+                re.search('Usage:', r.stdout, re.MULTILINE) is not None,
+                'help text includes usage')
+            # other linting goes here
+
+        def hlp(args):
+            a = args + ['-h']
+            r = rpc(*a)
+            check_help(r, args[-1] if len(args) > 0 else 'exo')
+            # this assumes commands are followed by two newlines
+            # and then another section
+            cmd_section = re.search(r'Commands:\n(.+)\n\n([A-Z]+)',
+                                    r.stdout,
+                                    flags=re.MULTILINE|re.DOTALL)
+            if cmd_section is None:
+                # no subcommands
+                #self.l(r.stdout)
+                self.assertTrue(
+                    'Commands:' not in r.stdout,
+                    'no commands matched, so we shouldn\'t have a command section')
+                return
+            else:
+                # there are subcommands
+                commands = []
+                for line in cmd_section.groups()[0].split('\n'):
+                    # pull just the command, e.g. 'tree'
+                    match = re.match('  ([^-\s][^\s]*)\s.*', line)
+                    if match is not None:
+                        commands.append(match.groups()[0])
+                if len(commands) == 0:
+                    self.l(str(commands))
+
+                self.assertTrue(len(commands) > 0)
+                for command in commands:
+                    hlp(args + [command])
+
+        hlp([])
+
 def tearDownModule(self):
     '''Do final things'''
     with open('test/testperf.json', 'w') as f:
         f.write(json.dumps(exo.PERF_DATA))
+    # delete test models
+    response = pop.model_list(config['vendortoken'])
+    models = response.body.splitlines()
+    for model in models:
+        if model.startswith('testmodel'):
+            response = pop.model_remove(config['vendortoken'], model)
+    # drop all test clients
+    rpc('drop', config['portalcik'], '--all-children')

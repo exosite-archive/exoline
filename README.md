@@ -54,10 +54,8 @@ Usage
 -----
 
 ```
-$ exo -h
-Exoline - a CLI for Exosite's IoT platform
-   Provides command line access to APIs documented here:
-   https://github.com/exosite/docs
+Exoline - Exosite IoT Command Line Interface
+https://github.com/exosite/exoline
 
 Usage:
   exo [--help] [options] <command> [<args> ...]
@@ -94,30 +92,33 @@ Commands:
   clone          Create a clone of a client
   makeShortcuts  Build a list of shortcuts from a client
   ndup           Duplicate a value in a dataport
-  provision      Provisioning. (alpha)
-             See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
+  model          Manage client models for a subdomain (alpha)
+  sn             Manage serial numbers (alpha)
+  content        Manage content, e.g. firmware images, for a model (alpha)
   spec           Determine whether a client matches a specification (beta)
   transform      Transform data on in a dataport by mapping all values (alpha)
 
 Options:
-  --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
-  --port=<port>        OneP port. Default is $EXO_PORT or 443
-  --config=<file>      Config file [default: ~/.exoline]
-  --httptimeout=<sec>  HTTP timeout [default: 60] (default for copy is 480)
-  --https              Enable HTTPS (deprecated, HTTPS is default)
-  --http               Disable HTTPS
-  --useragent=<ua>     Set User-Agent Header for outgoing requests
-  --debug              Show debug info (stack traces on exceptions)
-  -d --debughttp       Turn on debug level logging in pyonep
-  --discreet           Obfuscate RIDs in stdout and stderr
-  -c --clearcache      Invalidate Portals cache after running command
-  --portals=<server>   Portals server [default: https://portals.exosite.com]
-  --vendortoken=<vt>   Vendor Token. See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
-  -h --help            Show this screen
-  -v --version         Show version
+  --host=<host>          OneP host. Default is $EXO_HOST or m2.exosite.com
+  --port=<port>          OneP port. Default is $EXO_PORT or 443
+  -c --config=<file>     Config file [default: ~/.exoline]
+  --httptimeout=<sec>    HTTP timeout [default: 60] (default for copy is 480)
+  --https                Enable HTTPS (deprecated, HTTPS is default)
+  --http                 Disable HTTPS
+  --useragent=<ua>       Set User-Agent Header for outgoing requests
+  --debug                Show debug info (stack traces on exceptions)
+  -d --debughttp         Turn on debug level logging in pyonep
+  --curl                 Show curl calls for requests. Implies --debughttp
+  --discreet             Obfuscate RIDs in stdout and stderr
+  -e --clearcache        Invalidate Portals cache after running command
+  --portals=<server>     Portals server [default: https://portals.exosite.com]
+  -t --vendortoken=<vt>  Vendor token (/admin/home in Portals)
+  -n --vendor=<vendor>   Vendor identifier (/admin/managemodels in Portals)
+             (See http://github.com/exosite/exoline#provisioning)
+  -h --help              Show this screen
+  -v --version           Show version
 
 See 'exo <command> --help' for more information on a specific command.
-
 ```
 
 
@@ -196,25 +197,6 @@ Dump data from multiple dataports to Excel-compatible CSV
     $ wc -l alldata.csv
       316705 alldata.csv
 ```
-
-Make a client model out of a generic client
-
-```
-    TODO
-```
-
-Provision a new device based on a client model
-
-```
-    TODO
-```
-
-Write some firmware content, read it back, and verify it
-
-```
-    TODO
-```
-
 
 Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
 
@@ -363,7 +345,7 @@ Show differences between two clients
 See the HTTP requests and responses being made by pyonep:
 
 ```
-$ exo --debughttp --discreet read <cik> temperature
+$ exo --debughttp read sensor1 temperature
 DEBUG:pyonep.onep:POST /api:v1/rpc/process
 Host: m2.exosite.com:80
 Headers: {'Content-Type': 'application/json; charset=utf-8'}
@@ -374,10 +356,24 @@ Body: [{"id":70,"status":"ok","result":[[1376819736,24.1]]}]
 2013-08-18 04:55:36,24.1
 ```
 
+`--curl` is like `--debughttp`, but logs requests in curl format that may be run directly.
+
+```
+$ exo --curl read sensor1 temperature
+DEBUG:pyonep.onep:curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-Type: application/json; charset=utf-8' -H 'User-Agent: Exoline 0.9.0' -d '{"calls": [{"id": 25, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}'
+DEBUG:pyonep.onep:HTTP/1.1 200 OK
+Headers: [('date', 'Tue, 18 Nov 2014 03:02:11 GMT'), ('content-length', '52'), ('content-type', 'application/json; charset=utf-8'), ('connection', 'keep-alive'), ('server', 'misultin/0.8.2-exosite')]
+DEBUG:pyonep.onep:Body: [{"id":25,"status":"ok","result":[[1379607152,22]]}]
+2013-09-19 11:12:32-05:00,22
+
+$ curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-Type: application/json; charset=utf-8' -H 'User-Agent: Exoline 0.9.0' -d '{"calls": [{"id": 42, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}'
+[{"id":42,"status":"ok","result":[[1379607152,22]]}]
+```
+
 Share a dataport with another client.
 
 ```
-# we want to share client1/dataport1 with client2
+# let's say we want to share client1/dataport1 with client2
 $ exo tree wb
 Dev client cik: 5de0cf0000000000000000000000000000000000 (aliases: (see parent))
   ├─client1 client cik: 0a35320000000000000000000000000000000000 (aliases: [u'client1'])
@@ -440,20 +436,19 @@ ok
 Provisioning
 ------------
 
-The `provision` command can be used to do fleet management operations-- everything related to serial numbers, firmware content, and client models. To use it, you need to configure Exoline with a vendor identifier and vendor token. This requires having administrator access to a subdomain. If you have that level of access on a subdomain, log in to portals and go to `https://<yoursubdomain>.exosite.com/admin/home` and copy the thing called the "Vendor API Token" to your Exoline config file. You'll also need your vendor identification, which can be found at `https://<yoursubdomain>.exosite.com/admin/managemodels`.
+Exoline includes provisioning for doing fleet management operations-- everything related to serial numbers, firmware content, and client models. To use these commands, you need to configure Exoline with a vendor identifier and vendor token. This requires having administrator access to a subdomain. If you have that level of access on a subdomain, log in to portals and go to `https://<yoursubdomain>.exosite.com/admin/home` and copy the thing called the "Vendor API Token" to your Exoline config file. You'll also need your vendor identification, which can be found at `https://<yoursubdomain>.exosite.com/admin/managemodels`.
 
 ```
 echo "vendortoken: 30c8b0123456789abcdef0123456789abcdef012" >> ~/.exoline
 echo "vendor: myvendor" >> ~/.exoline
 ```
 
-Once you do this, the provisioning commands work:
+Once you do this, provisioning commands `model`, `sn`, and `content` work:
 
 ```
-$ exo provision model list
+$ exo model list
 testmodel
-testmodelapi
-TestModel2
+PetFoodDispenser
 ```
 
 There is a limit of one `vendor` and `vendortoken` per config file. If you're working with multiple subdomains, you'll need to create multiple Exoline config files and pass them in at the command line. For example:
@@ -466,6 +461,47 @@ You can also pass the vendor token and vendor identifier at the command line lik
 
 ```
 $ exo --vendor=myvendor --vendortoken=30c8b0123456789abcdef0123456789abcdef012 model list
+```
+
+### Examples
+
+Provision a new device based on a client model
+
+```
+$ exo model list
+testmodel
+PetFoodDispenserModel
+$ exo sn addrange PetFoodDispenserModel 00000000 000000FF --length=8
+$ exo sn enable PetFoodDispenserModel 00000001 myportal
+ae33a5010c0791b758c6ee89437b38d4d44666e6
+$ exo twee myportal
+My Portal    cl cik: f9586af62f8517b24a5f01234567890123456789
+  └─Dispenser    cl cik: d3846d708c9e6efab8ec01234567890123456789 (PetFoodDispenserModel#00000001)
+      └─Percent Full  dp.i percentFull:
+$ exo write d3846d708c9e6efab8ec01234567890123456789 percentFull --value=100
+One Platform exception: {u'message': u'Authorization failed', u'code': 401}
+$ exo sn activate PetFoodDispenserModel 00000001
+d3846d708c9e6efab8ecbad9966872aac77b99e8
+$ exo write d3846d708c9e6efab8ec01234567890123456789 percentFull --value=100
+$ exo read d3846d708c9e6efab8ecbad9966872aac77b99e8 percentFull
+2014-11-17 21:37:52-06:00,100
+```
+
+Write some firmware content, read it back, and verify it
+
+```
+$ exo content PetFoodDispenserModel list
+$ # create a 4k binary file
+$ dd if=/dev/random iflag=fullblock of=random_firmware.bin bs=4096 count=1
+dd if=/dev/random of=random_firmware.bin bs=4096 count=1
+1+0 records in
+1+0 records out
+4096 bytes transferred in 0.000298 secs (13743895 bytes/sec)
+$ exo content put PetFoodDispenserModel firmware.bin random_firmware.bin --meta=v0.0.1
+$ exo content list PetFoodDispenserModel --long
+firmware.bin,4k,Mon Nov 17 22:01:34 2014,false,application/octet-stream,v0.0.1
+$ exo content get PetFoodDispenserModel firmware.bin firmware.bin.downloaded
+$ diff firmware.bin.downloaded random_firmware.bin
 ```
 
 

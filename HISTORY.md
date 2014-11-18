@@ -4,6 +4,9 @@ History
 NEXT
 ----
 
+- make model, content, and sn top-level commands
+- write model, content, sn tests
+- write usage documentation for provisioning
 - many fixes to provision model and sn commands
 - support --curl option for viewing requests in curl format
 
