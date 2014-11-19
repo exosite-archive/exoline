@@ -483,7 +483,7 @@ One Platform exception: {u'message': u'Authorization failed', u'code': 401}
 $ exo sn activate PetFoodDispenserModel 00000001
 d3846d708c9e6efab8ecbad9966872aac77b99e8
 $ exo write d3846d708c9e6efab8ec01234567890123456789 percentFull --value=100
-$ exo read d3846d708c9e6efab8ecbad9966872aac77b99e8 percentFull
+$ exo read d3846d708c9e6efab8ec01234567890123456789 percentFull
 2014-11-17 21:37:52-06:00,100
 ```
 
@@ -504,7 +504,7 @@ $ exo content get PetFoodDispenserModel firmware.bin firmware.bin.downloaded
 $ diff firmware.bin.downloaded random_firmware.bin
 ```
 
-Generate a new CIK for a client. Its status becomes `notactivated`. Activate it again and see its status becomes `activated` and the 24 hour activation window closes. A second call to `activate` shows that the window is closed.
+Regenerate a CIK for a client. Its status becomes `notactivated`. Activate it again and see its status becomes `activated` and the 24 hour activation window closes. A second call to `activate` shows that the window is closed.
 
 ```
 $ exo twee myportal
