@@ -499,12 +499,16 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         if treecmd != 'twee':
             r = rpc(treecmd, cik, '--values', *options)
-            # call did not fail
             self.ok(r, treecmd + ' with --values shouldn\'t fail')
 
             r = rpc(treecmd, cik, '--verbose', *options)
-            # call did not fail
             self.ok(r, treecmd + ' with --verbose shouldn\'t fail')
+        else:
+            r = rpc(treecmd, cik, '--rids', *options)
+            self.ok(r, treecmd + ' with --rids should\'t fail')
+            self.assertTrue(
+                re.search('(cik:|rid\.)', r.stdout) is None,
+                'look for things that shouldn\'t be in --rids output')
 
     def tree_test(self):
         '''Tree command'''

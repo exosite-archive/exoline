@@ -9,6 +9,8 @@ NEXT
 - write usage documentation for provisioning
 - many fixes to provision model and sn commands
 - support --curl option for viewing requests in curl format
+- added --rids command to twee
+- darker twee colors for visibility on white background
 
 0.9.0 (2014-10-29)
 ------------------

@@ -254,6 +254,7 @@ Command options:
 Command options:
     --nocolor      don't use color in output (color is always off in Windows)
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]
+    --rids         show RIDs instead CIKs below the top level
 
 Example:
 
@@ -1262,12 +1263,12 @@ class ExoRPC():
             class bcolors:
                 SPACER = '' if cli_args['--nocolor'] else '\033[0m'
                 NAME = '' if cli_args['--nocolor'] else '\033[0m'
-                TYPE = '' if cli_args['--nocolor'] else '\033[95m'
-                ID = '' if cli_args['--nocolor'] else '\033[92m'
-                VALUE = '' if cli_args['--nocolor'] else '\033[93m'
-                TIMESTAMP = '' if cli_args['--nocolor'] else '\033[94m'
-                PINK = '' if cli_args['--nocolor'] else '\033[95m'
-                MODEL = '' if cli_args['--nocolor'] else '\033[96m'
+                TYPE = '' if cli_args['--nocolor'] else '\033[35m'
+                ID = '' if cli_args['--nocolor'] else '\033[32m'
+                VALUE = '' if cli_args['--nocolor'] else '\033[33m'
+                TIMESTAMP = '' if cli_args['--nocolor'] else '\033[34m'
+                PINK = '' if cli_args['--nocolor'] else '\033[35m'
+                MODEL = '' if cli_args['--nocolor'] else '\033[36m'
                 ENDC = '' if cli_args['--nocolor'] else '\033[0m'
 
             # the goal here is to make the line short to provide more room for the value
@@ -1275,12 +1276,18 @@ class ExoRPC():
             # if no alias, then the first ten of the RID and the name
             # if multiple alias, then the first alias
             if typ == 'client':
-                tweeid = bcolors.SPACER + 'cik: ' + bcolors.ID + id[5:]
-            else:
-                if aliases is not None and len(aliases) > 0:
-                    tweeid = aliases[0]
+                if cli_args['--rids']:
+                    tweeid = bcolors.SPACER + 'rid: ' + bcolors.ID + rid
                 else:
-                    tweeid = 'rid.' + rid[:5]
+                    tweeid = bcolors.SPACER + 'cik: ' + bcolors.ID + id[5:]
+            else:
+                if cli_args['--rids']:
+                    tweeid = bcolors.SPACER + 'rid: ' + bcolors.ID + rid
+                else:
+                    if aliases is not None and len(aliases) > 0:
+                        tweeid = aliases[0]
+                    else:
+                        tweeid = 'rid.' + rid[:5]
 
             displayname = ((name + bcolors.SPACER + ' ') if len(name) > 0 else ' ')
             displaytype = {'dataport': 'dp', 'client': 'cl', 'datarule': 'dr', 'dispatch': 'ds'}[typ]
