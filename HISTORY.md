@@ -1,8 +1,8 @@
 History
 =======
 
-NEXT
-----
+0.9.1 (2014-11-19)
+------------------
 
 - make model, content, and sn top-level commands
 - write model, content, sn tests

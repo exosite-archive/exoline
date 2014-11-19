@@ -463,7 +463,7 @@ You can also pass the vendor token and vendor identifier at the command line lik
 $ exo --vendor=myvendor --vendortoken=30c8b0123456789abcdef0123456789abcdef012 model list
 ```
 
-### Examples
+#### Provisioning examples
 
 Provision a new device based on a client model
 
