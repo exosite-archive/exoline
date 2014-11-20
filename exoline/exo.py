@@ -1496,11 +1496,11 @@ probably not valid.".format(cik))
             else:
                 raise ExoException("Error aliasing script")
         else:
-            success = self.exo.update(cik, rid, desc)
-            if success:
+            isok, response = self.exo.update(cik, rid, desc)
+            if isok:
                 print ("Updated script RID: {0}".format(rid))
             else:
-                raise ExoException("Error updating datarule.")
+                raise ExoException("Error updating datarule: {0}".format(response))
 
     def cik_recursive(self, cik, fn):
         '''Run fn on cik and all its client children'''
