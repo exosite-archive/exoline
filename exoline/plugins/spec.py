@@ -4,6 +4,7 @@
 Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>] [--portal|--domain] [-f]
     exo [options] spec <cik> --generate=<filename> [--scripts=<dir>] [--asrid]
+    exo [options] spec <spec-yaml> --check
     exo [options] spec --example
 
 The --generate form creates spec YAML and scripts from a CIK.
@@ -11,6 +12,7 @@ The --generate form creates spec YAML and scripts from a CIK.
 Command options:
     --update-scripts  Update any scripts that do not match what's
                       on the filesystem
+    --check           Validate the jsonschema elements to be valid schemas
     --create          Create any resources that do not exist
     --asrid           When generating a spec, do not convert RIDs into aliases.
     --ids substitutes values for <% id %> when matching alias
@@ -129,6 +131,23 @@ scripts:
             if not six.PY3:
                 s = s.encode('utf-8')
             print(s)
+            return
+
+        if args['--check'] is not None:
+            # Validate all the jsonschema
+            with open(args['<spec-yaml>']) as f:
+                spec = yaml.safe_load(f)
+            for dp in spec['dataports']:
+                alias = dp['alias']
+                if 'jsonschema' in dp:
+                    schema = dp['jsonschema']
+                    if isinstance(schema, six.string_types):
+                        schema = json.loads(open(schema).read())
+                    try:
+                        jsonschema.Draft4Validator.check_schema(schema)
+                    except Exception as ex:
+                        print("{0} failed jsonschema validation.".format(alias))
+                        print(ex)
             return
 
 
