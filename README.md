@@ -11,7 +11,7 @@ Installation
 Install the latest released version of Exoline from PyPI. 
 
 ```
-    $ sudo pip install exoline
+$ sudo pip install exoline
 ```
 
 pip is a package manager for Python. To get pip, try `sudo easy_install pip` in Mac OS X,  `sudo apt-get install python-setuptools;sudo easy_install pip` in Ubuntu. See below for Windows instructions.
@@ -19,9 +19,9 @@ pip is a package manager for Python. To get pip, try `sudo easy_install pip` in 
 Here's how to install from source:
 
 ```
-    $ git clone git://github.com/exosite/exoline
-    $ cd exoline
-    $ python setup.py install
+$ git clone git://github.com/exosite/exoline
+$ cd exoline
+$ python setup.py install
 ```
 
 [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments and avoid needing to use sudu for package installs.
@@ -47,7 +47,7 @@ Upgrading
 To upgade your version of exoline you can use the following command. 
 
 ```
-    $ sudo pip install exoline --upgrade
+$ sudo pip install exoline --upgrade
 ```
 
 Usage
@@ -152,194 +152,194 @@ ArduinoWifi  client cik: 2ca4f441538c1f2cc8bf01234567890123456789 (aliases: see 
 Write a Lua script
 
 ```
-    $ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa     
-    Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
+$ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa     
+Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
 ```
 
 Read a Lua script (with help from the awesome [jq](http://stedolan.github.io/jq/))
 
 ```
-    $ exo info e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --include=description | jq -r .description.rule.script 
+$ exo info e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --include=description | jq -r .description.rule.script 
 ```
 
 Monitor output of a script
 
 ```
-    $ exo read e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --follow 
-    2013-07-09 11:57:45,line 2: Running translate_gps.lua...
-    2013-07-09 12:00:17,"line 12: New 4458.755987,N,09317.538945,W
-    line 23: Writing 4458.755987_-09317.538945"
-    2013-07-09 12:15:41,"line 12: New 4458.755987,N,09317.538945,W
-    line 23: Writing 4458.755987_-09317.538945"
+$ exo read e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --follow 
+2013-07-09 11:57:45,line 2: Running translate_gps.lua...
+2013-07-09 12:00:17,"line 12: New 4458.755987,N,09317.538945,W
+line 23: Writing 4458.755987_-09317.538945"
+2013-07-09 12:15:41,"line 12: New 4458.755987,N,09317.538945,W
+line 23: Writing 4458.755987_-09317.538945"
 ```
 
 Write raw data
 
 ```
-    $ exo write e469e336ff9c8ed9176bc05ed7fa40daaaaaaaa gps-raw --value=4458.755987,N,09317.538945,W
+$ exo write e469e336ff9c8ed9176bc05ed7fa40daaaaaaaa gps-raw --value=4458.755987,N,09317.538945,W
 ```
 
 Record a bunch of data without timestamps
 
 ```
-    $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
+$ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
 ```
 
 Dump data from multiple dataports to Excel-compatible CSV
 
 ```
-    $ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
+$ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
 
-    real    1m58.377s
-    user    0m10.981s
-    sys     0m0.506s
+real    1m58.377s
+user    0m10.981s
+sys     0m0.506s
 
-    $ wc -l alldata.csv
-      316705 alldata.csv
+$ wc -l alldata.csv
+  316705 alldata.csv
 ```
 
 Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
 
 ```
-    $ exo clone e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa --rid=ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
-    cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
-    rid: 9635aa74053b3ab681e6ae0fb8187a0000000000
+$ exo clone e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa --rid=ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
+cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
+rid: 9635aa74053b3ab681e6ae0fb8187a0000000000
 ```
 
 Copy a device with CIK e469e3... to a different portal with CIK ed6c3f... Note that whereas clone can clone all types of devices and device data within the same portal, copy is somewhat limited in the types of devices it supports but can do inter-portal copies.
 
 ```
-    $ exo copy e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
-    cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
-    rid: 9635aa74053b3ab681e6ae0fb8187a0000000000
+$ exo copy e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
+cik: c81e6ae0fbbd7e9635aa74053b3ab6aaaaaaaaaa
+rid: 9635aa74053b3ab681e6ae0fb8187a0000000000
 ```
 
 Create a new client or resource
 
 ```
-    $ exo create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --alias=stringport --name="Original Name"
-    rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
+$ exo create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --alias=stringport --name="Original Name"
+rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 ```
 
 Update a the name of a resource
 
 ```
-    $ echo '{"name":"New Name"}' | exo update ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa stringport -
+$ echo '{"name":"New Name"}' | exo update ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa stringport -
 ```
 
 Get the RID for CIK ad0282...
 
 ```
-    $ exo lookup ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa
-    34eaae237988167d90bfc2ffeb666daaaaaaaaaa
+$ exo lookup ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa
+34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 ```
 
 Show differences between two clients
 
 ```
-    $ exo copy 3ae52bdd5280d7cb96a2077b0cd5aaaaaaaaaaaa 5de0cfcf7b5bed2ea7a802ebe0679baaaaaaaaaa
-    cik: cc080a86b1c9b53d5371e0fa793faaaaaaaaaaa
-    $ exo diff 3ae52bdd5280d7cb96a2077b0cd5aaaaaaaaaaaa cc080a86b1c9b53d5371e0fa793f1daaaaaaaaaa
-    $ exo create cc080a86b1c9b53d5371e0fa793f1aaaaaaaaaaa --type=dataport --format=float --name=Humidity
-    rid: 6a8974d3d7d1f0ffd28385c90a1bebaaaaaaaaaa
-    $ exo diff 3ae52bdd5280d7cb96a2077b0cd5dbaaaaaaaaaa cc080a86b1c9b53d5371e0fa793f1daaaaaaaaaa
-    {
+$ exo copy 3ae52bdd5280d7cb96a2077b0cd5aaaaaaaaaaaa 5de0cfcf7b5bed2ea7a802ebe0679baaaaaaaaaa
+cik: cc080a86b1c9b53d5371e0fa793faaaaaaaaaaa
+$ exo diff 3ae52bdd5280d7cb96a2077b0cd5aaaaaaaaaaaa cc080a86b1c9b53d5371e0fa793f1daaaaaaaaaa
+$ exo create cc080a86b1c9b53d5371e0fa793f1aaaaaaaaaaa --type=dataport --format=float --name=Humidity
+rid: 6a8974d3d7d1f0ffd28385c90a1bebaaaaaaaaaa
+$ exo diff 3ae52bdd5280d7cb96a2077b0cd5dbaaaaaaaaaa cc080a86b1c9b53d5371e0fa793f1daaaaaaaaaa
+{
+    "<<RID>>": {
+    "aliases": {
+        "<<RID>>": [
+        "temp"
+        ]
+    }, 
+    "basic": {
+        "subscribers": 0, 
+        "type": "client"
+    }, 
+    "children": {
         "<<RID>>": {
-        "aliases": {
-            "<<RID>>": [
-            "temp"
-            ]
-        }, 
++         "basic": {
++           "subscribers": 0, 
++           "type": "dataport"
++         }, 
++         "children": {}, 
++         "comments": [], 
++         "description": {
++           "format": "float", 
++           "meta": "", 
++           "name": "Humidity", 
++           "preprocess": [], 
++           "public": false, 
++           "retention": {
++             "count": "infinity", 
++             "duration": "infinity"
++           }, 
++           "subscribe": null
++         }, 
++         "shares": [], 
++         "subscribers": [], 
++         "tags": []
++       }, 
++       "Temperature.f2a40b81cb677401dffdc2cfad0f8a266d63590b": {
         "basic": {
             "subscribers": 0, 
-            "type": "client"
+            "type": "dataport"
         }, 
-        "children": {
-            "<<RID>>": {
-    +         "basic": {
-    +           "subscribers": 0, 
-    +           "type": "dataport"
-    +         }, 
-    +         "children": {}, 
-    +         "comments": [], 
-    +         "description": {
-    +           "format": "float", 
-    +           "meta": "", 
-    +           "name": "Humidity", 
-    +           "preprocess": [], 
-    +           "public": false, 
-    +           "retention": {
-    +             "count": "infinity", 
-    +             "duration": "infinity"
-    +           }, 
-    +           "subscribe": null
-    +         }, 
-    +         "shares": [], 
-    +         "subscribers": [], 
-    +         "tags": []
-    +       }, 
-    +       "Temperature.f2a40b81cb677401dffdc2cfad0f8a266d63590b": {
-            "basic": {
-                "subscribers": 0, 
-                "type": "dataport"
-            }, 
-            "children": {}, 
-            "comments": [], 
-            "description": {
-                "format": "float", 
-                "meta": "", 
-                "name": "Temperature", 
-                "preprocess": [], 
-                "public": false, 
-                "retention": {
-                "count": "infinity", 
-                "duration": "infinity"
-                }, 
-                "subscribe": null
-            }, 
-            "shares": [], 
-            "subscribers": [], 
-            "tags": []
-            }
-        }, 
+        "children": {}, 
         "comments": [], 
-        "counts": {
-            "client": 0, 
-    -       "dataport": 1, 
-    ?                   ^
-    +       "dataport": 2, 
-    ?                   ^
-            "datarule": 0, 
-            "dispatch": 0
-        }, 
         "description": {
-            "limits": {
-            "client": "inherit", 
-            "dataport": "inherit", 
-            "datarule": "inherit", 
-            "disk": "inherit", 
-            "dispatch": "inherit", 
-            "email": "inherit", 
-            "email_bucket": "inherit", 
-            "http": "inherit", 
-            "http_bucket": "inherit", 
-            "share": "inherit", 
-            "sms": "inherit", 
-            "sms_bucket": "inherit", 
-            "xmpp": "inherit", 
-            "xmpp_bucket": "inherit"
-            }, 
-            "locked": false, 
+            "format": "float", 
             "meta": "", 
-            "name": "MyDevice", 
-            "public": false
+            "name": "Temperature", 
+            "preprocess": [], 
+            "public": false, 
+            "retention": {
+            "count": "infinity", 
+            "duration": "infinity"
+            }, 
+            "subscribe": null
         }, 
         "shares": [], 
         "subscribers": [], 
-        "tagged": [], 
         "tags": []
         }
+    }, 
+    "comments": [], 
+    "counts": {
+        "client": 0, 
+-       "dataport": 1, 
+?                   ^
++       "dataport": 2, 
+?                   ^
+        "datarule": 0, 
+        "dispatch": 0
+    }, 
+    "description": {
+        "limits": {
+        "client": "inherit", 
+        "dataport": "inherit", 
+        "datarule": "inherit", 
+        "disk": "inherit", 
+        "dispatch": "inherit", 
+        "email": "inherit", 
+        "email_bucket": "inherit", 
+        "http": "inherit", 
+        "http_bucket": "inherit", 
+        "share": "inherit", 
+        "sms": "inherit", 
+        "sms_bucket": "inherit", 
+        "xmpp": "inherit", 
+        "xmpp_bucket": "inherit"
+        }, 
+        "locked": false, 
+        "meta": "", 
+        "name": "MyDevice", 
+        "public": false
+    }, 
+    "shares": [], 
+    "subscribers": [], 
+    "tagged": [], 
+    "tags": []
     }
+}
 ```
 
 See the HTTP requests and responses being made by pyonep:
