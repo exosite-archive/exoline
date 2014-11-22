@@ -24,6 +24,7 @@ import six
 import yaml
 from six import iteritems
 from dateutil import parser
+from nose.plugins.attrib import attr
 
 from exoline import exo
 from exoline.exo import ExolineOnepV1
@@ -144,6 +145,10 @@ def makeRPC():
     return exo.ExoRPC(host=config['host'], https=config['https'], port=config['port'])
 
 class TestRPC(TestCase):
+    #def shortDescription(self):
+    #    # show test function names rather than docstring
+    #    return None
+
     RE_RID = '[0-9a-f]{40}'
 
     def _logall(self, r):
@@ -613,6 +618,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.l("{0} vs {1}".format(r.stdout, val))
         self.assertEqual(r.stdout, val, msg)
 
+    @attr('script')
     def script_test(self):
         '''Script upload'''
         waitsec = 12
@@ -673,13 +679,13 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         #self._latest(cik, 'string_port_alias', lua2['portoutput'],
         #             'dataport write from updated script within {0} sec'.format(waitsec))
         # test other form
-        r = rpc('script', cik, '--file='+lua1['path'], '--name=' + lua1['name'] + 'form2', '--create')
+        r = rpc('script', cik, '--file='+lua1['path'], '--name=' + lua1['name'] + '_form2', '--create')
         self.ok(r, 'upload new script with new argument form succeeds')
-        self.assertEqual(readscript(cik, lua1['name'] + 'form2'), lua1['content'], 'create script with new argument form')
+        self.assertEqual(readscript(cik, lua1['name'] + '_form2'), lua1['content'], 'create script with new argument form')
         # test passing RID
-        r = rpc('script', cik, 'scriptByRID', '--file='+lua1['path'], '--name=' + lua1['name'] + 'form2', '--create')
+        r = rpc('script', cik, 'scriptByRID', '--file='+lua1['path'], '--name=' + lua1['name'] + '_form2', '--create')
         self.ok(r, 'upload new script with new argument form succeeds')
-        self.assertEqual(readscript(cik, lua1['name'] + 'form2'), lua1['content'], 'create script with new argument form')
+        self.assertEqual(readscript(cik, lua1['name'] + '_form2'), lua1['content'], 'create script with new argument form')
 
         # test --recursive
         r = rpc('read', childcik1, lua1['name'])
@@ -1226,8 +1232,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         info_new['description']['name'] = name_old
         self.assertTrue(info_old == info_new, 'client name was only difference')
 
+    @attr('spec')
+    @attr('script')
     def spec_test(self):
-        '''Spec command'''
+        #'''Spec command'''
         print(os.path.dirname(os.getcwd()))
         cik = self.client.cik()
         spec = basedir + '/files/spec.yaml'
@@ -1331,6 +1339,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         os.remove(example_spec)
 
+    @attr('spec')
     def spec_subscribe_test(self):
         '''Test spec dataports with a subscription to another'''
         cik = self.client.cik()
@@ -1344,6 +1353,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, 'destination', '--format=raw')
         self.ok(r, 'read subscribed value', match='ATEST')
 
+    @attr('spec')
     def spec_preprocess_test(self):
         '''Test spec dataports with preprocess'''
         cik = self.client.cik()
@@ -1365,6 +1375,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, 'complex', '--format=raw')
         self.ok(r, 'read preprocessed value', match='30')
 
+    @attr('spec')
     def spec_retention_test(self):
         '''Test spec dataports with retention'''
         cik = self.client.cik()
@@ -1405,6 +1416,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertTrue(retention['count'] == 'infinity', 'Count is wrong')
         self.assertTrue(retention['duration'] == 'infinity', 'Duration is wrong')
 
+    @attr('spec')
     def spec_multi_test(self):
         '''Test spec --portal for updating multiple devices'''
         # Get example spec
@@ -1476,6 +1488,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, "Device didn't match spec", search='not found')
 
 
+    @attr('spec')
     def spec_domain_test(self):
         '''
             Tests the ability to update multiple device of the same clientmodel

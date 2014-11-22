@@ -301,8 +301,8 @@ Example:
     Both forms do the same thing, but --file is the recommended one.
     If <rid> is omitted, the file name part of <script-file> is used
     as both the alias and name of the script. This convention helps
-    when working with scripts in Portals, since it shows the script
-    resource's name but not its alias.
+    when working with scripts in Portals, because Portals shows the
+    script resource's name but not its alias.
 
 Command options:
     --name=<name>  script name, if different from script filename. The name
@@ -1467,14 +1467,14 @@ probably not valid.".format(cik))
                     return rid
         return None
 
-    def _upload_script(self, cik, name, text, rid=None, meta=''):
+    def _upload_script(self, cik, name, content, rid=None, meta='', alias=None):
         '''Upload a lua script, either creating one or updating the existing one'''
         desc = {
             'format': 'string',
             'name': name,
             'preprocess': [],
             'rule': {
-                'script': text
+                'script': content
             },
             'visibility': 'parent',
             'retention': {
@@ -1490,9 +1490,11 @@ probably not valid.".format(cik))
             else:
                 #print('cik: {0} desc: {1}'.format(cik, json.dumps(desc)))
                 raise ExoException("Error creating datarule: {0}".format(rid))
-            success, rid = self.exo.map(cik, rid, name)
+            if alias is None:
+                alias = name
+            success, rid = self.exo.map(cik, rid, alias)
             if success:
-                print("Aliased script to: {0}".format(name))
+                print("Aliased script to: {0}".format(alias))
             else:
                 raise ExoException("Error aliasing script")
         else:
@@ -1512,6 +1514,42 @@ probably not valid.".format(cik))
         for rid in lwi['client']:
             self.cik_recursive(lwi['client'][rid]['key'], fn)
 
+    def upload_script_content(self,
+                              ciks,
+                              content,
+                              name,
+                              recursive=False,
+                              create=False,
+                              filterfn=lambda script: script,
+                              rid=None):
+        for cik in ciks:
+            def up(cik, rid):
+                if rid is not None:
+                    alias = None
+                    print('{0}, {1}'.format(rid, create))
+                    if create:
+                        # when creating, if <rid> is passed it must be an alias
+                        # to use instead of name
+                        if type(rid) is not dict:
+                            raise ExoException('<rid> must be an alias when passing --create')
+                        alias = rid['alias']
+                        rid = None
+                    self._upload_script(cik, name, content, rid=rid, alias=alias)
+                else:
+                    rid = self._lookup_rid_by_name(cik, name)
+                    if rid is not None or create:
+                        self._upload_script(cik, name, content, rid=rid)
+                    else:
+                        # TODO: move this to spec plugin
+                        print("Skipping CIK: {0} -- {1} not found".format(cik, name))
+                        if not create:
+                            print('Pass --create to create it')
+
+            if recursive:
+                self.cik_recursive(cik, lambda cik: up(cik, rid))
+            else:
+                up(cik, rid)
+
     def upload_script(self,
                       ciks,
                       filename,
@@ -1526,27 +1564,18 @@ probably not valid.".format(cik))
             raise ExoException('Error opening file {0}.'.format(filename))
         else:
             with f:
-                text = filterfn(f.read())
+                content = filterfn(f.read())
                 if name is None:
                     # if no name is specified, use the file name as a name
                     name = os.path.basename(filename)
-                for cik in ciks:
-                    def up(cik, rid):
-                        if rid is not None:
-                            self._upload_script(cik, name, text, rid=rid)
-                        else:
-                            rid = self._lookup_rid_by_name(cik, name)
-                            if rid is not None or create:
-                                self._upload_script(cik, name, text, rid=rid)
-                            else:
-                                print("Skipping CIK: {0} -- {1} not found".format(cik, name))
-                                if not create:
-                                        print('Pass --create to create it')
-
-                    if recursive:
-                        self.cik_recursive(cik, lambda cik: up(cik, rid))
-                    else:
-                        up(cik, rid)
+                self.upload_script_content(
+                    ciks,
+                    content,
+                    name=name,
+                    recursive=recursive,
+                    create=create,
+                    filterfn=filterfn,
+                    rid=rid)
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'], options={})
@@ -2561,7 +2590,7 @@ def handle_args(cmd, args):
                 filename = args['--file']
             else:
                 filename = args['<script-file>']
-            rid = None if '<rid>' not in args else args['<rid>']
+            rid = None if args['<rid>'] is None else rids[0]
             er.upload_script(cik,
                 filename,
                 name=args['--name'],
@@ -2909,4 +2938,4 @@ def run(argv, stdin=None):
 if __name__ == '__main__':
     sys.exit(cmd(sys.argv))
 
-#  vim: set ai noet sw=4 ts=8 :
+#  vim: set ai et sw=4 ts=4 :

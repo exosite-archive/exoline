@@ -1,6 +1,13 @@
 History
 =======
 
+0.9.2 NEXT
+----------
+
+- spec accepts urls for yaml and script file
+- support for putting lua directly in spec file "code"
+  property instead of external lua file.
+
 0.9.1 (2014-11-19)
 ------------------
 
@@ -9,7 +16,7 @@ History
 - write usage documentation for provisioning
 - many fixes to provision model and sn commands
 - support --curl option for viewing requests in curl format
-- added --rids command to twee
+- added twee --rids option
 - darker twee colors for visibility on white background
 
 0.9.0 (2014-10-29)

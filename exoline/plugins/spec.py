@@ -3,13 +3,13 @@
 
 Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>] [--portal|--domain] [-f]
-    exo [options] spec <cik> --url=<spec-url>
     exo [options] spec <cik> --generate=<filename> [--scripts=<dir>] [--asrid]
     exo [options] spec <spec-yaml> --check
-    exo [options] spec --url=<spec-url> --check
     exo [options] spec --example
 
 The --generate form creates spec YAML and scripts from a CIK.
+<spec-yaml> may be a filesystem path, - to read the spec from stdin,
+  or a URL to get.
 
 Command options:
     --update-scripts  Update any scripts that do not match what's
@@ -136,23 +136,28 @@ scripts:
             return
 
         ExoException = options['exception']
-        def loadSpec(args):
-            url = args['--url']
-            if url is not None:
-                # load that URL
-                r = requests.get(url)
+        def load_file(path):
+            '''load a file based on a path that may be a filesystem path
+            or a URL. Consider it a URL if it starts with two or more
+            alphabetic characters followed by a colon'''
+            if re.match('[a-z]{2}[a-z]*:', path):
+                # URL. use requests
+                r = requests.get(path)
                 print(r.status_code)
                 print(r.text)
                 if r.status_code >= 300:
-                    raise ExoException('Failed to read spec file at ' + url)
-                return yaml.safe_load(r.text)
+                    raise ExoException('Failed to read file at URL ' + url)
+                return r.text
             else:
-                with open(args['<spec-yaml>']) as f:
-                    return yaml.safe_load(f)
+                with open(path, 'rb') as f:
+                    return f.read()
+
+        def load_spec(args):
+            return yaml.safe_load(load_file(args['<spec-yaml>']))
 
         if args['--check']:
             # Validate all the jsonschema
-            spec = loadSpec(args)
+            spec = load_spec(args)
             for dp in spec['dataports']:
                 alias = dp['alias']
                 if 'jsonschema' in dp:
@@ -341,7 +346,7 @@ scripts:
                     [['info', {'alias': alias}, {'description': True, 'basic': True}],
                     ['read', {'alias': alias}, {'limit': 1}]])
 
-            spec = loadSpec(args)
+            spec = load_spec(args)
 
             ciks = []
             portal_ciks = []
@@ -666,31 +671,31 @@ scripts:
                                             raise ExoException('{0} is a script, so it needs a "file" key'.format(alias))
                                         name = res['name'] if 'name' in res else alias
 
+                                        content = load_file(res['file']).decode('utf8')
                                         if not exists and create:
-                                            rpc.upload_script([cik], res['file'], name=alias, create=True, filterfn=template)
+                                            rpc.upload_script_content([cik], content, name=alias, create=True, filterfn=template)
                                             continue
 
-                                        with open(res['file'], 'rb') as scriptfile:
-                                            script_spec = template(scriptfile.read().decode('utf8'))
-                                            script_svr = info['description']['rule']['script']
-                                            if script_svr != script_spec:
-                                                print('Script for {0} does not match file {1}.'.format(alias, res['file']))
-                                                if updatescripts:
-                                                    print('Uploading script to {0}...'.format(alias))
-                                                    rpc.upload_script([cik], res['file'], name=name, create=False, filterfn=template)
-                                                elif not args['--no-diff']:
-                                                    # show diff
-                                                    import difflib
-                                                    differ = difflib.Differ()
+                                        script_spec = template(content)
+                                        script_svr = info['description']['rule']['script']
+                                        if script_svr != script_spec:
+                                            print('Script for {0} does not match file {1}.'.format(alias, res['file']))
+                                            if updatescripts:
+                                                print('Uploading script to {0}...'.format(alias))
+                                                rpc.upload_script_content([cik], script_spec, name=name, create=False, filterfn=template)
+                                            elif not args['--no-diff']:
+                                                # show diff
+                                                import difflib
+                                                differ = difflib.Differ()
 
-                                                    differences = '\n'.join(
-                                                        difflib.unified_diff(
-                                                            script_spec.splitlines(),
-                                                            script_svr.splitlines(),
-                                                            fromfile=res['file'],
-                                                            tofile='info["description"]["rule"]["script"]'))
+                                                differences = '\n'.join(
+                                                    difflib.unified_diff(
+                                                        script_spec.splitlines(),
+                                                        script_svr.splitlines(),
+                                                        fromfile=res['file'],
+                                                        tofile='info["description"]["rule"]["script"]'))
 
-                                                    print(differences)
+                                                print(differences)
                                     else:
                                         raise ExoException('Found unsupported type {0} in spec.'.format(typ))
                 except Spec401Exception as ex:
