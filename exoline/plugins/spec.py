@@ -3,8 +3,10 @@
 
 Usage:
     exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>] [--portal|--domain] [-f]
+    exo [options] spec <cik> --url=<spec-url>
     exo [options] spec <cik> --generate=<filename> [--scripts=<dir>] [--asrid]
     exo [options] spec <spec-yaml> --check
+    exo [options] spec --url=<spec-url> --check
     exo [options] spec --example
 
 The --generate form creates spec YAML and scripts from a CIK.
@@ -38,9 +40,9 @@ import ast
 
 import yaml
 import jsonschema
+import requests
 import six
 from six import iteritems
-
 
 class Spec401Exception(BaseException):
     # Used when a 401 is caught during a spec
@@ -133,10 +135,24 @@ scripts:
             print(s)
             return
 
-        if args['--check'] is not None:
+        ExoException = options['exception']
+        def loadSpec(args):
+            url = args['--url']
+            if url is not None:
+                # load that URL
+                r = requests.get(url)
+                print(r.status_code)
+                print(r.text)
+                if r.status_code >= 300:
+                    raise ExoException('Failed to read spec file at ' + url)
+                return yaml.safe_load(r.text)
+            else:
+                with open(args['<spec-yaml>']) as f:
+                    return yaml.safe_load(f)
+
+        if args['--check']:
             # Validate all the jsonschema
-            with open(args['<spec-yaml>']) as f:
-                spec = yaml.safe_load(f)
+            spec = loadSpec(args)
             for dp in spec['dataports']:
                 alias = dp['alias']
                 if 'jsonschema' in dp:
@@ -153,8 +169,8 @@ scripts:
 
         input_cik = options['cik']
         rpc = options['rpc']
-        ExoException = options['exception']
         asrid = args['--asrid']
+
 
         if cmd == 'spec':
 
@@ -235,7 +251,7 @@ scripts:
                                 # assume unit is not present in metadata
                                 pass
                             spec.setdefault('dataports', []).append(dp)
-                            
+
                             public = myinfo['description']['public']
                             if public is not None and public:
                                 dp['public'] = public
@@ -325,9 +341,7 @@ scripts:
                     [['info', {'alias': alias}, {'description': True, 'basic': True}],
                     ['read', {'alias': alias}, {'limit': 1}]])
 
-
-            with open(args['<spec-yaml>']) as f:
-                spec = yaml.safe_load(f)
+            spec = loadSpec(args)
 
             ciks = []
             portal_ciks = []
