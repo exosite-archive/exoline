@@ -1235,7 +1235,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     @attr('spec')
     @attr('script')
     def spec_test(self):
-        #'''Spec command'''
+        '''Spec command'''
         print(os.path.dirname(os.getcwd()))
         cik = self.client.cik()
         spec = basedir + '/files/spec.yaml'
@@ -1330,6 +1330,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             print(r.stdout)
             out = r.stdout
             f.write(out)
+        r = rpc('spec', example_spec, '--check')
+        self.ok(r, 'example spec passes --check')
         r = rpc('spec', cik, example_spec, '--ids=A,B')
         self.ok(r, 'empty client does not match example spec', match='.+')
         r = rpc('spec', cik, example_spec, '--create', '--ids=A,B')
@@ -1491,7 +1493,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     @attr('spec')
     def spec_domain_test(self):
         '''
-            Tests the ability to update multiple device of the same clientmodel
+            Test updating multiple devices of the same clientmodel
             under multiple portals that are under a single domain.
         '''
         # Get example spec

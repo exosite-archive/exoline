@@ -44,6 +44,8 @@ import requests
 import six
 from six import iteritems
 
+TYPES = ['dataport', 'client', 'script']
+
 class Spec401Exception(BaseException):
     # Used when a 401 is caught during a spec
     pass
@@ -113,6 +115,20 @@ scripts:
     # names and aliases set to the file name
     - file: test/files/helloworld.lua
     # you can also set them explicitly
+    - file: test/files/helloworld.lua
+      alias: greeting
+    # you can also place lua code inline
+    - alias: singleLineScript
+      code: debug('hello from inside lua!')
+    # multiline lua scripts should start with | and
+    # be indented inside the "code:" key.
+    - alias: multilineScript
+      code: |
+        for x=1,10 do
+            debug('hello from for loop ' .. x)
+        end
+    # simple templating for script aliases and
+    # content is also supported.
     - file: test/files/convert.lua
       # if <% id %> is embedded in aliases
       # or script content, the --ids parameter must
@@ -153,12 +169,21 @@ scripts:
                     return f.read()
 
         def load_spec(args):
-            return yaml.safe_load(load_file(args['<spec-yaml>']))
+            try:
+                spec = yaml.safe_load(load_file(args['<spec-yaml>']))
+                return spec
+            except yaml.scanner.ScannerError as ex:
+                raise ExoException('Error parsing YAML in {0}\n{1}'.format(args['<spec-yaml>'],ex))
 
-        if args['--check']:
-            # Validate all the jsonschema
-            spec = load_spec(args)
-            for dp in spec['dataports']:
+        def check_spec(spec):
+            msgs = []
+            for typ in TYPES:
+                if typ in spec and typ + 's' not in spec:
+                    msgs.append('found "{0}"... did you mean "{1}"?'.format(typ, typ + 's'))
+            required = [t + 's' for t in TYPES]
+            if not any([k in spec for k in required]):
+                msgs.append('spec should have one of these, but none were found: ' + ', '.join(required))
+            for dp in spec.get('dataports', []):
                 alias = dp['alias']
                 if 'jsonschema' in dp:
                     schema = dp['jsonschema']
@@ -167,15 +192,19 @@ scripts:
                     try:
                         jsonschema.Draft4Validator.check_schema(schema)
                     except Exception as ex:
-                        print("{0} failed jsonschema validation.".format(alias))
-                        print(ex)
-            return
+                        msgs.append("{0} failed jsonschema validation.\n{1}".format(alias, str(ex)))
+            if len(msgs) > 0:
+                raise ExoException('Found some problems in spec:\n' + '\n'.join(msgs))
 
+        if args['--check']:
+            # Validate all the jsonschema
+            spec = load_spec(args)
+            check_spec(spec)
+            return
 
         input_cik = options['cik']
         rpc = options['rpc']
         asrid = args['--asrid']
-
 
         if cmd == 'spec':
 
@@ -325,7 +354,7 @@ scripts:
                     if 'file' in res:
                         alias = os.path.basename(res['file'])
                     else:
-                        raise ExoException('Resources in spec must have an alias.')
+                        raise ExoException('Resources in spec must have an alias. (For scripts, "file" will substitute.)')
 
                 if reid.search(alias) is None:
                     yield alias, None
@@ -457,247 +486,251 @@ scripts:
                     except:
                         pass
 
-                    for typ in ['dataport', 'client', 'script']:
-                        if typ + 's' in spec:
-                            for res in spec[typ + 's']:
-                                for alias, resource_data in generate_aliases_and_data(res, args):
-                                    # TODO: handle nonexistence
-                                    exists = True
-                                    try:
-                                        info, val = infoval(cik, alias)
-                                    except rpc.RPCException as e:
-                                        exists = False
-                                        print('{0} not found.'.format(alias))
-                                        if not create:
-                                            print('Pass --create to create it')
-                                            continue
-                                    except pyonep.exceptions.OnePlatformException as ex:
-                                        exc = ast.literal_eval(ex.message)
+                    for typ in TYPES:
+                        for res in spec.get(typ + 's', []):
+                            for alias, resource_data in generate_aliases_and_data(res, args):
+                                # TODO: handle nonexistence
+                                exists = True
+                                try:
+                                    info, val = infoval(cik, alias)
+                                except rpc.RPCException as e:
+                                    exists = False
+                                    print('{0} not found.'.format(alias))
+                                    if not create:
+                                        print('Pass --create to create it')
+                                        continue
+                                except pyonep.exceptions.OnePlatformException as ex:
+                                    exc = ast.literal_eval(ex.message)
 
-                                        if exc['code'] == 401:
-                                            raise Spec401Exception()
-                                        else:
-                                            raise ex
-
-                                    # TODO: use templating library
-                                    def template(script):
-                                        if resource_data is None:
-                                            return script
-                                        else:
-                                            return reid.sub(resource_data['id'], script)
-
-                                    if typ == 'client':
-                                        if not exists:
-                                            if create:
-                                                print('Client creation is not yet supported')
-                                            continue
-                                    elif typ == 'dataport':
-                                        format = res['format'] if 'format' in res else 'string'
-                                        pieces = format.split('/')
-                                        if len(pieces) > 1:
-                                            format = pieces[0]
-                                            format_content = pieces[1]
-                                        else:
-                                            format_content = None
-                                        name = res['name'] if 'name' in res else alias
-                                        if not exists and create:
-                                            print('Creating dataport with name: {0}, alias: {1}, format: {2}'.format(
-                                                name, alias, format))
-                                            rid = rpc.create_dataport(cik, format, name=name)
-                                            rpc.map(cik, rid, alias)
-                                            info, val = infoval(cik, alias)
-                                            aliases[alias] = rid
-
-                                        # check type
-                                        if info['basic']['type'] != typ:
-                                            raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
-
-                                        # check format
-                                        if format != info['description']['format']:
-                                            raise ExoException(
-                                                '{0} is a {1} but should be a {2}.'.format(
-                                                alias, info['description']['format'], format))
-
-                                        # check initial value
-                                        if 'initial' in res and len(val) == 0:
-                                            if create:
-                                                initialValue = template(res['initial'])
-                                                print('Writing initial value {0}'.format(initialValue))
-                                                rpc.write(cik, {'alias': alias}, initialValue)
-                                                # update values being validated
-                                                info, val = infoval(cik, alias)
-                                            else:
-                                                print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
-
-                                        # check format content (e.g. json)
-                                        if format_content == 'json':
-                                            if format != 'string':
-                                                raise ExoException(
-                                                    'Invalid spec for {0}. json content type only applies to string, not {1}.'.format(alias, format));
-                                            if len(val) == 0:
-                                                print('Spec requires {0} be in JSON format, but it is empty.'.format(alias))
-                                            else:
-                                                obj = None
-                                                try:
-                                                    obj = json.loads(val[0][1])
-                                                except:
-                                                    print('Spec requires {0} be in JSON format, but it does not parse as JSON. Value: {1}'.format(
-                                                        alias,
-                                                        val[0][1]))
-
-                                                if obj is not None and 'jsonschema' in res:
-                                                    schema = res['jsonschema']
-                                                    if isinstance(schema, six.string_types):
-                                                        schema = json.loads(open(schema).read())
-                                                    try:
-                                                        jsonschema.validate(obj, schema)
-                                                    except Exception as ex:
-                                                        print("{0} failed jsonschema validation.".format(alias))
-                                                        print(ex)
-
-                                        elif format_content is not None:
-                                            raise ExoException(
-                                                'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))
-
-                                        # check unit
-                                        if 'unit' in res or 'description' in res:
-                                            meta_string = info['description']['meta']
-                                            try:
-                                                meta = json.loads(meta_string)
-                                            except:
-                                                meta = None
-
-                                            def bad_desc_msg(s):
-                                                sys.stdout.write('spec expects description for {0} to be {1}, but they are not.'.format(alias, res['description']))
-                                            def bad_unit_msg(s):
-                                                sys.stdout.write('spec expects unit for {0} to be {1}, but they are not.'.format(alias, res['unit']))
-
-                                            if create:
-                                                if meta is None:
-                                                    meta = {'datasource':{'description':'','unit':''}}
-                                                if 'datasource' not in meta:
-                                                    meta['datasource'] = {'description':'','unit':''}
-                                                if 'unit' in res:
-                                                    meta['datasource']['unit'] = res['unit']
-                                                if 'description:' in res:
-                                                    meta['datasource']['description'] = res['description']
-
-                                                new_desc = info['description'].copy()
-                                                new_desc['meta'] = json.dumps(meta)
-                                                rpc.update(cik, {'alias': alias}, new_desc)
-
-                                            else:
-                                                if meta is None:
-                                                    sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.')
-                                                elif 'datasource' not in meta:
-                                                    sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.')
-                                                elif 'unit' not in meta['datasource']:
-                                                    bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.')
-                                                elif 'description' not in meta['datasource']:
-                                                    bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.')
-                                                elif 'unit' in res and meta['datasource']['unit'] != res['unit']:
-                                                    bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
-                                                elif 'description' in res and meta['datasource']['description'] != res['description']:
-                                                    bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.'.format(meta['datasource']['description']))
-
-
-                                        if 'public' in res:
-                                            resPub = res['public']
-                                            public = info['description']['public']
-                                            if public is None:
-                                                if create:
-                                                    new_desc = info['description'].copy()
-                                                    new_desc['public'] = respub
-                                                    rpc.update(cik, {'alias': alias}, new_desc)
-                                                else:
-                                                    sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
-                                            elif public != resPub:
-                                                sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
-
-
-                                        if 'subscribe' in res:
-                                            # Alias *must* be local to this CIK
-                                            resSub = res['subscribe']
-                                            # Lookup alias/name if need be
-                                            if resSub in aliases:
-                                                resSub = aliases[resSub]
-                                            subscribe = info['description']['subscribe']
-                                            if subscribe is None:
-                                                if create:
-                                                    new_desc = info['description'].copy()
-                                                    new_desc['subscribe'] = resSub
-                                                    rpc.update(cik, {'alias': alias}, new_desc)
-                                                else:
-                                                    sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
-                                            elif subscribe != resSub:
-                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
-
-                                        if 'preprocess' in res:
-                                            def fromAliases(pair):
-                                                if pair[1] in aliases:
-                                                    return [pair[0], aliases[pair[1]]]
-                                                else:
-                                                    return pair
-                                            resPrep = [fromAliases(x) for x in res['preprocess']]
-                                            preprocess = info['description']['preprocess']
-                                            if preprocess is None or len(preprocess) == 0:
-                                                if create:
-                                                    new_desc = info['description'].copy()
-                                                    new_desc['preprocess'] = resPrep
-                                                    rpc.update(cik, {'alias': alias}, new_desc)
-                                                else:
-                                                    sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
-                                            elif preprocess != resPrep:
-                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.'.format(alias, resPrep, preprocess))
-
-                                        if 'retention' in res:
-                                            resRet = {}
-                                            if 'count' in res['retention']:
-                                                resRet['count'] = res['retention']['count']
-                                            if 'duration' in res['retention']:
-                                                resRet['duration'] = res['retention']['duration']
-
-                                            retention = info['description']['retention']
-                                            if create:
-                                                new_desc = info['description'].copy()
-                                                new_desc['retention'] = resRet
-                                                rpc.update(cik, {'alias': alias}, new_desc)
-                                            elif retention != resRet:
-                                                sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.'.format(alias, resRet, retention))
-
-
-                                    elif typ == 'script':
-                                        if 'file' not in res:
-                                            raise ExoException('{0} is a script, so it needs a "file" key'.format(alias))
-                                        name = res['name'] if 'name' in res else alias
-
-                                        content = load_file(res['file']).decode('utf8')
-                                        if not exists and create:
-                                            rpc.upload_script_content([cik], content, name=alias, create=True, filterfn=template)
-                                            continue
-
-                                        script_spec = template(content)
-                                        script_svr = info['description']['rule']['script']
-                                        if script_svr != script_spec:
-                                            print('Script for {0} does not match file {1}.'.format(alias, res['file']))
-                                            if updatescripts:
-                                                print('Uploading script to {0}...'.format(alias))
-                                                rpc.upload_script_content([cik], script_spec, name=name, create=False, filterfn=template)
-                                            elif not args['--no-diff']:
-                                                # show diff
-                                                import difflib
-                                                differ = difflib.Differ()
-
-                                                differences = '\n'.join(
-                                                    difflib.unified_diff(
-                                                        script_spec.splitlines(),
-                                                        script_svr.splitlines(),
-                                                        fromfile=res['file'],
-                                                        tofile='info["description"]["rule"]["script"]'))
-
-                                                print(differences)
+                                    if exc['code'] == 401:
+                                        raise Spec401Exception()
                                     else:
-                                        raise ExoException('Found unsupported type {0} in spec.'.format(typ))
+                                        raise ex
+
+                                # TODO: use templating library
+                                def template(script):
+                                    if resource_data is None:
+                                        return script
+                                    else:
+                                        return reid.sub(resource_data['id'], script)
+
+                                if typ == 'client':
+                                    if not exists:
+                                        if create:
+                                            print('Client creation is not yet supported')
+                                        continue
+                                elif typ == 'dataport':
+                                    format = res['format'] if 'format' in res else 'string'
+                                    pieces = format.split('/')
+                                    if len(pieces) > 1:
+                                        format = pieces[0]
+                                        format_content = pieces[1]
+                                    else:
+                                        format_content = None
+                                    name = res['name'] if 'name' in res else alias
+                                    if not exists and create:
+                                        print('Creating dataport with name: {0}, alias: {1}, format: {2}'.format(
+                                            name, alias, format))
+                                        rid = rpc.create_dataport(cik, format, name=name)
+                                        rpc.map(cik, rid, alias)
+                                        info, val = infoval(cik, alias)
+                                        aliases[alias] = rid
+
+                                    # check type
+                                    if info['basic']['type'] != typ:
+                                        raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
+
+                                    # check format
+                                    if format != info['description']['format']:
+                                        raise ExoException(
+                                            '{0} is a {1} but should be a {2}.'.format(
+                                            alias, info['description']['format'], format))
+
+                                    # check initial value
+                                    if 'initial' in res and len(val) == 0:
+                                        if create:
+                                            initialValue = template(res['initial'])
+                                            print('Writing initial value {0}'.format(initialValue))
+                                            rpc.write(cik, {'alias': alias}, initialValue)
+                                            # update values being validated
+                                            info, val = infoval(cik, alias)
+                                        else:
+                                            print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
+
+                                    # check format content (e.g. json)
+                                    if format_content == 'json':
+                                        if format != 'string':
+                                            raise ExoException(
+                                                'Invalid spec for {0}. json content type only applies to string, not {1}.'.format(alias, format));
+                                        if len(val) == 0:
+                                            print('Spec requires {0} be in JSON format, but it is empty.'.format(alias))
+                                        else:
+                                            obj = None
+                                            try:
+                                                obj = json.loads(val[0][1])
+                                            except:
+                                                print('Spec requires {0} be in JSON format, but it does not parse as JSON. Value: {1}'.format(
+                                                    alias,
+                                                    val[0][1]))
+
+                                            if obj is not None and 'jsonschema' in res:
+                                                schema = res['jsonschema']
+                                                if isinstance(schema, six.string_types):
+                                                    schema = json.loads(open(schema).read())
+                                                try:
+                                                    jsonschema.validate(obj, schema)
+                                                except Exception as ex:
+                                                    print("{0} failed jsonschema validation.".format(alias))
+                                                    print(ex)
+
+                                    elif format_content is not None:
+                                        raise ExoException(
+                                            'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))
+
+                                    # check unit
+                                    if 'unit' in res or 'description' in res:
+                                        meta_string = info['description']['meta']
+                                        try:
+                                            meta = json.loads(meta_string)
+                                        except:
+                                            meta = None
+
+                                        def bad_desc_msg(s):
+                                            sys.stdout.write('spec expects description for {0} to be {1}, but they are not.'.format(alias, res['description']))
+                                        def bad_unit_msg(s):
+                                            sys.stdout.write('spec expects unit for {0} to be {1}, but they are not.'.format(alias, res['unit']))
+
+                                        if create:
+                                            if meta is None:
+                                                meta = {'datasource':{'description':'','unit':''}}
+                                            if 'datasource' not in meta:
+                                                meta['datasource'] = {'description':'','unit':''}
+                                            if 'unit' in res:
+                                                meta['datasource']['unit'] = res['unit']
+                                            if 'description:' in res:
+                                                meta['datasource']['description'] = res['description']
+
+                                            new_desc = info['description'].copy()
+                                            new_desc['meta'] = json.dumps(meta)
+                                            rpc.update(cik, {'alias': alias}, new_desc)
+
+                                        else:
+                                            if meta is None:
+                                                sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.')
+                                            elif 'datasource' not in meta:
+                                                sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.')
+                                            elif 'unit' not in meta['datasource']:
+                                                bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.')
+                                            elif 'description' not in meta['datasource']:
+                                                bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.')
+                                            elif 'unit' in res and meta['datasource']['unit'] != res['unit']:
+                                                bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
+                                            elif 'description' in res and meta['datasource']['description'] != res['description']:
+                                                bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.'.format(meta['datasource']['description']))
+
+
+                                    if 'public' in res:
+                                        resPub = res['public']
+                                        public = info['description']['public']
+                                        if public is None:
+                                            if create:
+                                                new_desc = info['description'].copy()
+                                                new_desc['public'] = respub
+                                                rpc.update(cik, {'alias': alias}, new_desc)
+                                            else:
+                                                sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
+                                        elif public != resPub:
+                                            sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
+
+
+                                    if 'subscribe' in res:
+                                        # Alias *must* be local to this CIK
+                                        resSub = res['subscribe']
+                                        # Lookup alias/name if need be
+                                        if resSub in aliases:
+                                            resSub = aliases[resSub]
+                                        subscribe = info['description']['subscribe']
+                                        if subscribe is None:
+                                            if create:
+                                                new_desc = info['description'].copy()
+                                                new_desc['subscribe'] = resSub
+                                                rpc.update(cik, {'alias': alias}, new_desc)
+                                            else:
+                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
+                                        elif subscribe != resSub:
+                                            sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
+
+                                    if 'preprocess' in res:
+                                        def fromAliases(pair):
+                                            if pair[1] in aliases:
+                                                return [pair[0], aliases[pair[1]]]
+                                            else:
+                                                return pair
+                                        resPrep = [fromAliases(x) for x in res['preprocess']]
+                                        preprocess = info['description']['preprocess']
+                                        if preprocess is None or len(preprocess) == 0:
+                                            if create:
+                                                new_desc = info['description'].copy()
+                                                new_desc['preprocess'] = resPrep
+                                                rpc.update(cik, {'alias': alias}, new_desc)
+                                            else:
+                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
+                                        elif preprocess != resPrep:
+                                            sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.'.format(alias, resPrep, preprocess))
+
+                                    if 'retention' in res:
+                                        resRet = {}
+                                        if 'count' in res['retention']:
+                                            resRet['count'] = res['retention']['count']
+                                        if 'duration' in res['retention']:
+                                            resRet['duration'] = res['retention']['duration']
+
+                                        retention = info['description']['retention']
+                                        if create:
+                                            new_desc = info['description'].copy()
+                                            new_desc['retention'] = resRet
+                                            rpc.update(cik, {'alias': alias}, new_desc)
+                                        elif retention != resRet:
+                                            sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.'.format(alias, resRet, retention))
+
+
+                                elif typ == 'script':
+                                    if 'file' not in res and 'code' not in res:
+                                        raise ExoException('{0} is a script, so it needs a "file" or "code" key'.format(alias))
+                                    if 'file' in res and 'code' in res:
+                                        raise ExoException('{0} specifies both "file" and "code" keys, but they\'re mutually exclusive.')
+
+                                    name = res['name'] if 'name' in res else alias
+
+                                    if 'file' in res:
+                                        content = load_file(res['file']).decode('utf8')
+                                    else:
+                                        content = res['code']
+                                    if not exists and create:
+                                        rpc.upload_script_content([cik], content, name=alias, create=True, filterfn=template)
+                                        continue
+
+                                    script_spec = template(content)
+                                    script_svr = info['description']['rule']['script']
+                                    script_friendly = 'file {0}'.format(res['file']) if 'file' in res else '"code" value in spec'
+                                    if script_svr != script_spec:
+                                        print('Script for {0} does not match {1}.'.format(alias, script_friendly))
+                                        if updatescripts:
+                                            print('Uploading script to {0}...'.format(alias))
+                                            rpc.upload_script_content([cik], script_spec, name=name, create=False, filterfn=template)
+                                        elif not args['--no-diff']:
+                                            # show diff
+                                            import difflib
+                                            differences = '\n'.join(
+                                                difflib.unified_diff(
+                                                    script_spec.splitlines(),
+                                                    script_svr.splitlines(),
+                                                    fromfile=script_friendly,
+                                                    tofile='info["description"]["rule"]["script"]'))
+
+                                            print(differences)
+                                else:
+                                    raise ExoException('Found unsupported type {0} in spec.'.format(typ))
                 except Spec401Exception as ex:
                     print("******WARNING******* 401 received in spec, is the device expired?")
                     pass
