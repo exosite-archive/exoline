@@ -1,0 +1,8 @@
+dataports:
+    - alias: temp_f 
+      format: float
+    - alias: temp_c
+      format: float
+scripts:
+    - file: https://raw.githubusercontent.com/exosite/exoline/master/test/files/convert.lua
+
