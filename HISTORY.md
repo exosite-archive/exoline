@@ -1,12 +1,14 @@
 History
 =======
 
-0.9.2 NEXT
-----------
+0.9.2 (2014-11-24)
+------------------
 
 - spec accepts urls for yaml and script file
 - support for putting lua directly in spec file "code"
   property instead of external lua file.
+- spec --check option for rudimentary spec validation
+- spec doesn't run if --check would fail
 
 0.9.1 (2014-11-19)
 ------------------
