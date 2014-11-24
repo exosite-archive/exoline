@@ -1526,7 +1526,6 @@ probably not valid.".format(cik))
             def up(cik, rid):
                 if rid is not None:
                     alias = None
-                    print('{0}, {1}'.format(rid, create))
                     if create:
                         # when creating, if <rid> is passed it must be an alias
                         # to use instead of name
