@@ -2350,7 +2350,7 @@ def handle_args(cmd, args):
                 elif len(candidates) > 1:
                     raise ExoException('More than one RID starts with ' + ridfrag + '. Better use the full RID.')
                 else:
-                    raise ExoException('No RID found that starts with ' + ridfrag + '. Is an immediate child of ' + cik + '?')
+                    raise ExoException('No RID found that starts with ' + ridfrag + '. Is it an immediate child of ' + cik + '?')
         else:
             return rid
 

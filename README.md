@@ -776,5 +776,6 @@ TODO
 - support [PIKs](https://exositejs.herokuapp.com) in place of CIKs
 - better error handling for "Command line error: Failed to connect to https://portals.exosite.com"
 - support passing certs at the command line for https (portals and onep) when behind VPNs
-- support embedding scripts directly into YAML, if that's possible.
 - "did you mean" output when command is not found
+- spec script file paths should be relative to the URL *after* redirection, to make shorteners work
+
