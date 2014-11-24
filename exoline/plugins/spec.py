@@ -152,26 +152,35 @@ scripts:
             return
 
         ExoException = options['exception']
-        def load_file(path):
+        def load_file(path, base_url=None):
             '''load a file based on a path that may be a filesystem path
             or a URL. Consider it a URL if it starts with two or more
             alphabetic characters followed by a colon'''
-            if re.match('[a-z]{2}[a-z]*:', path):
+            def load_from_url(url):
                 # URL. use requests
-                r = requests.get(path)
-                print(r.status_code)
-                print(r.text)
+                r = requests.get(url)
                 if r.status_code >= 300:
                     raise ExoException('Failed to read file at URL ' + url)
-                return r.text
+                return r.text, '/'.join(path.split('/')[:-1])
+
+            if re.match('[a-z]{2}[a-z]*:', path):
+                return load_from_url(path)
+            elif base_url is not None:
+                # non-url paths when spec is loaded from URLs
+                # are considered relative to that URL
+                # e.g. tktk
+                return load_from_url(base_url + '/' + path)
             else:
                 with open(path, 'rb') as f:
-                    return f.read()
+                    return f.read(), None
+
 
         def load_spec(args):
+            # returns loaded spec and path for script files
             try:
-                spec = yaml.safe_load(load_file(args['<spec-yaml>']))
-                return spec
+                content, base_url = load_file(args['<spec-yaml>'])
+                spec = yaml.safe_load(content)
+                return spec, base_url
             except yaml.scanner.ScannerError as ex:
                 raise ExoException('Error parsing YAML in {0}\n{1}'.format(args['<spec-yaml>'],ex))
 
@@ -201,7 +210,7 @@ scripts:
 
         if args['--check']:
             # Validate all the jsonschema
-            spec = load_spec(args)
+            spec, base_url = load_spec(args)
             check_spec(spec)
             return
 
@@ -378,7 +387,7 @@ scripts:
                     [['info', {'alias': alias}, {'description': True, 'basic': True}],
                     ['read', {'alias': alias}, {'limit': 1}]])
 
-            spec = load_spec(args)
+            spec, base_url = load_spec(args)
             check_spec(spec)
 
             ciks = []
@@ -452,10 +461,10 @@ scripts:
                                 validJson = False
                             if validJson == True:
                                 # get device type (only vendor types have a model and vendor
-                                type = meta['device']['type']
+                                typ = meta['device']['type']
 
                                 # if the device type is 'vendor'
-                                if type == 'vendor':
+                                if typ == 'vendor':
                                     # and it matches our vendor/model in the spec file
                                     if meta['device']['vendor'] == vendorName:
                                         if meta['device']['model'] == modelName:
@@ -707,7 +716,9 @@ scripts:
                                     name = res['name'] if 'name' in res else alias
 
                                     if 'file' in res:
-                                        content = load_file(res['file']).decode('utf8')
+                                        content, _ = load_file(res['file'], base_url=base_url)
+                                        if not six.PY3 or type(content) is bytes:
+                                            content = content.decode('utf8')
                                     else:
                                         content = res['code']
                                     if not exists and create:

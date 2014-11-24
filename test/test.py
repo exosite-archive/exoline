@@ -1360,16 +1360,31 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def spec_url_test(self):
         '''Test passing urls for spec file and spec scripts'''
         cik = self.client.cik()
-        spec = 'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_url.yaml'
-        r = rpc('spec', cik, spec, '--create')
-        self.ok(r, 'created device from spec url')
-        r = rpc('info', cik, '--include=aliases')
-        self.ok(r, 'get info for created device')
-        aliases = json.loads(r.stdout)['aliases']
-        aliaslist = list(itertools.chain(*[aliases[k] for k in aliases]))
-        self.assertTrue(
-            all([a in aliaslist for a in ['temp_f', 'temp_c', 'convert.lua']]),
-            'created device has the right aliases')
+
+        def spec_and_check(spec, aliases):
+            r = rpc('create', cik, '--type=client', '--name=通過規範', '--cikonly')
+            self.ok(r, 'create child client')
+            childcik = r.stdout
+            r = rpc('spec', childcik, spec, '--create')
+            self.ok(r, 'created device from spec url')
+            r = rpc('info', childcik, '--include=aliases')
+            self.ok(r, 'get info for created device')
+            aliases = json.loads(r.stdout)['aliases']
+            aliaslist = list(itertools.chain(*[aliases[k] for k in aliases]))
+            self.assertTrue(
+                all([a in aliaslist for a in ['temp_f', 'temp_c', 'convert.lua']]),
+                'created device has the right aliases')
+
+        spec_and_check(
+            'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_url.yaml',
+            ['temp_f', 'temp_c', 'convert.lua'])
+        spec_and_check(
+            'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_relative_url.yaml',
+            ['temp_f', 'temp_c', 'convert.lua'])
+        # mainly this is testing embedded scripts
+        spec_and_check(
+            'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_embedded.yaml',
+            ['temp_f', 'temp_c', 'convert.lua'])
 
     @attr('spec')
     def spec_subscribe_test(self):

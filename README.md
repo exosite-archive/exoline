@@ -551,6 +551,39 @@ $ exo sn log PetFoodDispenserModel 00000001
 1416333004,127.0.0.1,model=PetFoodDispenserModel&vendor=weaver&sn=00000001
 ```
 
+Spec
+----
+
+Exoline's `spec` command allows you to use a specification file to succinctly specify the way a One Platform client should be set up. Here's an example of creating a client from scratch based on [this spec](https://github.com/exosite/exoline/blob/master/test/files/spec_script_embedded.yaml). Note that this uses a 1 hour time-limited CIK generated from CIK Fountain (cik.herokuapp.com).
+
+```
+$ TEMP_CIK=`curl cik.herokuapp.com`
+$ exo spec $TEMP_CIK https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_embedded.yaml --create
+Running spec on: cbcae94d523bc29b0937b759b7d3fde5c1670086
+temp_f not found.
+Creating dataport with name: temp_f, alias: temp_f, format: float
+temp_c not found.
+Creating dataport with name: temp_c, alias: temp_c, format: float
+convert.lua not found.
+New script RID: 7d7c475af2aad7d9c770672cc3640835c36a7cd9
+Aliased script to: convert.lua
+$ exo twee $TEMP_CIK
+Temporary CIK    cl cik: cbcae94d523bc29b0937b759b7d3fde5c1670086
+  ├─temp_c       dp.f temp_c:
+  ├─temp_f       dp.f temp_f:
+  └─convert.lua  dr.s convert.lua: line 3: Starting convert.lua... (35 seconds ago)
+$ exo write $TEMP_CIK temp_c --value=-40
+$ exo read $TEMP_CIK temp_f
+2014-11-24 10:50:18-06:00,-40.0
+```
+
+The `spec` command has a lot of other capabilities, including `--generate` to create a spec file based on an existing device. Try `--help` and `--example` for information about usage.
+
+```
+$ exo spec --help
+$ exo spec --example 
+```
+
 
 Environment Variables
 ---------------------
