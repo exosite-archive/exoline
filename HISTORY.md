@@ -1,6 +1,11 @@
 History
 =======
 
+NEXT
+----
+
+- remove debug output and fix https://github.com/exosite/exoline/issues/62
+
 0.9.2 (2014-11-24)
 ------------------
 
