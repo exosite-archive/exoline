@@ -184,6 +184,9 @@ scripts:
             if not any([k in spec for k in required]):
                 msgs.append('spec should have one of these, but none were found: ' + ', '.join(required))
             for dp in spec.get('dataports', []):
+                if 'alias' not in dp:
+                    msgs.append('dataport is missing alias: {0}'.format(dp))
+                    continue
                 alias = dp['alias']
                 if 'jsonschema' in dp:
                     schema = dp['jsonschema']
@@ -192,7 +195,7 @@ scripts:
                     try:
                         jsonschema.Draft4Validator.check_schema(schema)
                     except Exception as ex:
-                        msgs.append("{0} failed jsonschema validation.\n{1}".format(alias, str(ex)))
+                        msgs.append('{0} failed jsonschema validation.\n{1}'.format(alias, str(ex)))
             if len(msgs) > 0:
                 raise ExoException('Found some problems in spec:\n' + '\n'.join(msgs))
 
@@ -376,6 +379,7 @@ scripts:
                     ['read', {'alias': alias}, {'limit': 1}]])
 
             spec = load_spec(args)
+            check_spec(spec)
 
             ciks = []
             portal_ciks = []

@@ -1,0 +1,3 @@
+dataports:
+    - alias: foo
+      jsonschema: [{"foo": "bar"}, 1, 2]
