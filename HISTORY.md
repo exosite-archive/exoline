@@ -1,9 +1,10 @@
 History
 =======
 
-NEXT
-----
+0.9.3 (2014-12-01)
+------------------
 
+- add search command with support for name, alias
 - remove debug output and fix https://github.com/exosite/exoline/issues/62
 
 0.9.2 (2014-11-24)

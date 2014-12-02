@@ -1715,7 +1715,7 @@ probably not valid.".format(cik))
 
         return list(differ.compare(s1, s2))
 
-    def _infotree(self, cik, rid=None, nodeidfn=lambda rid, info: rid, options={}, level=None):
+    def _infotree(self, cik, rid=None, nodeidfn=lambda rid, info: rid, options={}, level=None, raiseExceptions=True):
         '''Get all info for a cik and its children in a nested dict.
         The basic unit is {'rid': '<rid>', 'info': <info-with-children>},
         where <info-with-children> is just the info object for that node
@@ -1737,42 +1737,49 @@ probably not valid.".format(cik))
            As it's building this nested dict, it calls nodeidfn with the rid and info
            (w/o children) for each node.
         '''
-        types = ['client', 'dataport', 'datarule', 'dispatch']
-        #print(cik, rid)
-        # TODO: make exactly one HTTP request per node
-        listing = {}
-        norid = rid is None
-        if norid:
-            rid = self._exomult(cik, [['lookup', 'aliased', '']])[0]
+        try:
+            types = ['client', 'dataport', 'datarule', 'dispatch']
+            #print(cik, rid)
+            # TODO: make exactly one HTTP request per node
+            listing = {}
+            norid = rid is None
+            if norid:
+                rid = self._exomult(cik, [['lookup', 'aliased', '']])[0]
 
-        info = self._exomult(cik, [['info', rid, options]])[0]
+            info = self._exomult(cik, [['info', rid, options]])[0]
 
-        myid = nodeidfn(rid, info)
+            myid = nodeidfn(rid, info)
 
-        if level is not None and level <= 0:
+            if level is not None and level <= 0:
+                return {'rid': myid, 'info': info}
+
+            if norid or info['basic']['type'] == 'client':
+                if not norid:
+                    # key is only available to owner (not the resource itself)
+                    cik = info['key']
+                listing = self._exomult(cik,
+                                        [['listing', types, {}]])[0]
+
+            info['children'] = []
+            for typ in types:
+                if typ in listing:
+                    ridlist = listing[typ]
+                    for childrid in ridlist:
+                        tr = self._infotree(cik,
+                                            childrid,
+                                            nodeidfn=nodeidfn,
+                                            options=options,
+                                            level=None if level is None else level-1,
+                                            raiseExceptions=raiseExceptions)
+                        info['children'].append(tr)
+            info['children'].sort(key=lambda x: x['rid'] if 'rid' in x else '')
+
             return {'rid': myid, 'info': info}
-
-        if norid or info['basic']['type'] == 'client':
-            if not norid:
-                # key is only available to owner (not the resource itself)
-                cik = info['key']
-            listing = self._exomult(cik,
-                                    [['listing', types, {}]])[0]
-
-        info['children'] = []
-        for typ in types:
-            if typ in listing:
-                ridlist = listing[typ]
-                for childrid in ridlist:
-                    tr = self._infotree(cik,
-                                        childrid,
-                                        nodeidfn=nodeidfn,
-                                        options=options,
-                                        level=None if level is None else level-1)
-                    info['children'].append(tr)
-        info['children'].sort(key=itemgetter('rid'))
-
-        return {'rid': myid, 'info': info}
+        except Exception as ex:
+            if raiseExceptions:
+                raise ex
+            else:
+                return {'exception': ex, 'cik': cik, 'rid': rid}
 
     def _difffilter(self, difflines):
         d = difflines
