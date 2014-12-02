@@ -6,6 +6,7 @@ import sys
 import re
 import json
 import urllib, mimetypes
+import fnmatch
 import six
 if six.PY3:
 	import urllib.parse as urlparse
@@ -69,7 +70,7 @@ Commands:
 			'''List models for a vendor.
 
 Usage:
-    exo [options] model list [--long]
+    exo [options] model list [<glob>] [--long]
 
 Command options:
     -l --long  Show model RID, noaliases, nocomment, nohistorical
@@ -79,12 +80,13 @@ Command options:
 			key = exoconfig.config['vendortoken']
 
 			mlist = pop.model_list(key)
-			if not args['--long']:
-				models = mlist.body
-				print(models.strip())
-			else:
-				models = mlist.body.splitlines()
-				for model in models:
+			models = mlist.body.splitlines()
+			if args['<glob>'] is not None:
+				models = fnmatch.filter(models, args['<glob>'])
+			for model in models:
+				if not args['--long']:
+					print(model.strip())
+				else:
 					mlist = pop.model_info(key, model)
 					res = urlparse.parse_qs(mlist.body)
 					out = [model]
@@ -175,7 +177,7 @@ Commands:
 			'''List content entries for a model.
 
 Usage:
-    exo [options] content list <model> [--long]
+    exo [options] content list <model> [<glob>] [--long]
 
 Command options:
     -l --long  Long listing: name, size, updated, protected, mime, meta'''
@@ -194,12 +196,13 @@ Command options:
 				return "{0}B".format(size)
 
 			mlist = pop.content_list(key, args['<model>'])
-			if not args['--long']:
-				files = mlist.body
-				print(files.strip())
-			else:
-				files = mlist.body.splitlines()
-				for afile in files:
+			files = mlist.body.splitlines()
+			if args['<glob>'] is not None:
+				files = fnmatch.filter(files, args['<glob>'])
+			for afile in files:
+				if not args['--long']:
+					print(afile.strip())
+				else:
 					mlist = pop.content_info(key, args['<model>'], afile)
 					mime, size, updated, meta, protected = mlist.body.strip().split(',')
 
@@ -337,7 +340,7 @@ Commands:
 not including serial number ranges (see ranges command).
 
 Usage:
-    exo [options] sn list <model> [--long] [--offset=num] [--limit=num]
+    exo [options] sn list <model> [<glob>] [--long] [--offset=num] [--limit=num]
 
 Command options:
     -l --long       Long listing
@@ -352,6 +355,8 @@ Command options:
 
 			mlist = pop.serialnumber_list(key, args['<model>'], args['--offset'], args['--limit'])
 			lines = mlist.body.splitlines()
+			if args['<glob>'] is not None:
+				lines = fnmatch.filter(lines, args['<glob>'])
 			for line in lines:
 				sn, rid, extra = line.split(',')
 				if not args['--long']:
