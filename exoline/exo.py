@@ -2798,6 +2798,9 @@ class DiscreetFilter(object):
             s = s.encode('utf-8')
         self.out.write(s)
 
+    def flush(self):
+        self.out.flush()
+
 def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     '''Wrap the command line interface. Globally redirects args
     and io so that the application can be tested externally.'''
