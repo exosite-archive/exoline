@@ -5,7 +5,7 @@ History
 ------------------
 
 - add search command with support for name, alias, serial 
-  number, script
+  number, script (https://github.com/exosite/exoline/issues/64)
 - add globbing to the model, content, and sn list sub-commands
 - remove debug output and fix https://github.com/exosite/exoline/issues/62
 
