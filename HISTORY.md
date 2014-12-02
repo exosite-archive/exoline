@@ -7,6 +7,7 @@ History
 - add search command with support for name, alias, serial 
   number, script
 - add globbing to the model, content, and sn list sub-commands
+- makeShortcuts will create model#sn style shortcuts as well
 - remove debug output and fix https://github.com/exosite/exoline/issues/62
 
 0.9.2 (2014-11-24)
