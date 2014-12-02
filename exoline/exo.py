@@ -1715,7 +1715,7 @@ probably not valid.".format(cik))
 
         return list(differ.compare(s1, s2))
 
-    def _infotree(self, cik, rid=None, nodeidfn=lambda rid, info: rid, options={}, level=None, raiseExceptions=True):
+    def _infotree(self, cik, rid=None, restype='client', resinfo=None, nodeidfn=lambda rid, info: rid, options={}, level=None, raiseExceptions=True):
         '''Get all info for a cik and its children in a nested dict.
         The basic unit is {'rid': '<rid>', 'info': <info-with-children>},
         where <info-with-children> is just the info object for that node
@@ -1738,43 +1738,51 @@ probably not valid.".format(cik))
            (w/o children) for each node.
         '''
         try:
-            types = ['client', 'dataport', 'datarule', 'dispatch']
-            #print(cik, rid)
-            # TODO: make exactly one HTTP request per node
+            types = ['dataport', 'datarule', 'dispatch', 'client']
             listing = {}
             norid = rid is None
             if norid:
-                rid = self._exomult(cik, [['lookup', 'aliased', '']])[0]
+                rid, resinfo = self._exomult(cik, [
+                    ['lookup', 'aliased', ''],
+                    ['info', {'alias': ''}, options]])
+            else:
+                if resinfo is None:
+                    resinfo = self._exomult(cik, [['info', rid, options]])[0]
 
-            info = self._exomult(cik, [['info', rid, options]])[0]
-
-            myid = nodeidfn(rid, info)
+            myid = nodeidfn(rid, resinfo)
 
             if level is not None and level <= 0:
-                return {'rid': myid, 'info': info}
+                return {'rid': myid, 'info': resinfo}
 
-            if norid or info['basic']['type'] == 'client':
+            if restype == 'client':
                 if not norid:
                     # key is only available to owner (not the resource itself)
-                    cik = info['key']
-                listing = self._exomult(cik,
-                                        [['listing', types, {}]])[0]
+                    cik = resinfo['key']
+                listing = self._exomult(cik, [['listing', types, {}]])[0]
+                rids = [rid for rid in list(itertools.chain.from_iterable([listing[t] for t in types]))]
+                infos = self._exomult(cik, [['info', rid, options] for rid in rids])
+            else:
+                listing = []
 
-            info['children'] = []
+            resinfo['children'] = []
+            infoIndex = 0
             for typ in types:
                 if typ in listing:
                     ridlist = listing[typ]
                     for childrid in ridlist:
                         tr = self._infotree(cik,
-                                            childrid,
+                                            rid=childrid,
+                                            restype=typ,
+                                            resinfo=infos[infoIndex],
                                             nodeidfn=nodeidfn,
                                             options=options,
                                             level=None if level is None else level-1,
                                             raiseExceptions=raiseExceptions)
-                        info['children'].append(tr)
-            info['children'].sort(key=lambda x: x['rid'] if 'rid' in x else '')
+                        infoIndex += 1
+                        resinfo['children'].append(tr)
+            resinfo['children'].sort(key=lambda x: x['rid'] if 'rid' in x else '')
 
-            return {'rid': myid, 'info': info}
+            return {'rid': myid, 'info': resinfo}
         except Exception as ex:
             if raiseExceptions:
                 raise ex
@@ -2555,7 +2563,7 @@ def handle_args(cmd, args):
 
             options = er.make_info_options(include, exclude)
             level = args['--level']
-            level = None if level is False or args['--recursive'] is False else int(level)
+            level = None if level is None or args['--recursive'] is False else int(level)
             info = er.info(cik,
                         rids[0],
                         options=options,
