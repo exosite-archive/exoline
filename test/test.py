@@ -16,15 +16,20 @@ import logging
 from unittest import TestCase
 import itertools
 import os
+import random
+import string
+import filecmp
 
 import six
 import yaml
 from six import iteritems
 from dateutil import parser
+from nose.plugins.attrib import attr
 
 from exoline import exo
 from exoline.exo import ExolineOnepV1
 from exoline import timezone
+from pyonep import provision
 
 basedir = 'test'
 
@@ -47,6 +52,12 @@ logging.getLogger("run").setLevel(logging.DEBUG)
 logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
 log = logging.getLogger("run")
 
+pop = provision.Provision(host=config['host'],
+                          manage_by_cik=False,
+                          port=config['port'],
+                          verbose=True,
+                          https=config['https'],
+                          raise_api_exceptions=True)
 
 def abbrev(s, length=1000):
     if len(s) > length:
@@ -80,6 +91,9 @@ def rpc(*args, **kwargs):
         log.debug('    stdin: ' + abbrev(stdin))
     return exo.run(argv, stdin=stdin)
 
+def prv(*args):
+    '''wrapper for provision calls'''
+    return rpc('--vendortoken=' + config['vendortoken'], '--vendor=' + config['vendor'], *args)
 
 class Resource():
     '''Contains information for creating and testing resource.'''
@@ -131,6 +145,10 @@ def makeRPC():
     return exo.ExoRPC(host=config['host'], https=config['https'], port=config['port'])
 
 class TestRPC(TestCase):
+    #def shortDescription(self):
+    #    # show test function names rather than docstring
+    #    return None
+
     RE_RID = '[0-9a-f]{40}'
 
     def _logall(self, r):
@@ -144,13 +162,11 @@ class TestRPC(TestCase):
         if search is not None:
             self.assertTrue(
                 re.search(search, std, flags=re.MULTILINE) is not None,
-                msg + ' - failed to find in {1}:\n{2}\nsearch expression:'
-                + '\n{0}\nlengths: {3} (search) vs. {4} ({1})'.format(
+                msg + ' - failed to find in {1}:\n{2}\nsearch expression:\n{0}\nlengths: {3} (search) vs. {4} ({1})'.format(
                     search, label, std, len(search), len(std)))
         if match is not None:
             self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
-                msg + ' - failed to match in {1}:\n{2}\nmatch expression:'
-                + '\n{0}\nlengths: {3} (match) vs. {4} ({1})'.format(
+                msg + ' - failed to match in {1}:\n{2}\nmatch expression:\n{0}\nlengths: {3} (match) vs. {4} ({1})'.format(
                     match, label, std, len(match), len(std)))
 
     def notok(self, response, msg='', search=None, match=None):
@@ -488,12 +504,16 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         if treecmd != 'twee':
             r = rpc(treecmd, cik, '--values', *options)
-            # call did not fail
             self.ok(r, treecmd + ' with --values shouldn\'t fail')
 
             r = rpc(treecmd, cik, '--verbose', *options)
-            # call did not fail
             self.ok(r, treecmd + ' with --verbose shouldn\'t fail')
+        else:
+            r = rpc(treecmd, cik, '--rids', *options)
+            self.ok(r, treecmd + ' with --rids should\'t fail')
+            self.assertTrue(
+                re.search('(cik:|rid\.)', r.stdout) is None,
+                'look for things that shouldn\'t be in --rids output')
 
     def tree_test(self):
         '''Tree command'''
@@ -598,6 +618,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.l("{0} vs {1}".format(r.stdout, val))
         self.assertEqual(r.stdout, val, msg)
 
+    @attr('script')
     def script_test(self):
         '''Script upload'''
         waitsec = 12
@@ -658,13 +679,13 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         #self._latest(cik, 'string_port_alias', lua2['portoutput'],
         #             'dataport write from updated script within {0} sec'.format(waitsec))
         # test other form
-        r = rpc('script', cik, '--file='+lua1['path'], '--name=' + lua1['name'] + 'form2', '--create')
+        r = rpc('script', cik, '--file='+lua1['path'], '--name=' + lua1['name'] + '_form2', '--create')
         self.ok(r, 'upload new script with new argument form succeeds')
-        self.assertEqual(readscript(cik, lua1['name'] + 'form2'), lua1['content'], 'create script with new argument form')
+        self.assertEqual(readscript(cik, lua1['name'] + '_form2'), lua1['content'], 'create script with new argument form')
         # test passing RID
-        r = rpc('script', cik, 'scriptByRID', '--file='+lua1['path'], '--name=' + lua1['name'] + 'form2', '--create')
+        r = rpc('script', cik, 'scriptByRID', '--file='+lua1['path'], '--name=' + lua1['name'] + '_form2', '--create')
         self.ok(r, 'upload new script with new argument form succeeds')
-        self.assertEqual(readscript(cik, lua1['name'] + 'form2'), lua1['content'], 'create script with new argument form')
+        self.assertEqual(readscript(cik, lua1['name'] + '_form2'), lua1['content'], 'create script with new argument form')
 
         # test --recursive
         r = rpc('read', childcik1, lua1['name'])
@@ -827,24 +848,23 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'time series data was not copied when --nohistorical was specified', match='')
 
         # clone dataport
-        '''copyrid = clone_helper(cik, 'foo')
-        self.ok(r, 'copy a dataport')
-
-        r = rpc('diff', cik, copycik)
-        if sys.version_info < (2, 7):
-            self.notok(r, 'diff not supported with Python <2.7')
-        else:
-            self.ok(r, 'diff after cloning dataport in only one of two clones, notices differences', match='.+')
-
-        copyrid = clone_helper(copycik, 'foo')
-        self.ok(r, 'copy another dataport')
-
-        r = rpc('diff', cik, copycik)
-        if sys.version_info < (2, 7):
-            self.notok(r, 'diff not supported with Python <2.7')
-        else:
-            self.ok(r, 'diff after cloning dataport in two clones, no differences', match='')'''
-
+        #copyrid = clone_helper(cik, 'foo')
+        #self.ok(r, 'copy a dataport')
+        #
+        #r = rpc('diff', cik, copycik)
+        #if sys.version_info < (2, 7):
+        #    self.notok(r, 'diff not supported with Python <2.7')
+        #else:
+        #    self.ok(r, 'diff after cloning dataport in only one of two clones, notices differences', match='.+')
+        #
+        #copyrid = clone_helper(copycik, 'foo')
+        #self.ok(r, 'copy another dataport')
+        #
+        #r = rpc('diff', cik, copycik)
+        #if sys.version_info < (2, 7):
+        #    self.notok(r, 'diff not supported with Python <2.7')
+        #else:
+        #    self.ok(r, 'diff after cloning dataport in two clones, no differences', match='')'''
         # TODO: test --noaliases
 
     def copy_diff_test(self):
@@ -905,19 +925,17 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         else:
             self.ok(r, 'aliases match now', match='')
 
-        '''
-        r = rpc('copy', cik, cik, '--cikonly')
-        self.ok(r, 'copy client into itself', match=self.RE_RID)
-        innercik = r.stdout
-
-        r = rpc('copy', copycik, copycik, '--cikonly')
-        self.ok(r, 'copy client copy into itself', match=self.RE_RID)
-        innercopycik = r.stdout
-
-        r = rpc('lookup', innercopycik, 'string_port_alias')
-        self.ok(r, 'lookup dataport on inner cik copy', match=self.RE_RID)
-        innercopydataportrid = r.stdout
-        '''
+        #r = rpc('copy', cik, cik, '--cikonly')
+        #self.ok(r, 'copy client into itself', match=self.RE_RID)
+        #innercik = r.stdout
+        #
+        #r = rpc('copy', copycik, copycik, '--cikonly')
+        #self.ok(r, 'copy client copy into itself', match=self.RE_RID)
+        #innercopycik = r.stdout
+        #
+        #r = rpc('lookup', innercopycik, 'string_port_alias')
+        #self.ok(r, 'lookup dataport on inner cik copy', match=self.RE_RID)
+        #innercopydataportrid = r.stdout
 
     def _stddesc(self, name):
         return {'limits': {'client': 'inherit',
@@ -1214,6 +1232,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         info_new['description']['name'] = name_old
         self.assertTrue(info_old == info_new, 'client name was only difference')
 
+    @attr('spec')
+    @attr('script')
     def spec_test(self):
         '''Spec command'''
         print(os.path.dirname(os.getcwd()))
@@ -1310,6 +1330,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             print(r.stdout)
             out = r.stdout
             f.write(out)
+        r = rpc('spec', example_spec, '--check')
+        self.ok(r, 'example spec passes --check')
         r = rpc('spec', cik, example_spec, '--ids=A,B')
         self.ok(r, 'empty client does not match example spec', match='.+')
         r = rpc('spec', cik, example_spec, '--create', '--ids=A,B')
@@ -1319,6 +1341,52 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         os.remove(example_spec)
 
+    @attr('spec')
+    def spec_check_test(self):
+        '''Test that invalid spec files are detected'''
+        cik = self.client.cik()
+        def test_file(filename):
+            spec = basedir + '/files/' + filename
+            r = rpc('spec', spec, '--check')
+            self.notok(r, filename + ' problems are caught by --check', search='problems in spec')
+            r = rpc('spec', cik, spec, '--create')
+            self.notok(r, filename + ' does not create', search='problems in spec')
+
+        test_file('spec_mistyped_key.yaml')
+        test_file('spec_invalid_jsonschema.yaml')
+        test_file('spec_missing_keys.yaml')
+
+    @attr('spec')
+    def spec_url_test(self):
+        '''Test passing urls for spec file and spec scripts'''
+        cik = self.client.cik()
+
+        def spec_and_check(spec, aliases):
+            r = rpc('create', cik, '--type=client', '--name=通過規範', '--cikonly')
+            self.ok(r, 'create child client')
+            childcik = r.stdout
+            r = rpc('spec', childcik, spec, '--create')
+            self.ok(r, 'created device from spec url')
+            r = rpc('info', childcik, '--include=aliases')
+            self.ok(r, 'get info for created device')
+            aliases = json.loads(r.stdout)['aliases']
+            aliaslist = list(itertools.chain(*[aliases[k] for k in aliases]))
+            self.assertTrue(
+                all([a in aliaslist for a in ['temp_f', 'temp_c', 'convert.lua']]),
+                'created device has the right aliases')
+
+        spec_and_check(
+            'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_url.yaml',
+            ['temp_f', 'temp_c', 'convert.lua'])
+        spec_and_check(
+            'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_relative_url.yaml',
+            ['temp_f', 'temp_c', 'convert.lua'])
+        # mainly this is testing embedded scripts
+        spec_and_check(
+            'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_embedded.yaml',
+            ['temp_f', 'temp_c', 'convert.lua'])
+
+    @attr('spec')
     def spec_subscribe_test(self):
         '''Test spec dataports with a subscription to another'''
         cik = self.client.cik()
@@ -1332,6 +1400,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, 'destination', '--format=raw')
         self.ok(r, 'read subscribed value', match='ATEST')
 
+    @attr('spec')
     def spec_preprocess_test(self):
         '''Test spec dataports with preprocess'''
         cik = self.client.cik()
@@ -1353,6 +1422,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, 'complex', '--format=raw')
         self.ok(r, 'read preprocessed value', match='30')
 
+    @attr('spec')
     def spec_retention_test(self):
         '''Test spec dataports with retention'''
         cik = self.client.cik()
@@ -1393,6 +1463,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertTrue(retention['count'] == 'infinity', 'Count is wrong')
         self.assertTrue(retention['duration'] == 'infinity', 'Duration is wrong')
 
+    @attr('spec')
     def spec_multi_test(self):
         '''Test spec --portal for updating multiple devices'''
         # Get example spec
@@ -1464,9 +1535,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, "Device didn't match spec", search='not found')
 
 
+    @attr('spec')
     def spec_domain_test(self):
         '''
-            Tests the ability to update multiple device of the same clientmodel
+            Test updating multiple devices of the same clientmodel
             under multiple portals that are under a single domain.
         '''
         # Get example spec
@@ -1593,7 +1665,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'create a client and clear portals cache')
         # TODO: verify client displays in Portals
 
-        r = rpc('-c',
+        r = rpc('-e',
                 '--portals=https://weaver.exosite.com',
                 'create',
                 cik,
@@ -1781,9 +1853,359 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('--discreet', 'tree', cik)
         self.ok(r, search='cik: ' + cik[:20] + '01234567890123456789')
 
+    def _createModel(self):
+        cik = self.client.cik()
+
+        childrid = self._createMultiple(cik, [
+            Resource(cik, 'client', {'name': '你好世界'})])[0]
+
+        # create a model
+        id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        model = 'exolinetestmodel' + id
+
+        pop.model_create(config['vendortoken'], model, childrid,
+            aliases=True,
+            comments=True,
+            historical=True)
+
+        return model, childrid
+
+    def provision_model_test(self):
+        '''Provision model command'''
+        model, modelrid = self._createModel()
+
+        # list models
+        r = prv('model', 'list')
+        self.ok(r, 'model is listed', search=model)
+
+        # get info for model
+        r = prv('model', 'info', model)
+        self.ok(r, 'model info includes RID', search=modelrid)
+
+    def provision_unknown_command(self):
+        '''Provision unknown subcommand'''
+        r = prv('blarg')
+        self.notok(r, 'unknown command', search='blarg')
+
+    def provision_sn_test(self):
+        '''Provision sn command'''
+        cik = self.client.cik()
+        model, modelrid = self._createModel()
+
+        sn = 'sn' + model
+
+        # add sn
+        r = prv('sn', 'add', model, sn)
+        self.ok(r, 'add sn')
+
+        # list sn
+        r = prv('sn', 'list', model)
+        self.ok(r, 'list sn', match=sn)
+
+        # enable. This creates a clone in a particular portal,
+        # associates it with a serial number, and opens a 24
+        # hour window for device activation.
+        r = prv('sn', 'enable', model, sn, cik)
+        self.ok(r, 'enable sn/create a new clone')
+
+        clonerid = r.stdout.strip()
+        r = rpc('info', cik, clonerid, '--include=description,basic')
+        self.ok(r, 'info on clone before activation')
+        info = json.loads(r.stdout)
+        meta = json.loads(info['description']['meta'])
+        self.assertEqual(meta['device']['vendor'], config['vendor'], 'clone meta vendor is correct')
+        self.assertEqual(meta['device']['model'], model, 'clone meta model is correct')
+        self.assertEqual(meta['device']['sn'], sn, 'clone meta sn is correct')
+        self.assertEqual(info['basic']['status'], 'notactivated', 'clone is not activated')
+
+        # activate (this would normally be done by a device)
+        r = prv('sn', 'activate', model, sn)
+        self.ok(r, 'activate sn', match=self.RE_RID)
+        clonecik = r.stdout.strip()
+
+        r = rpc('info', clonecik, '--include=description,basic')
+        self.ok(r, 'info on device cloned from model')
+        info = json.loads(r.stdout)
+
+        self.assertEqual(info['basic']['status'], 'activated',
+                         'clone is now activated')
+
+        # regenerate
+        r = prv('sn', 'regen', model, sn)
+        self.ok(r, 'regenerate CIK', match='')
+        time.sleep(1)
+        r = rpc('info', clonecik, '--include=basic')
+        self.notok(r, 'info fails on previous cik', search='401')
+        r = rpc('info', cik, clonerid, '--include=basic')
+        self.ok(r, 'info succeeds')
+        info = json.loads(r.stdout)
+        self.assertEqual(info['basic']['status'], 'notactivated', 'status after regen');
+        r = prv('sn', 'activate', model, sn)
+        self.ok(r, 're-activate', match=self.RE_RID)
+        newcik = r.stdout.strip()
+        self.assertNotEqual(clonecik, newcik)
+        r = rpc('info', newcik, '--include=basic')
+        self.ok(r, 'info succeeds on new, re-activated cik')
+
+        # disable
+        r = prv('sn', 'disable', model, sn)
+        self.ok(r, 'disable client', match='')
+        r = rpc('info', cik, clonerid, '--include=basic')
+        self.ok(r, 'info succeeds')
+        info = json.loads(r.stdout)
+        self.assertEqual(info['basic']['status'], 'expired', 'status after disable');
+        r = prv('sn', 'regen', model, sn)
+        self.ok(r, 'regenerate CIK', match='')
+        r = prv('sn', 'activate', model, sn)
+        self.ok(r, 're-activate', match=self.RE_RID)
+        newcik = r.stdout.strip()
+        r = rpc('info', cik, clonerid, '--include=basic')
+        self.ok(r, 'info succeeds')
+        info = json.loads(r.stdout)
+        self.assertEqual(info['basic']['status'], 'activated', 'status after activate');
+
+        # delete sn
+        r = prv('sn', 'delete', model, sn)
+        self.ok(r, 'sn is deleted')
+        r = prv('sn', 'list', model)
+        self.ok(r, 'list sn after deletion')
+        self.assertTrue(sn not in r.stdout,
+                        'deleted serial number is not in listing')
+
+        # test two ways of adding multiple serial numbers at once
+        r = prv('sn', 'add', model, '--file=test/files/serialnumbers')
+        self.ok(r, 'add a file full of serial numbers')
+        r = prv('sn', 'add', model, '011', '012')
+        self.ok(r, 'add multiple serial numbers at command line')
+        # load serial numbers a page at a time
+        r = prv('sn', 'list', model, '--limit=6')
+        self.ok(r, 'get first page of serial numbers',
+                match='\n'.join(['[0-9]{3}' for n in range(6)]))
+        r2 = prv('sn', 'list', model, '--offset=6')
+        self.ok(r2, 'get second page of serial numbers',
+                match='\n'.join(['[0-9]{3}' for n in range(6, 12)]))
+        sns = sorted((r.stdout + '\n' + r2.stdout).split('\n'))
+        self.assertEquals(sns, ['{0:03d}'.format(n + 1) for n in range(12)],
+                          'full list of serial numbers matches')
+        r = prv('sn', 'delete', model, '--file=test/files/serialnumbers')
+        self.ok(r, 'delete serial numbers with --file')
+        r = prv('sn', 'delete', model, '011', '012')
+        self.ok(r, 'delete the remaining serial numbers')
+        r = prv('sn', 'list', model)
+        self.ok(r, 'list of serial numbers is empty', match='')
+
+        # test ranges
+        r = prv('sn', 'ranges', model)
+        self.ok(r, 'list of ranges is empty', match='')
+        prefix = '01:02:03:04:05:'
+        rangeinfo = ['mac:48', prefix + '00', prefix + 'ff']
+        r = prv('sn', 'addrange', model, *rangeinfo)
+        self.ok(r, 'add range of mac addresses')
+        r = prv('sn', 'ranges', model)
+        self.ok(r, 'list ranges after adding one')
+        ranges = json.loads(r.stdout)
+        self.assertEqual(len(ranges), 1, 'one range in list')
+        self.assertEqual(
+            ranges[0],
+            {"format":"mac:48","length":None,"casing":"upper","first":1108152157440,"last":1108152157695},
+            'range looks right in list')
+        r = prv('sn', 'delrange', model, *rangeinfo)
+        r = prv('sn', 'ranges', model)
+        self.ok(r, 'list of ranges is empty', match='')
+
+    def provision_content_test(self):
+        '''Provision content commands'''
+
+        # create a model
+        model, rid = self._createModel()
+
+        # list content
+        r = prv('content', 'list', model)
+        self.ok(r, 'no content was listed', match='')
+
+        def content(file, id, type):
+            # put content
+            r = prv('content', 'put', model, id, file, '--meta=thisissometa')
+            self.ok(r, 'put content', match='')
+
+            # list content
+            r = prv('content', 'list', model)
+            self.ok(r, 'model was listed', match=id)
+
+            # get content info
+            r = prv('content', 'info', model, id)
+            # e.g. application/octet-stream,1024,1416147370,,false
+            self.ok(r,
+                    'got content info',
+                    match=type + ',[0-9]+,[0-9]+,thisissometa,(true|false)')
+
+            # get content blob
+            r = prv('content', 'get', model, id, 'content')
+            self.ok(r, 'get content', match='')
+
+            # files should match
+            self.assertTrue(filecmp.cmp(file, 'content', shallow=False),
+                            'content files match')
+
+            # delete content
+            r = prv('content', 'delete', model, id)
+            self.ok(r, 'deleted content', match='')
+            r = prv('content', 'list', model)
+            self.ok(r, 'list content after deletion')
+            self.assertTrue(id not in r.stdout)
+            r = prv('content', 'info', model, id)
+            self.notok(r, 'no info found', search='404 Not Found')
+
+        # test various file types
+        content('test/files/content.json', 'content.json', 'application/json')
+        # TODO: get binary files working. Seems to work
+        # at the command line, but not from the test.
+        #content('test/files/content.bin', 'content.bin', 'application/octet-stream')
+
+    def help_test(self):
+        '''Test -h for all commands'''
+        def check_help(r, command):
+            self.notok(r, 'error exit code')
+            self.assertTrue(
+                re.search(command, r.stdout, re.MULTILINE) is not None,
+                'help text is returned (no error)')
+            self.assertTrue(
+                re.search('Usage:', r.stdout, re.MULTILINE) is not None,
+                'help text includes usage')
+            # other linting goes here
+
+        def hlp(args):
+            a = args + ['-h']
+            r = rpc(*a)
+            check_help(r, args[-1] if len(args) > 0 else 'exo')
+            # this assumes commands are followed by two newlines
+            # and then another section
+            cmd_section = re.search(r'Commands:\n(.+)\n\n([A-Z]+)',
+                                    r.stdout,
+                                    flags=re.MULTILINE|re.DOTALL)
+            if cmd_section is None:
+                # no subcommands
+                #self.l(r.stdout)
+                self.assertTrue(
+                    'Commands:' not in r.stdout,
+                    'no commands matched, so we shouldn\'t have a command section')
+                return
+            else:
+                # there are subcommands
+                commands = []
+                for line in cmd_section.groups()[0].split('\n'):
+                    # pull just the command, e.g. 'tree'
+                    match = re.match('  ([^-\s][^\s]*)\s.*', line)
+                    if match is not None:
+                        commands.append(match.groups()[0])
+                if len(commands) == 0:
+                    self.l(str(commands))
+
+                self.assertTrue(len(commands) > 0)
+                for command in commands:
+                    hlp(args + [command])
+
+        hlp([])
+
+    def search_test(self):
+        '''Search command'''
+        cik = self.client.cik()
+
+        childrids = self._createMultiple(cik, [
+            Resource(cik, 'client', {'name': '你好' + str(i)}) for i in range(10)])
+
+
+        #for rid in childrids:
+        #    childcik = rpc('lookup', cik, rid, '--cikonly').stdout
+        #    ridFloat, ridString = self._createMultiple(childcik, [
+        #        Resource(cik, 'dataport', {'format': 'float', 'name': 'should not match'}),
+        #        Resource(cik, 'dataport', {'format': 'string', 'name': 'also should not match'})])
+
+        r = rpc('info', cik, childrids[4], '--cikonly')
+        self.ok(r, 'look up one of the clients', match=self.RE_RID)
+        childcik = r.stdout
+
+        ridFloat, ridString, ridInteger, ridScript = self._createMultiple(childcik, [
+            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port', 'alias': 'float_alias'}),
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port', 'alias': 'string_alias'}),
+            Resource(cik, 'dataport', {'format': 'integer', 'name': 'integer_port', 'alias': 'int3ger_alias'}),
+            Resource(cik, 'datarule', {
+                    'format': 'string',
+                    'name': 'script_port',
+                    'preprocess': [],
+                    'rule': {
+                        'script': 'debug("你好World")'
+                    },
+                    'visibility': 'parent',
+                    'retention': {
+                        'count': 'infinity',
+                        'duration': 'infinity'
+                    }
+                })])
+
+        # set up a device clone with a serial number
+        model = 'exolinetestmodel' + ''.join(random.choice(string.digits) for _ in range(5))
+        pop.model_create(config['vendortoken'], model, childrids[4],
+            aliases=True,
+            comments=True,
+            historical=True)
+        sn = '123456'
+        # add sn
+        r = prv('sn', 'add', model, sn)
+        self.ok(r, 'add sn')
+        r = prv('sn', 'enable', model, sn, cik)
+        self.ok(r, 'enable sn/create a new clone')
+        clonerid = r.stdout.strip()
+        # activate (this would normally be done by a device)
+        r = prv('sn', 'activate', model, sn)
+        self.ok(r, 'activate sn', match=self.RE_RID)
+        clonecik = r.stdout.strip()
+
+        # search for name
+        r = rpc('search', cik, '你.3')
+        self.ok(r, 'search for name', search='你好3')
+        childcik3 = rpc('info', cik, childrids[3], '--cikonly').stdout
+        self.ok(r, search=childcik3)
+        self.assertEqual(len(r.stdout.split('\n')), 1, 'exactly one match')
+
+        # search for alias
+        #r = rpc('search', cik, '[a-z]+_ALIAS', '--silent')
+        #self.ok(r, search='float_alias')
+        #self.ok(r, search='string_alias')
+        #self.assertNotIn('int3ger', r.stdout)
+
+        # search with match case
+        r = rpc('search', cik, 'Alias', '--matchcase')
+        self.ok(r, 'no response with --matchcase', match='')
+
+        # search for script content
+        r = rpc('search', cik, 'World', '--matchcase')
+        self.ok(r, 'script matches', search='debug\("')
+
+        # search for serial number
+        # why is this not working? It works at the command line.
+        #r = rpc('search', cik, sn, '--silent')
+        #self.l('stderr is: ' + r.stderr)
+        #self.l('stdout is: ' + r.stdout)
+        #self.ok(r, 'serial number found', search=sn)
+        #self.ok(r, 'correct cik in match', search=cik)
+        #self.assertEqual(len(r.stdout.split('\n')), 1, 'exactly one serial number match')
+
+        r = rpc('search', cik, '你.4')
+        self.ok(r, search='你好4')
+        self.l(r.stdout)
+        self.assertEqual(len(r.stdout.split('\n')), 2, 'two matches: client model and clone')
+
+
 def tearDownModule(self):
     '''Do final things'''
     with open('test/testperf.json', 'w') as f:
         f.write(json.dumps(exo.PERF_DATA))
-
-
+    # delete test models
+    response = pop.model_list(config['vendortoken'])
+    models = response.body.splitlines()
+    for model in models:
+        if model.startswith('exolinetestmodel'):
+            response = pop.model_remove(config['vendortoken'], model)
+    # drop all test clients
+    rpc('drop', config['portalcik'], '--all-children')

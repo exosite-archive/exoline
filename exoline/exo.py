@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Exoline - a CLI for Exosite's IoT platform
-   Provides command line access to APIs documented here:
-   https://github.com/exosite/docs
+"""Exoline - Exosite IoT Command Line Interface
+https://github.com/exosite/exoline
 
 Usage:
   exo [--help] [options] <command> [<args> ...]
@@ -10,21 +9,24 @@ Usage:
 Commands:
 {{ command_list }}
 Options:
-  --host=<host>        OneP host. Default is $EXO_HOST or m2.exosite.com
-  --port=<port>        OneP port. Default is $EXO_PORT or 443
-  --config=<file>      Config file [default: ~/.exoline]
-  --httptimeout=<sec>  HTTP timeout [default: 60] (default for copy is 480)
-  --https              Enable HTTPS (deprecated, HTTPS is default)
-  --http               Disable HTTPS
-  --useragent=<ua>     Set User-Agent Header for outgoing requests
-  --debug              Show debug info (stack traces on exceptions)
-  -d --debughttp       Turn on debug level logging in pyonep
-  --discreet           Obfuscate RIDs in stdout and stderr
-  -c --clearcache      Invalidate Portals cache after running command
-  --portals=<server>   Portals server [default: https://portals.exosite.com]
-  --vendortoken=<vt>   Vendor Token. See http://github.com/exosite/exoline#provisioning for vendor token setup instructions.
-  -h --help            Show this screen
-  -v --version         Show version
+  --host=<host>          OneP host. Default is $EXO_HOST or m2.exosite.com
+  --port=<port>          OneP port. Default is $EXO_PORT or 443
+  -c --config=<file>     Config file [default: ~/.exoline]
+  --httptimeout=<sec>    HTTP timeout [default: 60] (default for copy is 480)
+  --https                Enable HTTPS (deprecated, HTTPS is default)
+  --http                 Disable HTTPS
+  --useragent=<ua>       Set User-Agent Header for outgoing requests
+  --debug                Show debug info (stack traces on exceptions)
+  -d --debughttp         Turn on debug level logging in pyonep
+  --curl                 Show curl calls for requests. Implies --debughttp
+  --discreet             Obfuscate RIDs in stdout and stderr
+  -e --clearcache        Invalidate Portals cache after running command
+  --portals=<server>     Portals server [default: https://portals.exosite.com]
+  -t --vendortoken=<vt>  Vendor token (/admin/home in Portals)
+  -n --vendor=<vendor>   Vendor identifier (/admin/managemodels in Portals)
+			 (See http://github.com/exosite/exoline#provisioning)
+  -h --help              Show this screen
+  -v --version           Show version
 
 See 'exo <command> --help' for more information on a specific command.
 """
@@ -252,6 +254,7 @@ Command options:
 Command options:
     --nocolor      don't use color in output (color is always off in Windows)
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]
+    --rids         show RIDs instead CIKs below the top level
 
 Example:
 
@@ -298,8 +301,8 @@ Example:
     Both forms do the same thing, but --file is the recommended one.
     If <rid> is omitted, the file name part of <script-file> is used
     as both the alias and name of the script. This convention helps
-    when working with scripts in Portals, since it shows the script
-    resource's name but not its alias.
+    when working with scripts in Portals, because Portals shows the
+    script resource's name but not its alias.
 
 Command options:
     --name=<name>  script name, if different from script filename. The name
@@ -363,7 +366,7 @@ Command options:
     ('activate', '''Activate a share code\n\nUsage:
     exo [options] activate <cik> --share=<code>
 
-If you want to activate a *device*, use the "provision activate"
+If you want to activate a *device*, use the "sn activate"
      command instead'''),
     ('deactivate', '''Deactivate a share code\n\nUsage:
     exo [options] deactivate <cik> --share=<code>'''),
@@ -421,7 +424,10 @@ if platform.system() != 'Windows':
         for module_name in plugin_names:
             try:
                 plugin = importlib.import_module('plugins.' + module_name)
-            except:
+            except Exception as ex:
+		# TODO: only catch the not found exception, for plugin
+		# debugging
+		#print(ex)
                 try:
                     plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
                 except:
@@ -432,7 +438,12 @@ if platform.system() != 'Windows':
             plugins.append(p)
 
             # get documentation
-            cmd_doc[p.command()] = plugin.__doc__
+            command = p.command()
+            if isinstance(command, six.string_types):
+                cmd_doc[command] = plugin.__doc__
+            else:
+                for c in command:
+                    cmd_doc[c] = p.doc(c)
 else:
     # plugin support for Windows executable build
     try:
@@ -454,12 +465,20 @@ else:
         plugins.append(p)
         cmd_doc[p.command()] = transform.__doc__
 
+        # provision plugin
+        try:
+            from ..exoline.plugins import provision
+        except:
+            from exoline.plugins import provision
+        p = provision.Plugin()
+        plugins.append(p)
+        for c in p.command():
+            cmd_doc[c] = p.doc(c)
+
     except Exception as ex:
         import traceback
         traceback.print_exc()
-        print("Couldn't import spec......")
         pprint(ex)
-        print('yup, that was an exception.')
 
 # perform substitutions on command documentation
 for k in cmd_doc:
@@ -500,11 +519,14 @@ class ExoConfig:
         return None
 
     def loadConfig(self, configfile):
-        try:
-            with open(configfile) as f:
-                self.config = yaml.safe_load(f)
-        except IOError as ex:
+        if configfile is None:
             self.config = {}
+        else:
+            try:
+                with open(configfile) as f:
+                    self.config = yaml.safe_load(f)
+            except IOError as ex:
+                self.config = {}
 
     def lookup_shortcut(self, cik):
         '''Look up what was passed for cik in config file
@@ -520,6 +542,24 @@ class ExoConfig:
                 raise ExoException('Tried a CIK shortcut {0}, but found no keys'.format(cik))
         else:
             return cik
+
+    def mingleArguments(self, args):
+        '''This mixes the settings applied from the configfile and the command line.
+        Part of this is making those items availible in both places.
+        Command line always overrides configfile.
+        '''
+        # This ONLY works with options that take a parameter.
+        toMingle = ['host', 'port', 'httptimeout', 'useragent', 'portals', 'vendortoken', 'vendor']
+        # args overrule config.
+        # If not in arg but in config: copy to arg.
+        for arg in toMingle:
+            if arg in self.config and args['--'+arg] is None:
+                args['--'+arg] = self.config[arg]
+
+        # copy args to config.
+        for arg in toMingle:
+            self.config[arg] = args['--'+arg]
+
 
 exoconfig = ExoConfig()
 
@@ -560,19 +600,22 @@ class ExoRPC():
                  https=False,
                  verbose=True,
                  logrequests=False,
-                 user_agent=None):
+                 user_agent=None,
+		 curldebug=False):
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
         if user_agent is None:
             user_agent = "Exoline {0}".format(__version__)
-        self.exo = ExolineOnepV1(host=host,
-                               port=port,
-                               httptimeout=httptimeout,
-                               https=https,
-                               agent=user_agent,
-                               reuseconnection=True,
-                               logrequests=logrequests)
+        self.exo = ExolineOnepV1(
+	    host=host,
+	    port=port,
+	    httptimeout=httptimeout,
+	    https=https,
+	    agent=user_agent,
+	    reuseconnection=True,
+	    logrequests=logrequests,
+	    curldebug=curldebug)
 
     def _raise_for_response(self, isok, response, call=None):
         if not isok:
@@ -1220,12 +1263,12 @@ class ExoRPC():
             class bcolors:
                 SPACER = '' if cli_args['--nocolor'] else '\033[0m'
                 NAME = '' if cli_args['--nocolor'] else '\033[0m'
-                TYPE = '' if cli_args['--nocolor'] else '\033[95m'
-                ID = '' if cli_args['--nocolor'] else '\033[92m'
-                VALUE = '' if cli_args['--nocolor'] else '\033[93m'
-                TIMESTAMP = '' if cli_args['--nocolor'] else '\033[94m'
-                PINK = '' if cli_args['--nocolor'] else '\033[95m'
-                MODEL = '' if cli_args['--nocolor'] else '\033[96m'
+                TYPE = '' if cli_args['--nocolor'] else '\033[35m'
+                ID = '' if cli_args['--nocolor'] else '\033[32m'
+                VALUE = '' if cli_args['--nocolor'] else '\033[33m'
+                TIMESTAMP = '' if cli_args['--nocolor'] else '\033[34m'
+                PINK = '' if cli_args['--nocolor'] else '\033[35m'
+                MODEL = '' if cli_args['--nocolor'] else '\033[36m'
                 ENDC = '' if cli_args['--nocolor'] else '\033[0m'
 
             # the goal here is to make the line short to provide more room for the value
@@ -1233,12 +1276,18 @@ class ExoRPC():
             # if no alias, then the first ten of the RID and the name
             # if multiple alias, then the first alias
             if typ == 'client':
-                tweeid = bcolors.SPACER + 'cik: ' + bcolors.ID + id[5:]
-            else:
-                if aliases is not None and len(aliases) > 0:
-                    tweeid = aliases[0]
+                if cli_args['--rids']:
+                    tweeid = bcolors.SPACER + 'rid: ' + bcolors.ID + rid
                 else:
-                    tweeid = 'rid.' + rid[:5]
+                    tweeid = bcolors.SPACER + 'cik: ' + bcolors.ID + id[5:]
+            else:
+                if cli_args['--rids']:
+                    tweeid = bcolors.SPACER + 'rid: ' + bcolors.ID + rid
+                else:
+                    if aliases is not None and len(aliases) > 0:
+                        tweeid = aliases[0]
+                    else:
+                        tweeid = 'rid.' + rid[:5]
 
             displayname = ((name + bcolors.SPACER + ' ') if len(name) > 0 else ' ')
             displaytype = {'dataport': 'dp', 'client': 'cl', 'datarule': 'dr', 'dispatch': 'ds'}[typ]
@@ -1418,14 +1467,14 @@ probably not valid.".format(cik))
                     return rid
         return None
 
-    def _upload_script(self, cik, name, text, rid=None, meta=''):
+    def _upload_script(self, cik, name, content, rid=None, meta='', alias=None):
         '''Upload a lua script, either creating one or updating the existing one'''
         desc = {
             'format': 'string',
             'name': name,
             'preprocess': [],
             'rule': {
-                'script': text
+                'script': content
             },
             'visibility': 'parent',
             'retention': {
@@ -1441,17 +1490,19 @@ probably not valid.".format(cik))
             else:
                 #print('cik: {0} desc: {1}'.format(cik, json.dumps(desc)))
                 raise ExoException("Error creating datarule: {0}".format(rid))
-            success, rid = self.exo.map(cik, rid, name)
+            if alias is None:
+                alias = name
+            success, rid = self.exo.map(cik, rid, alias)
             if success:
-                print("Aliased script to: {0}".format(name))
+                print("Aliased script to: {0}".format(alias))
             else:
                 raise ExoException("Error aliasing script")
         else:
-            success = self.exo.update(cik, rid, desc)
-            if success:
+            isok, response = self.exo.update(cik, rid, desc)
+            if isok:
                 print ("Updated script RID: {0}".format(rid))
             else:
-                raise ExoException("Error updating datarule.")
+                raise ExoException("Error updating datarule: {0}".format(response))
 
     def cik_recursive(self, cik, fn):
         '''Run fn on cik and all its client children'''
@@ -1462,6 +1513,41 @@ probably not valid.".format(cik))
         # {'client': {'<rid0>':<info0>, '<rid1>':<info1>}]
         for rid in lwi['client']:
             self.cik_recursive(lwi['client'][rid]['key'], fn)
+
+    def upload_script_content(self,
+                              ciks,
+                              content,
+                              name,
+                              recursive=False,
+                              create=False,
+                              filterfn=lambda script: script,
+                              rid=None):
+        for cik in ciks:
+            def up(cik, rid):
+                if rid is not None:
+                    alias = None
+                    if create:
+                        # when creating, if <rid> is passed it must be an alias
+                        # to use instead of name
+                        if type(rid) is not dict:
+                            raise ExoException('<rid> must be an alias when passing --create')
+                        alias = rid['alias']
+                        rid = None
+                    self._upload_script(cik, name, content, rid=rid, alias=alias)
+                else:
+                    rid = self._lookup_rid_by_name(cik, name)
+                    if rid is not None or create:
+                        self._upload_script(cik, name, content, rid=rid)
+                    else:
+                        # TODO: move this to spec plugin
+                        print("Skipping CIK: {0} -- {1} not found".format(cik, name))
+                        if not create:
+                            print('Pass --create to create it')
+
+            if recursive:
+                self.cik_recursive(cik, lambda cik: up(cik, rid))
+            else:
+                up(cik, rid)
 
     def upload_script(self,
                       ciks,
@@ -1477,27 +1563,18 @@ probably not valid.".format(cik))
             raise ExoException('Error opening file {0}.'.format(filename))
         else:
             with f:
-                text = filterfn(f.read())
+                content = filterfn(f.read())
                 if name is None:
                     # if no name is specified, use the file name as a name
                     name = os.path.basename(filename)
-                for cik in ciks:
-                    def up(cik, rid):
-                        if rid is not None:
-                            self._upload_script(cik, name, text, rid=rid)
-                        else:
-                            rid = self._lookup_rid_by_name(cik, name)
-                            if rid is not None or create:
-                                self._upload_script(cik, name, text, rid=rid)
-                            else:
-                                print("Skipping CIK: {0} -- {1} not found".format(cik, name))
-                                if not create:
-                                        print('Pass --create to create it')
-
-                    if recursive:
-                        self.cik_recursive(cik, lambda cik: up(cik, rid))
-                    else:
-                        up(cik, rid)
+                self.upload_script_content(
+                    ciks,
+                    content,
+                    name=name,
+                    recursive=recursive,
+                    create=create,
+                    filterfn=filterfn,
+                    rid=rid)
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'], options={})
@@ -1638,7 +1715,7 @@ probably not valid.".format(cik))
 
         return list(differ.compare(s1, s2))
 
-    def _infotree(self, cik, rid=None, nodeidfn=lambda rid, info: rid, options={}, level=None):
+    def _infotree(self, cik, rid=None, nodeidfn=lambda rid, info: rid, options={}, level=None, raiseExceptions=True):
         '''Get all info for a cik and its children in a nested dict.
         The basic unit is {'rid': '<rid>', 'info': <info-with-children>},
         where <info-with-children> is just the info object for that node
@@ -1660,42 +1737,49 @@ probably not valid.".format(cik))
            As it's building this nested dict, it calls nodeidfn with the rid and info
            (w/o children) for each node.
         '''
-        types = ['client', 'dataport', 'datarule', 'dispatch']
-        #print(cik, rid)
-        # TODO: make exactly one HTTP request per node
-        listing = {}
-        norid = rid is None
-        if norid:
-            rid = self._exomult(cik, [['lookup', 'aliased', '']])[0]
+        try:
+            types = ['client', 'dataport', 'datarule', 'dispatch']
+            #print(cik, rid)
+            # TODO: make exactly one HTTP request per node
+            listing = {}
+            norid = rid is None
+            if norid:
+                rid = self._exomult(cik, [['lookup', 'aliased', '']])[0]
 
-        info = self._exomult(cik, [['info', rid, options]])[0]
+            info = self._exomult(cik, [['info', rid, options]])[0]
 
-        myid = nodeidfn(rid, info)
+            myid = nodeidfn(rid, info)
 
-        if level is not None and level <= 0:
+            if level is not None and level <= 0:
+                return {'rid': myid, 'info': info}
+
+            if norid or info['basic']['type'] == 'client':
+                if not norid:
+                    # key is only available to owner (not the resource itself)
+                    cik = info['key']
+                listing = self._exomult(cik,
+                                        [['listing', types, {}]])[0]
+
+            info['children'] = []
+            for typ in types:
+                if typ in listing:
+                    ridlist = listing[typ]
+                    for childrid in ridlist:
+                        tr = self._infotree(cik,
+                                            childrid,
+                                            nodeidfn=nodeidfn,
+                                            options=options,
+                                            level=None if level is None else level-1,
+                                            raiseExceptions=raiseExceptions)
+                        info['children'].append(tr)
+            info['children'].sort(key=lambda x: x['rid'] if 'rid' in x else '')
+
             return {'rid': myid, 'info': info}
-
-        if norid or info['basic']['type'] == 'client':
-            if not norid:
-                # key is only available to owner (not the resource itself)
-                cik = info['key']
-            listing = self._exomult(cik,
-                                    [['listing', types, {}]])[0]
-
-        info['children'] = []
-        for typ in types:
-            if typ in listing:
-                ridlist = listing[typ]
-                for childrid in ridlist:
-                    tr = self._infotree(cik,
-                                        childrid,
-                                        nodeidfn=nodeidfn,
-                                        options=options,
-                                        level=None if level is None else level-1)
-                    info['children'].append(tr)
-        info['children'].sort(key=itemgetter('rid'))
-
-        return {'rid': myid, 'info': info}
+        except Exception as ex:
+            if raiseExceptions:
+                raise ex
+            else:
+                return {'exception': ex, 'cik': cik, 'rid': rid}
 
     def _difffilter(self, difflines):
         d = difflines
@@ -1849,28 +1933,6 @@ class ExoData():
         r.raise_for_status()
         return r.text
 
-
-class ExoProvision():
-    '''Implements the Provision API
-    https://github.com/exosite/docs/tree/master/provision'''
-
-    def __init__(self, url='http://m2.exosite.com'):
-        self.url = url
-
-    def raise_for_status(self, r):
-        try:
-            r.raise_for_status()
-        except Exception as ex:
-            raise ExoException(str(ex))
-
-    def activate(self, vendor, model, serialnumber):
-        headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
-                   'Accept': 'application/x-www-form-urlencoded; charset=utf-8'}
-        url = self.url + '/provision/activate'
-        data = {'vendor': vendor, 'model': model, 'sn': serialnumber}
-        r = requests.post(url, headers=headers, data=data)
-        self.raise_for_status(r)
-        return r.text
 
 class ExoPortals():
     '''Provides access to the Portals APIs'''
@@ -2130,7 +2192,16 @@ def read_cmd(er, cik, rids, args):
     def printline(timestamp, val):
         if fmt == 'raw':
             if not six.PY3 and isinstance(val[0], six.string_types):
-                print(val[0].encode('utf-8'))
+                # Beer bounty for anyone who can tell me how to make
+                # both of these work without this awkward try: except:
+                # $ ./testone.sh utf8_test -e py27
+                # $ exoline/exo.py read myClient foo --format=raw | tail -100
+                try:
+                    # this works with stdout piped to
+                    print(val[0])
+                except UnicodeEncodeError:
+                    # this works from inside test using StringIO
+                    print(val[0].encode('utf-8'))
             else:
                 print(val[0])
         else:
@@ -2227,24 +2298,32 @@ def handle_args(cmd, args):
         if args['<command>'] == 'copy':
             args['--httptimeout'] == '480'
 
+    port = args['--port']
+    if port is None:
+        port = DEFAULT_PORT_HTTPS if use_https else DEFAULT_PORT
+
     er = ExoRPC(host=args['--host'],
-                port=args['--port'],
+                port=port,
                 https=use_https,
                 httptimeout=args['--httptimeout'],
                 logrequests=args['--clearcache'],
-                user_agent=args['--useragent'])
-    if cmd in ['ip', 'data']:
-        if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
-            # TODO: support these
-            raise ExoException('--https, --port, and --debughttp are not supported for ip and data commands.')
-        ed = ExoData(url='http://' + args['--host'])
+                user_agent=args['--useragent'],
+		curldebug=args['--curl'])
 
-    # activate relates to shares, not provisioning
-    #if cmd in ['activate']:
-    #    if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True:
-    #        # TODO: support these
-    #        raise ExoException('--https, --port, and --debughttp are not supported for provisioning commands.')
-    #    ep = ExoProvision(url='http://' + args['--host'])
+    pop = provision.Provision(
+	host=args['--host'],
+	manage_by_cik=False,
+	port=port,
+	verbose=True,
+	https=use_https,
+	raise_api_exceptions=True,
+	curldebug=args['--curl'])
+
+    if cmd in ['ip', 'data']:
+        if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True or args['--curl'] is True:
+            # TODO: support these
+            raise ExoException('--https, --port, --debughttp, and --curl are not supported for ip and data commands.')
+        ed = ExoData(url='http://' + args['--host'])
 
     if cmd in ['portals'] or args['--clearcache']:
         portals = ExoPortals(args['--portals'])
@@ -2278,7 +2357,7 @@ def handle_args(cmd, args):
                 elif len(candidates) > 1:
                     raise ExoException('More than one RID starts with ' + ridfrag + '. Better use the full RID.')
                 else:
-                    raise ExoException('No RID found that starts with ' + ridfrag + '. Is an immediate child of ' + cik + '?')
+                    raise ExoException('No RID found that starts with ' + ridfrag + '. Is it an immediate child of ' + cik + '?')
         else:
             return rid
 
@@ -2486,8 +2565,11 @@ def handle_args(cmd, args):
             if args['--pretty']:
                 pr(info)
             else:
-                # output json
-                pr(json.dumps(info))
+                if args['--cikonly']:
+                    pr(info)
+                else:
+                    # output json
+                    pr(json.dumps(info))
         elif cmd == 'flush':
             start, end = ExoUtilities.get_startend(args)
             er.flush(cik, rids, newerthan=start, olderthan=end)
@@ -2517,7 +2599,7 @@ def handle_args(cmd, args):
                 filename = args['--file']
             else:
                 filename = args['<script-file>']
-            rid = None if '<rid>' not in args else args['<rid>']
+            rid = None if args['<rid>'] is None else rids[0]
             er.upload_script(cik,
                 filename,
                 name=args['--name'],
@@ -2658,27 +2740,30 @@ def handle_args(cmd, args):
         else:
             # search plugins
             handled = False
+            exitcode = 1
             for plugin in plugins:
                 if cmd in plugin.command():
                     options = {
                             'cik': cik,
                             'rids': rids,
                             'rpc': er,
+                            'provision': pop,
                             'exception': ExoException,
+                            'provision-exception': pyonep.exceptions.ProvisionException,
                             'utils': ExoUtilities,
-                            'config': exoconfig,
-                            'provision': provision
+                            'config': exoconfig
                             }
                     try:
                         options['data'] = ed
                     except NameError:
                         # no problem
                         pass
-                    plugin.run(cmd, args, options)
+                    exitcode = plugin.run(cmd, args, options)
                     handled = True
                     break
             if not handled:
                 raise ExoException("Command not handled")
+            return exitcode
     finally:
         if args['--clearcache']:
             for req in er.exo.loggedrequests():
@@ -2729,10 +2814,14 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         for line in lines[1:]:
             command_list += ' ' * max_cmd_length + line + '\n'
     doc = __doc__.replace('{{ command_list }}', command_list)
-    args = docopt(
-        doc,
-        version="Exosite Command Line {0}".format(__version__),
-        options_first=True)
+
+    try:
+        args = docopt(
+            doc,
+            version="Exosite Command Line {0}".format(__version__),
+            options_first=True)
+    except SystemExit as ex:
+        return ex.code
 
     global exoconfig
     exoconfig = ExoConfig(args['--config'])
@@ -2741,7 +2830,15 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     cmd = args['<command>']
     argv = [cmd] + args['<args>']
     if cmd in cmd_doc:
-        args_cmd = docopt(cmd_doc[cmd], argv=argv)
+        # if doc expects yet another command, pass options_first=True
+        options_first = True if re.search(
+            '^Commands:$',
+            cmd_doc[cmd],
+            flags=re.MULTILINE) else False
+        try:
+            args_cmd = docopt(cmd_doc[cmd], argv=argv, options_first=options_first)
+        except SystemExit as ex:
+            return ex.code
     else:
         print('Unknown command {0}. Try "exo --help"'.format(cmd))
         return 1
@@ -2755,9 +2852,9 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     # configure logging
     logging.basicConfig(stream=sys.stderr)
     logging.getLogger("pyonep.onep").setLevel(logging.ERROR)
-    if args['--debughttp']:
-        # TODO: log debug level messages to stdout
+    if args['--debughttp'] or args['--curl']:
         logging.getLogger("pyonep.onep").setLevel(logging.DEBUG)
+        logging.getLogger("pyonep.provision").setLevel(logging.DEBUG)
 
     # substitute environment variables
     if args['--host'] is None:
@@ -2765,12 +2862,14 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     if args['--port'] is None:
         args['--port'] = os.environ.get('EXO_PORT', None)
 
-    # substitute config variables.
-    if args['--vendortoken'] is not None:
-        exoconfig.config['vendortoken'] = args['--vendortoken']
+    exoconfig.mingleArguments(args)
 
     try:
-        handle_args(cmd, args)
+        exitcode = handle_args(cmd, args)
+        if exitcode is None:
+            return 0
+        else:
+            return exitcode
     except ExoException as ex:
         # command line tool threw an exception on purpose
         sys.stderr.write("Command line error: {0}\r\n".format(ex))
@@ -2778,6 +2877,17 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
     except ExoRPC.RPCException as ex:
         # pyonep library call signaled an error in return values
         sys.stderr.write("One Platform error: {0}\r\n".format(ex))
+        return 1
+    except pyonep.exceptions.ProvisionException as ex:
+        # if the body of the provision response is something other
+        # than a repeat of the status and reason, show it
+        showBody = str(ex).strip() != "HTTP/1.1 {0} {1}".format(
+            ex.response.status(),
+            ex.response.reason())
+        sys.stderr.write(
+            "One Platform provisioning exception: {0}{1}\r\n".format(
+                ex,
+                ' (' + str(ex.response.body).strip() + ')' if showBody else ''))
         return 1
     except pyonep.exceptions.OnePlatformException as ex:
         # pyonep library call threw an exception on purpose
@@ -2815,7 +2925,7 @@ def run(argv, stdin=None):
             if six.PY3:
                 sio.write(stdin)
             else:
-                sio.write(stdin.encode('utf8'))
+                sio.write(stdin.encode('utf-8'))
             sio.seek(0)
             stdin = sio
         stdout = StringIO()
@@ -2824,9 +2934,6 @@ def run(argv, stdin=None):
         exitcode = cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
         stdout.seek(0)
         stdout = stdout.read().strip()  # strip to get rid of leading newline
-        # TODO: encode output as unicode
-        #if not six.PY3:
-        #    stdout = unicode(stdout)
         stderr.seek(0)
         stderr = stderr.read().strip()
     finally:
@@ -2839,3 +2946,5 @@ def run(argv, stdin=None):
 
 if __name__ == '__main__':
     sys.exit(cmd(sys.argv))
+
+#  vim: set ai et sw=4 ts=4 :

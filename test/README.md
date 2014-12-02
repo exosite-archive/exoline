@@ -13,4 +13,9 @@ To run Exoline tests, copy test/testconfig.py.template to test/testconfig.py and
     $ ./test.sh -e py27
     $ # run one test against a specific python version
     $ ./testone.sh update_test -e py27
+    $ # run tests matching attributes 
+    $ # attributes are specified with the attr decorator, e.g.:
+    $ # @attr('script')
+    $ # def script_test(self):
+    $ ./testattr.sh "spec and not script"
 ```

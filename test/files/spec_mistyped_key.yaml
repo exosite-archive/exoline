@@ -1,0 +1,6 @@
+dataport:
+    - alias: foo
+    - alias: bar
+script:
+    - alias: foo
+      code: debug('hello, world!')

@@ -1,7 +1,35 @@
 History
 =======
 
-0.9.0 (2014-10-21)
+0.9.3 (2014-12-02)
+------------------
+
+- add search command with support for name, alias, serial 
+  number, script
+- add globbing to the model, content, and sn list sub-commands
+- remove debug output and fix https://github.com/exosite/exoline/issues/62
+
+0.9.2 (2014-11-24)
+------------------
+
+- spec accepts urls for yaml and script file
+- support for putting lua directly in spec file "code"
+  property instead of external lua file.
+- spec --check option for rudimentary spec validation
+- spec doesn't run if --check would fail
+
+0.9.1 (2014-11-19)
+------------------
+
+- make model, content, and sn top-level commands
+- write model, content, sn tests
+- write usage documentation for provisioning
+- many fixes to provision model and sn commands
+- support --curl option for viewing requests in curl format
+- added twee --rids option
+- darker twee colors for visibility on white background
+
+0.9.0 (2014-10-29)
 ------------------
 
 - add provision command with support for activate, model, sn, content
@@ -15,7 +43,6 @@ History
 - (breaking change) remove CIK activation, to avoid confusion with 
   provision activate
 - (breaking change) trim final newline from stdin for write -
-
 
 0.8.3 (2014-10-20)
 ------------------
