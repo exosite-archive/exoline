@@ -2565,8 +2565,11 @@ def handle_args(cmd, args):
             if args['--pretty']:
                 pr(info)
             else:
-                # output json
-                pr(json.dumps(info))
+                if args['--cikonly']:
+                    pr(info)
+                else:
+                    # output json
+                    pr(json.dumps(info))
         elif cmd == 'flush':
             start, end = ExoUtilities.get_startend(args)
             er.flush(cik, rids, newerthan=start, olderthan=end)

@@ -1,10 +1,11 @@
 History
 =======
 
-0.9.3 (2014-12-01)
+0.9.3 (2014-12-02)
 ------------------
 
-- add search command with support for name, alias
+- add search command with support for name, alias, serial 
+  number, script
 - remove debug output and fix https://github.com/exosite/exoline/issues/62
 
 0.9.2 (2014-11-24)

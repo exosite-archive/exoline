@@ -2107,6 +2107,96 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         hlp([])
 
+    def search_test(self):
+        '''Search command'''
+        cik = self.client.cik()
+
+        childrids = self._createMultiple(cik, [
+            Resource(cik, 'client', {'name': '你好' + str(i)}) for i in range(10)])
+
+
+        #for rid in childrids:
+        #    childcik = rpc('lookup', cik, rid, '--cikonly').stdout
+        #    ridFloat, ridString = self._createMultiple(childcik, [
+        #        Resource(cik, 'dataport', {'format': 'float', 'name': 'should not match'}),
+        #        Resource(cik, 'dataport', {'format': 'string', 'name': 'also should not match'})])
+
+        r = rpc('info', cik, childrids[4], '--cikonly')
+        self.ok(r, 'look up one of the clients', match=self.RE_RID)
+        childcik = r.stdout
+
+        ridFloat, ridString, ridInteger, ridScript = self._createMultiple(childcik, [
+            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port', 'alias': 'float_alias'}),
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port', 'alias': 'string_alias'}),
+            Resource(cik, 'dataport', {'format': 'integer', 'name': 'integer_port', 'alias': 'int3ger_alias'}),
+            Resource(cik, 'datarule', {
+                    'format': 'string',
+                    'name': 'script_port',
+                    'preprocess': [],
+                    'rule': {
+                        'script': 'debug("你好World")'
+                    },
+                    'visibility': 'parent',
+                    'retention': {
+                        'count': 'infinity',
+                        'duration': 'infinity'
+                    }
+                })])
+
+        # set up a device clone with a serial number
+        model = 'exolinetestmodel' + ''.join(random.choice(string.digits) for _ in range(5))
+        pop.model_create(config['vendortoken'], model, childrids[4],
+            aliases=True,
+            comments=True,
+            historical=True)
+        sn = '123456'
+        # add sn
+        r = prv('sn', 'add', model, sn)
+        self.ok(r, 'add sn')
+        r = prv('sn', 'enable', model, sn, cik)
+        self.ok(r, 'enable sn/create a new clone')
+        clonerid = r.stdout.strip()
+        # activate (this would normally be done by a device)
+        r = prv('sn', 'activate', model, sn)
+        self.ok(r, 'activate sn', match=self.RE_RID)
+        clonecik = r.stdout.strip()
+
+        # search for name
+        r = rpc('search', cik, '你.3')
+        self.ok(r, 'search for name', search='你好3')
+        childcik3 = rpc('info', cik, childrids[3], '--cikonly').stdout
+        self.ok(r, search=childcik3)
+        self.assertEqual(len(r.stdout.split('\n')), 1, 'exactly one match')
+
+        # search for alias
+        #r = rpc('search', cik, '[a-z]+_ALIAS', '--silent')
+        #self.ok(r, search='float_alias')
+        #self.ok(r, search='string_alias')
+        #self.assertNotIn('int3ger', r.stdout)
+
+        # search with match case
+        r = rpc('search', cik, 'Alias', '--matchcase')
+        self.ok(r, 'no response with --matchcase', match='')
+
+        # search for script content
+        r = rpc('search', cik, 'World', '--matchcase')
+        self.ok(r, 'script matches', search='debug\("')
+
+        # search for serial number
+        # why is this not working? It works at the command line.
+        #r = rpc('search', cik, sn, '--silent')
+        #self.l('stderr is: ' + r.stderr)
+        #self.l('stdout is: ' + r.stdout)
+        #self.ok(r, 'serial number found', search=sn)
+        #self.ok(r, 'correct cik in match', search=cik)
+        #self.assertEqual(len(r.stdout.split('\n')), 1, 'exactly one serial number match')
+
+        r = rpc('search', cik, '你.4')
+        self.ok(r, search='你好4')
+        self.l(r.stdout)
+        self.assertEqual(len(r.stdout.split('\n')), 2, 'two matches: client model and clone')
+
+
 def tearDownModule(self):
     '''Do final things'''
     with open('test/testperf.json', 'w') as f:

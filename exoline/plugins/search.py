@@ -5,9 +5,9 @@ Usage:
     exo [options] search <cik> <query-regex>
 
 Command Options:
-    --matchcase  Match case when searching
-    --nocolor    Turn off output color (implicit in Windows)
-
+    --matchcase   Match case when searching
+    --nocolor     Turn off output color (implicit in Windows)
+    --silent      Don't show search progress
 '''
 from __future__ import unicode_literals
 import os
@@ -30,8 +30,8 @@ class Plugin():
         count = [0]
         def progress(rid, info):
             count[0] += 1
-            sys.stdout.write("\rSearched {0} resources".format(count[0]))
-            sys.stdout.flush()
+            sys.stderr.write("\rSearched {0} resources".format(count[0]))
+            sys.stderr.flush()
             return rid
 
         reflags = re.IGNORECASE if args['--matchcase'] else 0
@@ -70,11 +70,13 @@ class Plugin():
                         meta = json.loads(node['info']['description']['meta'])
                         device = meta['device']
                         if device['type'] == 'vendor':
-                            m = re.search(query, device['sn'], flags=reflags)
+                            sn = device['model'] + '#' + device['sn']
+                            m = re.search(query, sn, flags=reflags)
                             if m is not None:
-                                sn = device['sn']
                                 if not args['--nocolor']:
                                     sn = re.sub('(' + query + ')', matchColor + r'\1' + resetColor, sn, flags=reflags)
+                            else:
+                                sn = None
 
                 except Exception as ex:
                     print(str(ex))
@@ -132,11 +134,11 @@ class Plugin():
         tree = rpc._infotree(
             cik,
             options={"description": True, "key": True, "basic": True, "aliases": True},
-            nodeidfn=progress,
+            nodeidfn=progress if not args['--silent'] else lambda rid, info: rid,
             level=None,
             raiseExceptions=False)
-        sys.stdout.write('\r')
-        sys.stdout.flush()
+        sys.stderr.write('\r')
+        sys.stderr.flush()
         if 'exception' in tree:
             print('Exception was: ' + str(tree))
         else:
