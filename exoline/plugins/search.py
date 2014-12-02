@@ -6,7 +6,8 @@ Usage:
 
 Command Options:
     --matchcase   Match case when searching
-    --nocolor     Turn off output color (implicit in Windows)
+    --nocolor     Turn off output color (implicit in Windows
+                  and Python < 2.7)
     --silent      Don't show search progress
 '''
 from __future__ import unicode_literals
@@ -15,7 +16,6 @@ import sys
 import re
 import json
 import platform
-
 
 class Plugin():
     def command(self):
@@ -36,7 +36,7 @@ class Plugin():
 
         reflags = re.IGNORECASE if args['--matchcase'] else 0
         def printnodes(node, path, aliases):
-            if platform.system() == 'Windows':
+            if platform.system() == 'Windows' or sys.version_info < (2, 7):
                 args['--nocolor'] = True
             query = args['<query-regex>']
             matches = False
