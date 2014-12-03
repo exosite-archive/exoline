@@ -731,9 +731,9 @@ Building for Windows
 
 If you want to build your own Exoline Window executable and/or installer instead of using a [pre-built one](https://github.com/exosite/exoline/releases/), do this:
 
-- install Python (make sure bitness matches the machine. pywin32 cares about this.)
-- [pip-win](https://sites.google.com/site/pydatalog/python/pip-for-windows)
-- install pywin32
+- install Python. 32-bit version is necessary to run on 32-bit Windows systems.
+- install [pip-win](https://sites.google.com/site/pydatalog/python/pip-for-windows) Make sure bitness matches bitness of Python.
+- install pywin32 (again, same bitness as Python/pip)
 - install PyInstaller (`pip install pyinstaller`)
 - in the Exoline root directory, run `pip install -r requirements.txt`
 - in the Exoline root directory, run `pyinstaller exo.spec`

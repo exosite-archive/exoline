@@ -1,6 +1,13 @@
 History
 =======
 
+0.9.4 (2014-12-03)
+------------------
+
+- fix pyonep version for Windows build
+- update build machine to use 32-bit Python to run better on 
+  32-bit Windows systems
+
 0.9.3 (2014-12-02)
 ------------------
 
