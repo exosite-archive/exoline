@@ -42,7 +42,7 @@ setup(
     packages=['exoline', 'exoline.plugins'],
     package_dir={'exoline': 'exoline', 'plugins': 'exoline/plugins'},
     scripts=['bin/exo', 'bin/exoline'],
-    keywords=['exosite', 'onep', 'one platform', 'm2m'],
+    keywords=['exosite', 'onep', 'one platform', 'm2m', 'iot', 'cli'],
     install_requires=required,
     zip_safe=False,
     #always_unzip=True,

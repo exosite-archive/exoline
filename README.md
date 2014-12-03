@@ -11,7 +11,7 @@ Installation
 Install the latest released version of Exoline from PyPI. 
 
 ```
-$ sudo pip install exoline
+$ sudo pip install --upgrade exoline
 ```
 
 pip is a package manager for Python. To get pip, try `sudo easy_install pip` in Mac OS X,  `sudo apt-get install python-setuptools;sudo easy_install pip` in Ubuntu. See below for Windows instructions.
@@ -95,6 +95,7 @@ Commands:
   model          Manage client models for a subdomain (alpha)
   sn             Manage serial numbers (alpha)
   content        Manage content, e.g. firmware images, for a model (alpha)
+  search         Search resource names, aliases, serial numbers, and script content
   spec           Determine whether a client matches a specification (beta)
   transform      Transform data on in a dataport by mapping all values (alpha)
 

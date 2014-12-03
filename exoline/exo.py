@@ -475,6 +475,15 @@ else:
         for c in p.command():
             cmd_doc[c] = p.doc(c)
 
+        # search plugin
+        try:
+            from ..exoline.plugins import search
+        except:
+            from exoline.plugins import search
+        p = search.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = search.__doc__
+
     except Exception as ex:
         import traceback
         traceback.print_exc()
