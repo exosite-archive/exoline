@@ -7,7 +7,7 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{995A883B-B090-439D-966B-B32C8B938AC4}
 AppName=Exoline
-AppVersion=0.9.0
+AppVersion=0.9.3
 AppPublisher=Exosite
 AppPublisherURL=https://github.com/exosite/exoline
 AppSupportURL=https://github.com/exosite/exoline/issues

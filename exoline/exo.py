@@ -467,10 +467,10 @@ else:
 
         # provision plugin
         try:
-            from ..exoline.plugins import provision
+            from ..exoline.plugins import provision as provisionPlugin
         except:
-            from exoline.plugins import provision
-        p = provision.Plugin()
+            from exoline.plugins import provision as provisionPlugin
+        p = provisionPlugin.Plugin()
         plugins.append(p)
         for c in p.command():
             cmd_doc[c] = p.doc(c)
