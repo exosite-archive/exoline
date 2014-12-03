@@ -735,7 +735,8 @@ If you want to build your own Exoline Window executable and/or installer instead
 - [pip-win](https://sites.google.com/site/pydatalog/python/pip-for-windows)
 - install pywin32
 - install PyInstaller (`pip install pyinstaller`)
-- in the Exoline root directory, run (`pyinstaller exo.spec`)
+- in the Exoline root directory, run `pip install -r requirements.txt`
+- in the Exoline root directory, run `pyinstaller exo.spec`
 - `exo.exe` and its dependencies are in dist\exo\
 - run `copy dist\exo\exo.exe dist\exo\exo` so that Windows users don't need to type .exe
 
@@ -746,7 +747,7 @@ Build the installer this way:
 - update Source in the Files section to point to dist\exo folder on your system
 - set version number in innosetup.iss
 - press Compile
-- rename Output/setup.exe to Output/exoline-<version>-setup.exe
+- rename Output/setup.exe to Output/exoline-\<version\>-setup.exe
 
 
 What's New?
