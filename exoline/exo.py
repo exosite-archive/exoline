@@ -2227,7 +2227,7 @@ def read_cmd(er, cik, rids, args):
             elif timeformat == 'iso8601':
                 dt = datetime.isoformat(pytz.utc.localize(datetime.utcfromtimestamp(timestamp)))
             elif timeformat == 'excel':
-                # This date format seems to work out of the box for Excel scatter plots
+                # This date format works for Excel scatter plots
                 dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).strftime('%m/%d/%y %H:%M:%S')
             else:
                 dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).astimezone(tz)
@@ -2256,6 +2256,7 @@ def read_cmd(er, cik, rids, args):
             results = er.readmult(cik,
                                   rids,
                                   limit=1,
+                                  selection=args['--selection'],
                                   sort='desc')
             # --follow doesn't want the result to be an iterator
             results = list(results)
@@ -2271,6 +2272,7 @@ def read_cmd(er, cik, rids, args):
                                   # Read all points that arrived since last
                                   # read time. Could also be now - last_t?
                                   limit=sleep_seconds * 3,
+                                  selection=args['--selection'],
                                   starttime=last_t + 1)
             results = list(results)
             results.reverse()
@@ -2293,6 +2295,7 @@ def read_cmd(er, cik, rids, args):
                              starttime=start,
                              endtime=end,
                              limit=limit,
+                             selection=args['--selection'],
                              chunksize=chunksize)
         for t, v in result:
             printline(t, v)

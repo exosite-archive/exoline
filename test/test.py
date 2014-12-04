@@ -1048,6 +1048,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             keys = list(info.keys())
             self.assertTrue(len(keys) == len(allkeys) - 1 and k not in keys)
 
+    @attr('read')
     def read_test(self):
         '''Read command'''
         # record a large amount of data to a float datasource
@@ -1091,6 +1092,17 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         r = rpc('read', cik, rid1, '--start=44', '--timeformat=unix', '--limit=2')
         self.ok(r, '--end has a default', match='[0-9]+,12.36')
+
+    @attr('read')
+    def read_selection_test(self):
+        '''Read --selection option'''
+        cik = self.client.cik()
+        rid = self._createMultiple(cik, [
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'})])[0]
+        r = rpc('record', cik, rid, '--value=1,a', '--value=2,a', '--value=3,c', '--value=4,d', '--value=5,e', '--value=8,f')
+        self.ok(r, 'record values')
+        r = rpc('read', cik, rid, '--start=1', '--end=10', '--timeformat=unix', '--limit=2', '--selection=givenwindow')
+        self.ok(r, 'read with --selection set', match=r'8,f\r?\n1,a')
 
     def utf8_test(self):
         '''Read a string with UTF8 characters'''
