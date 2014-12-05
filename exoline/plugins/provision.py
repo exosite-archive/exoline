@@ -472,7 +472,7 @@ Usage:
 				path = '/provision/manage/model/' + args['<model>'] + '/'
 				headers = {"Content-Type": "text/csv; charset=utf-8"}
 				mlist = pop._request(path, key, data, 'DELETE', False, headers)
-				print(mlist.body.strip())
+				print(mlist.body)
 
 
 		def _normalizeRangeEnd(self, string):
