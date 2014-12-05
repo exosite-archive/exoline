@@ -2435,7 +2435,7 @@ def handle_args(cmd, args):
                             ts = ExoUtilities.parse_ts(s)
                         entries.append([ts, row['value']])
                         chunkcnt += 1
-                        if chunkcnt > 200:
+                        if chunkcnt > int(args['--chunksize']):
                             er.record(cik, rids[0], entries)
                             print('.')
                             chunkcnt = 0
