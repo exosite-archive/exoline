@@ -2437,7 +2437,6 @@ def handle_args(cmd, args):
                         chunkcnt += 1
                         if chunkcnt > int(args['--chunksize']):
                             er.record(cik, rids[0], entries)
-                            print('.')
                             chunkcnt = 0
                             entries=[]
                     if len(entries) > 0:
