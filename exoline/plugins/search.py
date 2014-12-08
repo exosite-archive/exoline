@@ -116,7 +116,7 @@ class Plugin():
             children = node['info']['children']
             for child in children:
                 if 'exception' in child:
-                    sys.stderr.write('Exception while loading a resource: {0}\n'.format(str(child)))
+                    sys.stderr.write('Skipped a resource due to an exception: {0}\n'.format(str(child)))
                 else:
                     rid = child['rid']
                     if rid in node['info']['aliases']:
@@ -127,8 +127,8 @@ class Plugin():
                     p.append(cik)
                     printnodes(child, p, aliases)
 
-        info = rpc.info(cik, options={"counts": True})
         # These are pretty slow
+        #info = rpc.info(cik, options={"counts": True})
         #counts = info['counts']
         #total = counts['client'] + counts['dispatch'] + counts['dataport'] + counts['datarule']
         tree = rpc._infotree(

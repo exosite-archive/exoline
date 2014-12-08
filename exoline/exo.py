@@ -1769,7 +1769,15 @@ probably not valid.".format(cik))
                     cik = resinfo['key']
                 listing = self._exomult(cik, [['listing', types, {}]])[0]
                 rids = [rid for rid in list(itertools.chain.from_iterable([listing[t] for t in types]))]
-                infos = self._exomult(cik, [['info', rid, options] for rid in rids])
+                # break info calls into chunks to prevent timeout
+                chunksize = 20
+                def chunks(l, n):
+                    '''Yield successive n-sized chunks from l.'''
+                    for i in range(0, len(l), n):
+                        yield l[i:i+n]
+                infos = []
+                for ridchunk in chunks(rids, chunksize):
+                    infos += self._exomult(cik, [['info', rid, options] for rid in ridchunk])
             else:
                 listing = []
 
