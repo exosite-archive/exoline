@@ -759,11 +759,9 @@ For information about what features are in what Exoline versions look [here](HIS
 TODO
 ----
 
-- --name parameter to copy command so names don't conflict
 - delete serial number when dropping device
 - add --howmany option to create command
 - tab completion for commands and shortcuts
-- add dataport creation shorthand: "exo create <cik> <alias and name> [datatype]". `exo create mydevice foo` would create a dataport of format string with alias and name both set to foo. `exo create mydevice bar float` would create a float-valued dataport.
 - add test for --tz option
 - add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
 - new command to do resource ancestry lookup 
@@ -771,13 +769,8 @@ TODO
 - add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
 - make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
 - fix install warning: "UserWarning: Unknown distribution option: 'console'"
-- support 'brew install exoline' in OSX
-- add command line interaction animated gif to README
-- marketing stuff (blog post)
 - make exoline<tab> autocompletion work in iPython
 - support [PIKs](https://exositejs.herokuapp.com) in place of CIKs
 - better error handling for "Command line error: Failed to connect to https://portals.exosite.com"
 - support passing certs at the command line for https (portals and onep) when behind VPNs
-- "did you mean" output when command is not found
 - spec script file paths should be relative to the URL *after* redirection, to make shorteners work
-
