@@ -2871,7 +2871,24 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         except SystemExit as ex:
             return ex.code
     else:
-        print('Unknown command {0}. Try "exo --help"'.format(cmd))
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        def edits(word):
+            # courtesy of:
+            # http://norvig.com/spell-correct.html
+            splits     = [(word[:i], word[i:]) for i in range(len(word) + 1)]
+            deletes    = [a + b[1:] for a, b in splits if b]
+            transposes = [a + b[1] + b[0] + b[2:] for a, b in splits if len(b)>1]
+            replaces   = [a + c + b[1:] for a, b in splits for c in alphabet if b]
+            inserts    = [a + c + b     for a, b in splits for c in alphabet]
+            return set(deletes + transposes + replaces + inserts)
+
+        e = edits(cmd)
+        # make a list of valid commands the user could have meant
+        alts = [w for w in cmd_doc.keys() if w in e]
+        alt_msg = ''
+        if 0 < len(alts) and len(alts) < 4:
+            alt_msg = 'Did you mean {0}? '.format(' or '.join(alts))
+        print('Unknown command {0}. {1}Try "exo --help"'.format(cmd, alt_msg))
         return 1
     # merge command-specific arguments into general arguments
     args.update(args_cmd)
