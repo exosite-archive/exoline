@@ -2008,15 +2008,19 @@ class ExoUtilities():
         start = args.get('--start', None)
         end = args.get('--end', None)
         def is_ts(s):
-            return s is not None and re.match('^[0-9]+$', s) is not None
+            return s is not None and re.match('^-?[0-9]+$', s) is not None
         if is_ts(start):
             start = int(start)
+            if start < 0:
+                start = ExoUtilities.parse_ts_tuple((datetime.now() + timedelta(seconds=start)).timetuple())
         else:
             start = ExoUtilities.parse_ts(start)
         if end == 'now':
             end = None
         elif is_ts(end):
             end = int(end)
+            if end < 0:
+                end = ExoUtilities.parse_ts_tuple((datetime.now() + timedelta(seconds=end)).timetuple())
         else:
             end = ExoUtilities.parse_ts(end)
         return start, end
@@ -2684,9 +2688,6 @@ def handle_args(cmd, args):
             elif len(writes) > 0:
                 alias_values = get_alias_values(writes)
                 ed.write(cik, alias_values)
-        # TODO: reenable provisioning API activate command
-        #elif cmd == 'activate':
-        #    pr(ep.activate(args['<vendor>'], args['<model>'], args['<sn>']))
         elif cmd == 'portals':
 
             procedures = args['<procedure>']

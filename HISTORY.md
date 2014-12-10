@@ -5,6 +5,9 @@ NEXT
 ----
 
 - fix read --selection
+- support relative time for --start and --end 
+  (https://github.com/exosite/exoline/issues/30)
+- add "did you mean..." suggstions for mistyped commands
 
 0.9.4 (2014-12-03)
 ------------------
