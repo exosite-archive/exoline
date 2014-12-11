@@ -1,13 +1,13 @@
 # Site settings
 title: Exoline
 email: danweaver@exosite.com
-description: > # this means to ignore newlines until "baseurl:"
-  This is the project page for Exoline, a command line interface to 
-  the Exosite Internet of Things Platform.
+description:
+  Exoline is a command line interface for
+  the Exosite Internet of Things platform.
 baseurl: "" # the subpath of your site, e.g. /blog/
 url: "http://exosite.github.io/exoline"
 twitter_username: exosite
-github_username:  dweaver
+github_username: exosite 
 
 # Build settings
 markdown: kramdown

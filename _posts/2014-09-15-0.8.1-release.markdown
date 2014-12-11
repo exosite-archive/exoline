@@ -1,0 +1,34 @@
+---
+layout: post
+title:  "Exoline 0.8.1: twee command"
+date:   2014-09-15 14:11:02
+---
+
+Fellow Exoliners,
+
+After using Exoline's `tree` command to investigate an unfamiliar device last week I noticed that its output, however tidy, is pretty uninformative. I use it as a sort of lookup table, but to find the information I want I usually have to run follow-on commands like `read` and `info`. If you haven't seen tree's output, it looks like this:
+
+![exoline tree output]({{ site.url }}/images/exo-tree.png)
+
+Here's a breakdown:
+
+![exoline tree output breakdown]({{ site.url }}/images/exo-tree-breakdown.png)
+
+Exoline 0.8.1 features a experimental new command, twee, that is like tree except more lovable--- ahem--- wuvable. It looks like this (cue the Belle and Sebastian):
+
+![exoline twee output]({{ site.url }}/images/exo-twee.png)
+
+Twee is tree's equally nerdy but more goal-oriented kid sister. She studied a bit of design and knows you want her to bring the data forward, not see a bunch of occasionally useful mumbo-jumbo about types and identifiers. To that end, values and times are listed right there in the output. Types are abbreviated (dp: dataport, dr: datarule, ds: dispatch, cl: client) and the RIDs are shortened to wee RIDs (TM pending). Exoline 0.8.1 will accept shortened wee RIDs anywhere full RIDs are accepted. If you do want to do additional commands, the information you probably need (CIK + alias or RID) is in green (unless you pass `--nocolor`, you philistine). 
+
+A lot of things are different from tree, which is why twee is a separate command from tree for now so I can find out how everyone likes it. Here's a summary:
+
+![exoline twee output breakdown]({{ site.url }}/images/exo-twee-breakdown.png)
+
+
+Exoline 0.8.1 has some other small features people have asked for:
+
+* write command can now take value from stdin (e.g. `echo "hello world" | exo write <cik> foo -`) This makes it easier to write content that contains quotes without needing to worry about escaping it.
+* By popular demand, the script command now has a more consistent argument order that takes CIK first, followed by `--file=<script filename>` The old arguments are still supported for backward-compatibility, though.
+* tree (and twee) don't get hung up on locked resources--- they just display the locked status for that node and move on.
+
+Happy tweeing!

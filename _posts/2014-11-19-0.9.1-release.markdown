@@ -1,8 +1,14 @@
+---
+layout: post
+title:  "Exoline 0.9.1: provisioning API, --curl option, spreadsheet export"
+date:   2014-11-19 14:10:02
+---
+
 Exoline 0.9.1 has a lot of updates: seventeen new commands, three new options for existing commands, and bug fixes and improvements galore. You should totally [install it](https://github.com/exosite/exoline#installation-). Here are the highlights:
 
 ## Provisioning
 
-For the first time ever Exoline supports provisioning, which means you can do things like device firmware updates and device lifecycle management from the command line. Kudos to Mike Tilstra for designing it to support the most commonly used Provisioning APIs while making it straightforward to figure out.
+For the first time ever Exoline supports provisioning, which means you can do things like device firmware updates and device lifecycle management from the command line. Kudos to [Mike Tilstra](https://github.com/tadpol) for designing it to support the most commonly used Provisioning APIs while making it straightforward to figure out.
 
 To get started you can [configure Exoline with your vendor id and token](https://github.com/exosite/exoline#provisioning), then try passing --help to one of the three new top level commands: 
 
@@ -33,7 +39,6 @@ $ curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-
 Exoline has always supported CSV output, but now it can output timestamps in Excel's "special" date/time format. By using read --timeformat=excel you can write a CSV that can be directly imported into a Excel and Google Docs and rendered as an X/Y scatter plot of device data with correct time scale.
 
 A short tutorial about doing that is here: https://github.com/exosite/exoline#spreadsheet-import
-
 
 ## ...and more
 
