@@ -22,17 +22,15 @@ There are usage examples here: https://github.com/exosite/exoline#provisioning-e
 
 Passing --curl shows all requests Exoline makes in curl format, so you can quickly reproduce the RPC and Provisioning API calls it makes. Here's an example:
 
-```
-$ exo --curl read sensor1 temperature
-DEBUG:pyonep.onep:curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-Type: application/json; charset=utf-8' -H 'User-Agent: Exoline 0.9.0' -d '{"calls": [{"id": 25, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}'
-DEBUG:pyonep.onep:HTTP/1.1 200 OK
-Headers: [('date', 'Tue, 18 Nov 2014 03:02:11 GMT'), ('content-length', '52'), ('content-type', 'application/json; charset=utf-8'), ('connection', 'keep-alive'), ('server', 'misultin/0.8.2-exosite')]
-DEBUG:pyonep.onep:Body: [{"id":25,"status":"ok","result":[[1379607152,22]]}]
-2013-09-19 11:12:32-05:00,22
+    $ exo --curl read sensor1 temperature
+    DEBUG:pyonep.onep:curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-Type: application/json; charset=utf-8' -H 'User-Agent: Exoline 0.9.0' -d '{"calls": [{"id": 25, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}'
+    DEBUG:pyonep.onep:HTTP/1.1 200 OK
+    Headers: [('date', 'Tue, 18 Nov 2014 03:02:11 GMT'), ('content-length', '52'), ('content-type', 'application/json; charset=utf-8'), ('connection', 'keep-alive'), ('server', 'misultin/0.8.2-exosite')]
+    DEBUG:pyonep.onep:Body: [{"id":25,"status":"ok","result":[[1379607152,22]]}]
+    2013-09-19 11:12:32-05:00,22
 
-$ curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-Type: application/json; charset=utf-8' -H 'User-Agent: Exoline 0.9.0' -d '{"calls": [{"id": 42, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}'
-[{"id":42,"status":"ok","result":[[1379607152,22]]}]
-```
+    $ curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-Type: application/json; charset=utf-8' -H 'User-Agent: Exoline 0.9.0' -d '{"calls": [{"id": 42, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}'
+    [{"id":42,"status":"ok","result":[[1379607152,22]]}]
 
 ## Spreadsheet export
 
