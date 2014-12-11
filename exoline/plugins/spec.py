@@ -161,14 +161,13 @@ scripts:
                 r = requests.get(url)
                 if r.status_code >= 300:
                     raise ExoException('Failed to read file at URL ' + url)
-                return r.text, '/'.join(path.split('/')[:-1])
+                return r.text, '/'.join(r.url.split('/')[:-1])
 
             if re.match('[a-z]{2}[a-z]*:', path):
                 return load_from_url(path)
             elif base_url is not None:
                 # non-url paths when spec is loaded from URLs
                 # are considered relative to that URL
-                # e.g. tktk
                 return load_from_url(base_url + '/' + path)
             else:
                 with open(path, 'rb') as f:
@@ -520,7 +519,6 @@ scripts:
                                     else:
                                         raise ex
 
-                                # TODO: use templating library
                                 def template(script):
                                     if resource_data is None:
                                         return script

@@ -8,6 +8,7 @@ NEXT
 - support relative time for --start and --end 
   (https://github.com/exosite/exoline/issues/30)
 - add "did you mean..." suggstions for mistyped commands
+- support url shorteners for spec scripts
 
 0.9.4 (2014-12-03)
 ------------------

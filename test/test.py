@@ -1393,6 +1393,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         spec_and_check(
             'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_relative_url.yaml',
             ['temp_f', 'temp_c', 'convert.lua'])
+        spec_and_check(
+            'http://goo.gl/RQzS7d', # spec_script_relative_url.yaml again, this time via redirect
+            ['temp_f', 'temp_c', 'convert.lua'])
         # mainly this is testing embedded scripts
         spec_and_check(
             'https://raw.githubusercontent.com/exosite/exoline/master/test/files/spec_script_embedded.yaml',

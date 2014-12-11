@@ -761,10 +761,7 @@ TODO
 
 - delete serial number when dropping device
 - add --howmany option to create command
-- tab completion for commands and shortcuts
 - add test for --tz option
-- add the option of using requests to authenticate with https (see warning here: http://docs.python.org/2/library/httplib.html)
-- new command to do resource ancestry lookup 
 - add a --monitor (or --follow) option to script command
 - add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
 - make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
@@ -773,4 +770,3 @@ TODO
 - support [PIKs](https://exositejs.herokuapp.com) in place of CIKs
 - better error handling for "Command line error: Failed to connect to https://portals.exosite.com"
 - support passing certs at the command line for https (portals and onep) when behind VPNs
-- spec script file paths should be relative to the URL *after* redirection, to make shorteners work
