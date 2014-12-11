@@ -1,0 +1,40 @@
+Exoline 0.9.1 has a lot of updates: seventeen new commands, three new options for existing commands, and bug fixes and improvements galore. You should totally [install it](https://github.com/exosite/exoline#installation-). Here are the highlights:
+
+## Provisioning
+
+For the first time ever Exoline supports provisioning, which means you can do things like device firmware updates and device lifecycle management from the command line. Kudos to Mike Tilstra for designing it to support the most commonly used Provisioning APIs while making it straightforward to figure out.
+
+To get started you can [configure Exoline with your vendor id and token](https://github.com/exosite/exoline#provisioning), then try passing --help to one of the three new top level commands: 
+
+* `model` - client model browsing
+* `content` - e.g. upload/download device firmware binary images
+* `sn` - serial numbers and device lifecycle management.
+
+There are usage examples here: https://github.com/exosite/exoline#provisioning-examples
+
+## --curl option
+
+Passing --curl shows all requests Exoline makes in curl format, so you can quickly reproduce the RPC and Provisioning API calls it makes. Here's an example:
+
+```
+$ exo --curl read sensor1 temperature
+DEBUG:pyonep.onep:curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-Type: application/json; charset=utf-8' -H 'User-Agent: Exoline 0.9.0' -d '{"calls": [{"id": 25, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}'
+DEBUG:pyonep.onep:HTTP/1.1 200 OK
+Headers: [('date', 'Tue, 18 Nov 2014 03:02:11 GMT'), ('content-length', '52'), ('content-type', 'application/json; charset=utf-8'), ('connection', 'keep-alive'), ('server', 'misultin/0.8.2-exosite')]
+DEBUG:pyonep.onep:Body: [{"id":25,"status":"ok","result":[[1379607152,22]]}]
+2013-09-19 11:12:32-05:00,22
+
+$ curl https://m2.exosite.com:443/onep:v1/rpc/process -X POST -m 60 -H 'Content-Type: application/json; charset=utf-8' -H 'User-Agent: Exoline 0.9.0' -d '{"calls": [{"id": 42, "procedure": "read", "arguments": [{"alias": "temperature"}, {"sort": "desc", "selection": "all", "limit": 1}]}], "auth": {"cik": "2ca4f441538c1f2cc8bf01234567890123456789"}}'
+[{"id":42,"status":"ok","result":[[1379607152,22]]}]
+```
+
+## Spreadsheet export
+
+Exoline has always supported CSV output, but now it can output timestamps in Excel's "special" date/time format. By using read --timeformat=excel you can write a CSV that can be directly imported into a Excel and Google Docs and rendered as an X/Y scatter plot of device data with correct time scale.
+
+A short tutorial about doing that is here: https://github.com/exosite/exoline#spreadsheet-import
+
+
+## ...and more
+
+There are several other bug fixes, tweaks and improvements listed here. As always, upgrade with `pip install --upgrade exoline` , and issues should be logged here: https://github.com/exosite/exoline/issues
