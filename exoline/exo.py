@@ -2431,28 +2431,39 @@ def handle_args(cmd, args):
             if interval is None:
                 # split timestamp, value
                 if args['-']:
-                    headers = ['timestamp', 'value']
+                    #headers = ['timestamp'] + [x if type(x) is str else x['alias'] for x in rids]
+                    headers = ['timestamp'] + [x for x in range(0,len(rids))]
+                    print(headers)
                     if sys.version_info < (3, 0):
                         dr = csv.DictReader(sys.stdin, headers, encoding='utf-8')
                     else:
                         dr = csv.DictReader(sys.stdin, headers)
                     rows = list(dr)
                     chunkcnt=0
-                    entries=[]
+                    entries=[[] for x in range(0,len(rids))]
                     for row in rows:
                         s = row['timestamp']
                         if s is not None and re.match('^[-+]?[0-9]+$', s) is not None:
                             ts = int(s)
                         else:
                             ts = ExoUtilities.parse_ts(s)
-                        entries.append([ts, row['value']])
+                        for column in range(0,len(rids)):
+                            value = row[column]
+                            if value is not None:
+                                entries[column].append([ts, value])
                         chunkcnt += 1
                         if chunkcnt > int(args['--chunksize']):
-                            er.record(cik, rids[0], entries)
+                            for idx in range(0,len(rids)):
+                                #print(rids[idx], entries[idx])
+                                er.record(cik, rids[idx], entries[idx])
                             chunkcnt = 0
-                            entries=[]
-                    if len(entries) > 0:
-                        er.record(cik, rids[0], entries)
+                            entries={}
+                            exit(0)
+
+                    for idx in range(0,len(rids)):
+                        if len(entries[idx]) > 0:
+                            print(rids[idx], entries[idx])
+                            er.record(cik, rids[idx], entries[idx])
 
                 else:
                     entries = []
