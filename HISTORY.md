@@ -9,6 +9,8 @@ NEXT
   (https://github.com/exosite/exoline/issues/30)
 - add "did you mean..." suggstions for mistyped commands
 - support url shorteners for spec scripts
+- Added chunking to record to handle large CSV files.
+- Added support to record for multiple RIDs as columns in a CSV 
 
 0.9.4 (2014-12-03)
 ------------------
