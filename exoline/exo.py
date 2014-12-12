@@ -138,7 +138,12 @@ The - form takes the value to write from stdin. For example:
 
     - reads data from stdin. Data should be in CSV format (no headers) with rows
       like this: <unix timestamp>,<value>
-    --interval generates timestamps at a regular interval into the past.'''),
+
+Command options:
+    --interval generates timestamps at a regular interval into the past.
+    --chunksize=<lines>       [default: 212] break record into requests of length <lines>
+
+    '''),
     ('create',
         '''Create a resource from a json description passed on stdin (with -),
     or using command line shorthand (other variants).\n\nUsage:
@@ -2424,9 +2429,7 @@ def handle_args(cmd, args):
         elif cmd == 'record':
             interval = args['--interval']
             if interval is None:
-                entries = []
                 # split timestamp, value
-                has_errors = False
                 if args['-']:
                     headers = ['timestamp', 'value']
                     if sys.version_info < (3, 0):
@@ -2434,6 +2437,8 @@ def handle_args(cmd, args):
                     else:
                         dr = csv.DictReader(sys.stdin, headers)
                     rows = list(dr)
+                    chunkcnt=0
+                    entries=[]
                     for row in rows:
                         s = row['timestamp']
                         if s is not None and re.match('^[-+]?[0-9]+$', s) is not None:
@@ -2441,7 +2446,17 @@ def handle_args(cmd, args):
                         else:
                             ts = ExoUtilities.parse_ts(s)
                         entries.append([ts, row['value']])
+                        chunkcnt += 1
+                        if chunkcnt > int(args['--chunksize']):
+                            er.record(cik, rids[0], entries)
+                            chunkcnt = 0
+                            entries=[]
+                    if len(entries) > 0:
+                        er.record(cik, rids[0], entries)
+
                 else:
+                    entries = []
+                    has_errors = False
                     tvalues = args['--value']
                     reentry = re.compile('(-?\d+),(.*)')
                     for tv in tvalues:
@@ -2467,10 +2482,10 @@ def handle_args(cmd, args):
                                 ts = ExoUtilities.parse_ts(s)
                             entries.append([ts, g[1]])
 
-                if has_errors or len(entries) == 0:
-                    raise ExoException("Problems with input.")
-                else:
-                    er.record(cik, rids[0], entries)
+                    if has_errors or len(entries) == 0:
+                        raise ExoException("Problems with input.")
+                    else:
+                        er.record(cik, rids[0], entries)
             else:
                 if args['-']:
                     values = [v.strip() for v in sys.stdin.readlines()]
