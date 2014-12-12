@@ -2448,8 +2448,9 @@ def handle_args(cmd, args):
                             ts = ExoUtilities.parse_ts(s)
                         for column in range(0,len(rids)):
                             value = row[column]
-                            # FIXME: Looking for None isn't right; empty string?
-                            if value is not None:
+                            # TODO: How to deal with an empty cell should be a cmdline option.
+                            # skip it, or record a default number or empty string?
+                            if value is not None and len(str(value)) > 0:
                                 entries[column].append([ts, value])
                         chunkcnt += 1
                         if chunkcnt > int(args['--chunksize']):
