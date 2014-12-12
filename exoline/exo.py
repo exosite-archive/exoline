@@ -133,7 +133,8 @@ The - form takes the value to write from stdin. For example:
     $ echo '42' | exo write 8f21f0189b9acdc82f7ec28dc0c54ccdf8bc5ade myDataport -'''),
     ('record',
         '''Write data at a specified time.\n\nUsage:
-    exo [options] record <cik> [<rid>] ((--value=<timestamp,value> ...) | -)
+    exo [options] record <cik> [<rid>...] [-]
+    exo [options] record <cik> [<rid>] (--value=<timestamp,value> ...)
     exo [options] record <cik> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
 
     - reads data from stdin. Data should be in CSV format (no headers) with rows
@@ -2430,29 +2431,37 @@ def handle_args(cmd, args):
             interval = args['--interval']
             if interval is None:
                 # split timestamp, value
-                if args['-']:
-                    headers = ['timestamp', 'value']
+                if not args['--value']:
+                    headers = ['timestamp'] + [x for x in range(0,len(rids))]
                     if sys.version_info < (3, 0):
                         dr = csv.DictReader(sys.stdin, headers, encoding='utf-8')
                     else:
                         dr = csv.DictReader(sys.stdin, headers)
                     rows = list(dr)
                     chunkcnt=0
-                    entries=[]
+                    entries=[[] for x in range(0,len(rids))]
                     for row in rows:
                         s = row['timestamp']
                         if s is not None and re.match('^[-+]?[0-9]+$', s) is not None:
                             ts = int(s)
                         else:
                             ts = ExoUtilities.parse_ts(s)
-                        entries.append([ts, row['value']])
+                        for column in range(0,len(rids)):
+                            value = row[column]
+                            # TODO: How to deal with an empty cell should be a cmdline option.
+                            # skip it, or record a default number or empty string?
+                            if value is not None:
+                                entries[column].append([ts, value])
                         chunkcnt += 1
                         if chunkcnt > int(args['--chunksize']):
-                            er.record(cik, rids[0], entries)
+                            for idx in range(0,len(rids)):
+                                er.record(cik, rids[idx], entries[idx])
                             chunkcnt = 0
-                            entries=[]
-                    if len(entries) > 0:
-                        er.record(cik, rids[0], entries)
+                            entries=[[] for x in range(0,len(rids))]
+
+                    for idx in range(0,len(rids)):
+                        if len(entries[idx]) > 0:
+                            er.record(cik, rids[idx], entries[idx])
 
                 else:
                     entries = []
