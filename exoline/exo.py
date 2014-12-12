@@ -2476,7 +2476,6 @@ def handle_args(cmd, args):
                         er.record(cik, rids[0], entries)
             else:
                 if args['-']:
-                    # TODO: How to chunk this? Do we even want to?
                     values = [v.strip() for v in sys.stdin.readlines()]
                 else:
                     values = args['--value']
