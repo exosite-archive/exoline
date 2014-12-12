@@ -2450,7 +2450,7 @@ def handle_args(cmd, args):
                             value = row[column]
                             # TODO: How to deal with an empty cell should be a cmdline option.
                             # skip it, or record a default number or empty string?
-                            if value is not None and len(str(value)) > 0:
+                            if value is not None:
                                 entries[column].append([ts, value])
                         chunkcnt += 1
                         if chunkcnt > int(args['--chunksize']):
