@@ -35,6 +35,8 @@ class Plugin():
         level = args['--level']
         if level == 'None':
             level=None
+        else:
+            level = int(level)
 
         def removeWhite(string):
             string = re.sub(r'^\s+','',string)
@@ -65,18 +67,19 @@ class Plugin():
                 except:
                     pass
 
-            children = node['info']['children']
-            for child in children:
-                rid = child['rid']
-                # alias?
-                alias = rid[:6]
-                if rid in node['info']['aliases']:
-                    alias = node['info']['aliases'][rid][0]
-                elif len(child['info']['description']['name']) > 0:
-                    alias = child['info']['description']['name']
-                p = path[:]
-                p.append(alias)
-                printnodes(child, p )
+            if 'children' in node['info']:
+                children = node['info']['children']
+                for child in children:
+                    rid = child['rid']
+                    # alias?
+                    alias = rid[:6]
+                    if rid in node['info']['aliases']:
+                        alias = node['info']['aliases'][rid][0]
+                    elif len(child['info']['description']['name']) > 0:
+                        alias = child['info']['description']['name']
+                    p = path[:]
+                    p.append(alias)
+                    printnodes(child, p )
 
         # This craps out too easily.
         # TODO: Need to switch to using the nodeidfn
