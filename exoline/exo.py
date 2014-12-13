@@ -137,8 +137,17 @@ The - form takes the value to write from stdin. For example:
     exo [options] record <cik> [<rid>] (--value=<timestamp,value> ...)
     exo [options] record <cik> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
 
-    - reads data from stdin. Data should be in CSV format (no headers) with rows
-      like this: <unix timestamp>,<value>
+    Can take a CSV file on STDIN and record the values to dataports.  The file must have the
+    first column to be unix timestamps for each row.  The remaining columns are data to be
+    recorded at those timestamps.  Each column is identified by the <rid> arguments.
+
+    The CSV must not have a header row.
+
+    For example:
+    $ exo record aCIK dpA dpB dpC - < my.csv
+    Will take the CSV file, my.csv, that has four columns. Record that data into the dataports
+    with aliases dpA, dpB, and dpC on the shortcut aCIK.
+
 
 Command options:
     --interval generates timestamps at a regular interval into the past.
