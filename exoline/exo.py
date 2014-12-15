@@ -1817,7 +1817,8 @@ probably not valid.".format(cik))
             return {'rid': myid, 'info': resinfo}
         except Exception as ex:
             if raiseExceptions:
-                raise ex
+                exc_info = sys.exc_info()
+                raise exc_info[0], exc_info[1], exc_info[2]
             else:
                 return {'exception': ex, 'cik': cik, 'rid': rid}
 
