@@ -628,6 +628,13 @@ class ExolineOnepV1(onep.OnepV1):
             PERF_DATA.append({'cik': cik, 'procedures': procedures, 'seconds': te-ts})
         return r
 
+    def _getAuth(self, cik):
+        '''Definition of what is passed for cik is different that what OnepV1 expects.
+        so adjust to match.'''
+        if type(cik) is str:
+            return {"cik":cik}
+        return cik
+
     def comment(self, cik, rid, visibility, comment, defer=False):
         return self._call('comment', cik, [rid, visibility, comment], defer)
 
