@@ -553,6 +553,30 @@ class ExoConfig:
                 self.config = {}
 
     def lookup_shortcut(self, cik):
+        '''If a CIK has client/resource parts, seperate and look thouse up'''
+        if ',' in cik:
+            # break into parts, then lookup each.
+            c,g,r = cik.partition(',')
+            cik = { 'cik': self._lookup_shortcut(c),
+                    'client_id': self._lookup_shortcut(r) }
+        elif '.' in cik:
+            c,g,r = cik.partition('.')
+            cik = { 'cik': self._lookup_shortcut(c),
+                    'resource_id': self._lookup_shortcut(r) }
+        else:
+            # look it up, then check again for parts.
+            cik = self._lookup_shortcut(cik)
+            if ',' in cik:
+                c,g,r = cik.partition(',')
+                cik = {'cik': c, 'client_id': r}
+            elif '.' in cik:
+                c,g,r = cik.partition('.')
+                cik = {'cik': c, 'resource_id': r}
+
+        return cik
+                
+
+    def _lookup_shortcut(self, cik):
         '''Look up what was passed for cik in config file
             if it doesn't look like a CIK.'''
         if self.regex_rid.match(cik) is None:

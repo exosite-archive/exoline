@@ -11,6 +11,7 @@ NEXT
 - support url shorteners for spec scripts
 - Added chunking to record to handle large CSV files.
 - Added support to record for multiple RIDs as columns in a CSV 
+- Auths (CIKs) can contain a client or resource IDs as well.
 
 0.9.4 (2014-12-03)
 ------------------
