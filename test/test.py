@@ -1867,6 +1867,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''--discreet option'''
         cik = self.client.cik()
         r = rpc('--discreet', 'tree', cik)
+        # this is perhaps masking an issue.
+        if sys.version_info < (3, 0):
+            r.stdout = r.stdout.decode('utf-8')
         self.ok(r, search='cik: ' + cik[:20] + '01234567890123456789')
 
     def _createModel(self):
@@ -2260,7 +2263,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
         def extract_zip(input_zip):
             input_zip = zipfile.ZipFile(input_zip)
-            return {name: json.loads(input_zip.read(name).decode("utf-8")) for name in input_zip.namelist()}
+            l = [(name, json.loads(input_zip.read(name).decode("utf-8"))) for name in input_zip.namelist()]
+            return dict(l)
 
         dumpzip = extract_zip(dumpfile)
         it = dumpzip['infotree.json']
