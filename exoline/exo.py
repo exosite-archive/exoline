@@ -631,8 +631,11 @@ class ExolineOnepV1(onep.OnepV1):
     def _getAuth(self, cik):
         '''Definition of what is passed for cik is different that what OnepV1 expects.
         so adjust to match.'''
-        if type(cik) is str:
-            return {"cik":cik}
+        if type(cik) is dict:
+            return cik
+        else:
+            return {"cik": cik}
+
         return cik
 
     def comment(self, cik, rid, visibility, comment, defer=False):
