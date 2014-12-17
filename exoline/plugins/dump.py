@@ -88,14 +88,14 @@ class Plugin():
         sys.stderr.write('\r')
         sys.stderr.flush()
 
-        with zipfile.ZipFile(args['<filename>'], 'w', compression=zipfile.ZIP_DEFLATED) as zf:
-            tree['info']['key'] = cik
-            try:
-                zf.writestr('infotree.json', json.dumps(tree))
-                zf.writestr('dump.json', json.dumps({'timestamp': now.isoformat(), 'version': '1.0'}))
-                dumpTimeSeries(tree, zf)
-            finally:
-                zf.close()
-                sys.stderr.write('\r')
-                sys.stderr.flush()
-                print(json.dumps(counts) + '          ')
+        zf = zipfile.ZipFile(args['<filename>'], 'w', compression=zipfile.ZIP_DEFLATED)
+        tree['info']['key'] = cik
+        try:
+            zf.writestr('infotree.json', json.dumps(tree))
+            zf.writestr('dump.json', json.dumps({'timestamp': now.isoformat(), 'version': '1.0'}))
+            dumpTimeSeries(tree, zf)
+        finally:
+            zf.close()
+            sys.stderr.write('\r')
+            sys.stderr.flush()
+            print(json.dumps(counts) + '          ')
