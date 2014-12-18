@@ -13,6 +13,7 @@ NEXT
 - added support to record for multiple RIDs as columns in a CSV 
 - add dump command to write entire client hierarchy with data 
   to zip file 
+- auths (CIKs) can contain a client or resource IDs as well.
 
 0.9.4 (2014-12-03)
 ------------------

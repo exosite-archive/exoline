@@ -19,6 +19,7 @@ import os
 import random
 import string
 import filecmp
+import tempfile
 import zipfile
 
 import six
@@ -312,6 +313,58 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def tearDown(self):
         '''Clean up any test client'''
         rpc('drop', self.portalcik, self.client.rid)
+
+    @attr('auth')
+    def auth_cik_clientid_test(self):
+        '''Test using the <CIK:cRID> auth format'''
+        cik = self.client.parentcik
+        rid = self.client.rid
+
+        auth = '{0}:c{1}'.format(cik, rid)
+        isok = rpc('info', auth)
+        self.ok(isok, 'info with <CIK:cRID>')
+
+    @attr('auth')
+    def auth_cik_resourceid_test(self):
+        '''Test using the <CIK:rRID> auth format'''
+        cik = self.client.parentcik
+        rid = self._createDataports()
+
+        auth = '{0}:r{1}'.format(cik, rid['string'].rid)
+        isok = rpc('info', auth)
+        self.ok(isok, 'info with <CIK:rRID>')
+
+    @attr('auth')
+    def auth_shortcut_clientid_test(self):
+        '''Test using the <SHORTCUT:cRID> auth format'''
+        cik = self.client.parentcik
+        rid = self.client.rid
+
+        with tempfile.NamedTemporaryFile() as cfgfile:
+            cfgfile.write("keys:\n")
+            cfgfile.write("    testme: {0}".format(cik))
+            cfgfile.flush()
+            cfgs = "--config={0}".format(cfgfile.name)
+            auth = 'testme:c{0}'.format(rid)
+            isok = rpc(cfgs, 'info', auth)
+            self.ok(isok, 'info with <SHORTCUT:cRID>')
+
+    @attr('auth')
+    def auth_shortcut_test(self):
+        '''Test using the <SHORTCUT> auth format'''
+        cik = self.client.parentcik
+        rid = self.client.rid
+        shortcut = '{0}:c{1}'.format(cik, rid)
+
+        with tempfile.NamedTemporaryFile() as cfgfile:
+            cfgfile.write("keys:\n")
+            cfgfile.write("    testme: {0}".format(shortcut))
+            cfgfile.flush()
+            cfgs = "--config={0}".format(cfgfile.name)
+            auth = 'testme'
+            isok = rpc(cfgs, 'info', auth)
+            self.ok(isok, 'info with <SHORTCUT>')
+
 
     def _readBack(self, res, limit):
         r = rpc('read',
