@@ -784,13 +784,10 @@ TODO
 ----
 
 - delete serial number when dropping device
-- add --howmany option to create command
 - add test for --tz option
 - add a --monitor (or --follow) option to script command
-- add support for https://github.com/exosite/docs/tree/master/rpc#authentication like this: $ exo info cik1,client_id=rid1
 - make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
 - fix install warning: "UserWarning: Unknown distribution option: 'console'"
-- make exoline<tab> autocompletion work in iPython
 - support [PIKs](https://exositejs.herokuapp.com) in place of CIKs
 - better error handling for "Command line error: Failed to connect to https://portals.exosite.com"
 - support passing certs at the command line for https (portals and onep) when behind VPNs

@@ -628,16 +628,6 @@ class ExolineOnepV1(onep.OnepV1):
             PERF_DATA.append({'cik': cik, 'procedures': procedures, 'seconds': te-ts})
         return r
 
-    def _getAuth(self, cik):
-        '''Definition of what is passed for cik is different that what OnepV1 expects.
-        so adjust to match.'''
-        if type(cik) is dict:
-            return cik
-        else:
-            return {"cik": cik}
-
-        return cik
-
     def comment(self, cik, rid, visibility, comment, defer=False):
         return self._call('comment', cik, [rid, visibility, comment], defer)
 
@@ -706,29 +696,16 @@ class ExoRPC():
             [['info', {alias: ""}], ['listing']]'''
         if len(commands) == 0:
             return []
-        if isinstance(auth, six.string_types):
-            cik = auth
-        elif type(auth) is dict:
-            cik = auth['cik']
-            assert(not ('client_id' in auth and 'resource_id' in auth))
-            if 'client_id' in auth:
-                # print('connecting as ' + json.dumps(auth))
-                self.exo.connect_as(auth['client_id'])
-            if 'resource_id' in auth:
-                # print('connecting as ' + json.dumps(auth))
-                self.exo.connect_owner(auth['resource_id'])
-        else:
+        if not (isinstance(auth, six.string_types) or type(auth) is dict):
             raise Exception("_exomult: unexpected type for auth " + str(auth))
-        assert(not self.exo.has_deferred(cik))
+        assert(not self.exo.has_deferred(auth))
         for c in commands:
             if type(c) is not list:
                 raise Exception("_exomult: found invalid command")
             method = getattr(self.exo, c[0])
-            method(cik, *c[1:], defer=True)
-        assert(self.exo.has_deferred(cik))
-        r = self.exo.send_deferred(cik)
-        if 'client_id' in auth or 'resource_id' in auth:
-            self.exo.connect_as(None)
+            method(auth, *c[1:], defer=True)
+        assert(self.exo.has_deferred(auth))
+        r = self.exo.send_deferred(auth)
         responses = self._raise_for_deferred(r)
         return responses
 
