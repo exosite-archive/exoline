@@ -340,7 +340,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         cik = self.client.parentcik
         rid = self.client.rid
 
-        with tempfile.NamedTemporaryFile() as cfgfile:
+        with tempfile.NamedTemporaryFile('w+') as cfgfile:
             cfgfile.write("keys:\n")
             cfgfile.write("    testme: {0}".format(cik))
             cfgfile.flush()
@@ -356,7 +356,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         rid = self.client.rid
         shortcut = '{0}:c{1}'.format(cik, rid)
 
-        with tempfile.NamedTemporaryFile() as cfgfile:
+        with tempfile.NamedTemporaryFile('w+') as cfgfile:
             cfgfile.write("keys:\n")
             cfgfile.write("    testme: {0}".format(shortcut))
             cfgfile.flush()
