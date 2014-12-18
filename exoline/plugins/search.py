@@ -35,7 +35,7 @@ class Plugin():
             return rid
 
         reflags = re.IGNORECASE if args['--matchcase'] else 0
-        def printnodes(node, path, aliases):
+        def searchnodes(node, path, aliases):
             if platform.system() == 'Windows' or sys.version_info < (2, 7):
                 args['--nocolor'] = True
             query = args['<query-regex>']
@@ -125,7 +125,7 @@ class Plugin():
                         aliases = []
                     p = path[:]
                     p.append(cik)
-                    printnodes(child, p, aliases)
+                    searchnodes(child, p, aliases)
 
         # These are pretty slow
         #info = rpc.info(cik, options={"counts": True})
@@ -143,4 +143,4 @@ class Plugin():
             print('Exception was: ' + str(tree))
         else:
             tree['info']['key'] = cik
-            printnodes(tree, [], [])
+            searchnodes(tree, [], [])

@@ -20,6 +20,7 @@ import random
 import string
 import filecmp
 import tempfile
+import zipfile
 
 import six
 import yaml
@@ -1919,6 +1920,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         '''--discreet option'''
         cik = self.client.cik()
         r = rpc('--discreet', 'tree', cik)
+        # this is perhaps masking an issue.
+        if sys.version_info < (3, 0):
+            r.stdout = r.stdout.decode('utf-8')
         self.ok(r, search='cik: ' + cik[:20] + '01234567890123456789')
 
     def _createModel(self):
@@ -2194,9 +2198,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         childcik = r.stdout
 
         ridFloat, ridString, ridInteger, ridScript = self._createMultiple(childcik, [
-            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port', 'alias': 'float_alias'}),
-            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port', 'alias': 'string_alias'}),
-            Resource(cik, 'dataport', {'format': 'integer', 'name': 'integer_port', 'alias': 'int3ger_alias'}),
+            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port'}, alias='float_alias'),
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'}, alias='string_alias'),
+            Resource(cik, 'dataport', {'format': 'integer', 'name': 'integer_port'}, alias='int3ger_alias'),
             Resource(cik, 'datarule', {
                     'format': 'string',
                     'name': 'script_port',
@@ -2209,7 +2213,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                         'count': 'infinity',
                         'duration': 'infinity'
                     }
-                })])
+                }, alias='script_alias')])
 
         # set up a device clone with a serial number
         model = 'exolinetestmodel' + ''.join(random.choice(string.digits) for _ in range(5))
@@ -2263,6 +2267,89 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, search='你好4')
         self.l(r.stdout)
         self.assertEqual(len(r.stdout.split('\n')), 2, 'two matches: client model and clone')
+
+    def dump_test(self):
+        '''Dump command'''
+        cik = self.client.cik()
+        childrids = self._createMultiple(cik, [
+            Resource(cik, 'client', {'name': '你好' + str(i), 'alias': '你' + str(i)}) for i in range(10)])
+
+        # add some more things to one of the children
+        childrid = childrids[4]
+        r = rpc('info', cik, childrid, '--cikonly')
+        self.ok(r, 'look up one of the clients', match=self.RE_RID)
+        childcik = r.stdout
+
+        ridClient, ridFloat, ridString, ridInteger, ridScript = self._createMultiple(childcik, [
+            Resource(cik, 'client', {'name': '好'}),
+            Resource(cik, 'dataport', {'format': 'float', 'name': 'float_port'}, alias='float_alias'),
+            Resource(cik, 'dataport', {'format': 'string', 'name': 'string_port'}, alias='string_alias'),
+            Resource(cik, 'dataport', {'format': 'integer', 'name': 'integer_port'}, alias='int3ger_alias'),
+            Resource(cik, 'datarule', {
+                    'format': 'string',
+                    'name': 'script_port',
+                    'preprocess': [],
+                    'rule': {
+                        'script': 'local i = 0'
+                    },
+                    'visibility': 'parent',
+                    'retention': {
+                        'count': 'infinity',
+                        'duration': 'infinity'
+                    }
+                }, alias='script_alias')])
+
+        startts = 1418831000
+        valsFloat = [[i, 3.14159] for i in range(startts, startts + 250)]
+        r = rpc('record', childcik, ridFloat, *['--value={0},{1}'.format(t, v) for t, v in valsFloat])
+        self.ok(r, 'record floats')
+        valsString = [[i, '你好'] for i in range(startts, startts + 10)]
+        r = rpc('record', childcik, ridString, *['--value={0},{1}'.format(t, v) for t, v in valsString])
+        self.ok(r, 'record string')
+        valsInteger = [[i, 42] for i in range(startts, startts + 10)]
+        r = rpc('record', childcik, ridInteger, *['--value={0},{1}'.format(t, v) for t, v in valsInteger])
+        self.ok(r, 'record integer')
+
+        dumpfile = 'testdump.zip'
+        r = rpc('dump', cik, dumpfile)
+        self.ok(r, 'dump')
+
+        def extract_zip(input_zip):
+            input_zip = zipfile.ZipFile(input_zip)
+            l = [(name, json.loads(input_zip.read(name).decode("utf-8"))) for name in input_zip.namelist()]
+            return dict(l)
+
+        dumpzip = extract_zip(dumpfile)
+        it = dumpzip['infotree.json']
+        self.assertEqual(it['info']['key'], cik, 'key matches')
+
+        def findChild(infotree, rid):
+            for r in infotree['info']['children']:
+                if r['rid'] == rid:
+                    return r
+            return None
+
+        def testChildResource(infotree, rid, name, vals=None, alias=None):
+            r = findChild(infotree, rid)
+            self.assertNotEqual(r, None, 'find child ' + name)
+            # test name
+            self.assertEqual(r['info']['description']['name'], name, 'name matches')
+            # test alias
+            if alias is not None:
+                self.assertTrue(type(infotree['info']['aliases']) is dict, 'aliases is dict')
+                self.assertTrue(alias in infotree['info']['aliases'][rid], 'alias ' + alias + ' is found')
+            # test datapoints
+            if vals is not None:
+                dumpVals = dumpzip[r['info']['basic']['type'] + '.' + rid + '.json']
+                self.assertEqual(vals, dumpVals, 'dumped data points match for ' + name)
+
+        self.assertEqual(it['rid'], self.client.rid, 'root rid')
+        testChildResource(it, rid=childrid, name='你好4')
+        childit = findChild(it, childrid)
+        testChildResource(childit, rid=ridFloat, name='float_port', vals=valsFloat, alias='float_alias')
+        testChildResource(childit, rid=ridString, name='string_port', vals=valsString, alias='string_alias')
+        testChildResource(childit, rid=ridInteger, name='integer_port', vals=valsInteger, alias='int3ger_alias')
+        testChildResource(childit, rid=ridScript, name='script_port', vals=[])
 
 
 def tearDownModule(self):

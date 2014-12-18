@@ -7,11 +7,13 @@ NEXT
 - fix read --selection
 - support relative time for --start and --end 
   (https://github.com/exosite/exoline/issues/30)
-- add "did you mean..." suggstions for mistyped commands
+- added "did you mean..." suggstions for mistyped commands
 - support url shorteners for spec scripts
-- Added chunking to record to handle large CSV files.
-- Added support to record for multiple RIDs as columns in a CSV 
-- Auths (CIKs) can contain a client or resource IDs as well.
+- added chunking to record to handle large CSV files.
+- added support to record for multiple RIDs as columns in a CSV 
+- add dump command to write entire client hierarchy with data 
+  to zip file 
+- auths (CIKs) can contain a client or resource IDs as well.
 
 0.9.4 (2014-12-03)
 ------------------

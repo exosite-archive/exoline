@@ -445,7 +445,7 @@ if platform.system() != 'Windows':
 		#print(ex)
                 try:
                     plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
-                except:
+                except Exception as ex:
                     plugin = importlib.import_module('exoline.plugins.' + module_name)
 
             # instantiate plugin
@@ -820,7 +820,8 @@ class ExoRPC():
                  starttime=None,
                  endtime=None,
                  selection='all',
-                 chunksize=212):
+                 chunksize=212,
+                 progress=lambda count: None):
         '''Generates multiple rids and returns combined timestamped data like this:
                [12314, [1, 77, 'a']
                [12315, [2, 78, None]]
@@ -828,8 +829,11 @@ class ExoRPC():
            no data in that dataport for that timestamp.'''
         options = self._readoptions(limit, sort, starttime, endtime, selection)
 
+        count = [0]
         def _read(cik, rids, options):
             responses = self._exomult(cik, [['read', rid, options] for rid in rids])
+            count[0] += len(responses)
+            progress(count[0])
             return self._combinereads(responses, options['sort'])
 
         if limit <= chunksize :
@@ -1851,8 +1855,7 @@ probably not valid.".format(cik))
             return {'rid': myid, 'info': resinfo}
         except Exception as ex:
             if raiseExceptions:
-                exc_info = sys.exc_info()
-                raise exc_info[0], exc_info[1], exc_info[2]
+                six.reraise(Exception, ex)
             else:
                 return {'exception': ex, 'cik': cik, 'rid': rid}
 

@@ -434,6 +434,30 @@ $ exo revoke 0a35320000000000000000000000000000000000 --share=e9a52a000000000000
 ok
 ```
 
+Create a dump of a client. The dump is a zip file containing the info tree (as output by info --recursive), the timestamp at which timeseries values were read, and each timeseries resource under the client. Timeseries resources include type dataport and type datarule.
+
+```
+$ exo dump sensor1 sensor1.zip
+$ unzip -l sensor1.zip
+Archive:  sensor1.zip
+  Length     Date   Time    Name
+ --------    ----   ----    ----
+     3938  12-16-14 22:58   infotree
+       10  12-16-14 22:58   timestamp
+  5367020  12-16-14 23:00   dataport.3bbee56c446f546b5469f629610b8afbcd1fe093
+  5367610  12-16-14 23:02   dataport.4fa572ba020cd9210388f9f60e4708bd623a7c8a
+ 10747240  12-16-14 23:06   dataport.5c9d695fdbe1503c6622b0d0f603edc231349c53
+      127  12-16-14 23:06   dataport.76143aaf0930802775e295b190d540d709ebc6b1
+   767969  12-16-14 23:06   dataport.8dc131ea3fff528b122324def5b65159523f7c77
+      151  12-16-14 23:06   dataport.e93eea75d58615e78e8fd0915e7166edf7ad0525
+    23949  12-16-14 23:06   dataport.f264984bc4f9cf205e88a548f42f5ffbfdd21f09
+ --------                   -------
+ 22278014                   9 files
+```
+
+
+
+
 Provisioning
 ------------
 
