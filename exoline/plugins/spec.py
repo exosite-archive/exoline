@@ -607,9 +607,15 @@ scripts:
                                             meta = None
 
                                         def bad_desc_msg(s):
-                                            sys.stdout.write('spec expects description for {0} to be {1}, but they are not.'.format(alias, res['description']))
+                                            desc='""'
+                                            if 'description' in res:
+                                                desc = res['description']
+                                            sys.stdout.write('spec expects description for {0} to be {1}{2}\n'.format(alias, desc, s))
                                         def bad_unit_msg(s):
-                                            sys.stdout.write('spec expects unit for {0} to be {1}, but they are not.'.format(alias, res['unit']))
+                                            unit=''
+                                            if 'unit' in res:
+                                                unit = res['unit']
+                                            sys.stdout.write('spec expects unit for {0} to be {1}{2}\n'.format(alias, unit, s))
 
                                         if create:
                                             if meta is None:
@@ -630,9 +636,9 @@ scripts:
                                                 sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.')
                                             elif 'datasource' not in meta:
                                                 sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.')
-                                            elif 'unit' not in meta['datasource']:
+                                            elif 'unit' not in meta['datasource'] and 'unit' in res:
                                                 bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.')
-                                            elif 'description' not in meta['datasource']:
+                                            elif 'description' not in meta['datasource'] and 'description' in res:
                                                 bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.')
                                             elif 'unit' in res and meta['datasource']['unit'] != res['unit']:
                                                 bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
