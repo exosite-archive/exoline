@@ -778,16 +778,3 @@ What's New?
 -----------
 
 For information about what features are in what Exoline versions look [here](HISTORY.md).
-
-
-TODO
-----
-
-- delete serial number when dropping device
-- add test for --tz option
-- add a --monitor (or --follow) option to script command
-- make ip and data commands support https, host, and port settings and remove noconfig=True workaround in those tests
-- fix install warning: "UserWarning: Unknown distribution option: 'console'"
-- support [PIKs](https://exositejs.herokuapp.com) in place of CIKs
-- better error handling for "Command line error: Failed to connect to https://portals.exosite.com"
-- support passing certs at the command line for https (portals and onep) when behind VPNs
