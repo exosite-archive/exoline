@@ -1424,7 +1424,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     @attr('spec')
     def spec_url_test(self):
-        '''Test passing urls for spec file and spec scripts'''
+        '''Pass urls for spec file and spec scripts'''
         cik = self.client.cik()
 
         def spec_and_check(spec, aliases):

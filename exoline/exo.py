@@ -58,6 +58,7 @@ import six
 from six import BytesIO
 from six import StringIO
 from six import iteritems
+from six import string_types
 
 import pytz
 # python 2.6 support
@@ -498,6 +499,15 @@ else:
         p = search.Plugin()
         plugins.append(p)
         cmd_doc[p.command()] = search.__doc__
+
+        # dump plugin
+        try:
+            from ..exoline.plugins import dump
+        except:
+            from exoline.plugins import dump
+        p = dump.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = dump.__doc__
 
     except Exception as ex:
         import traceback
@@ -1431,11 +1441,11 @@ probably not valid.".format(cik))
             if str(ex).startswith('locked ('):
                 self._print_tree_line(
                     spacer +
-                    "  └─{0} is locked".format(cik))
+                    "  └─{0} is locked".format(json.dumps(auth)))
             else:
                 self._print_tree_line(
                     spacer +
-                    "  └─RPC error for {0}: {1}".format(cik, ex))
+                    "  └─RPC error for {0}: {1}".format(json.dumps(auth), ex))
         else:
             # calculate the maximum length of various things for all children,
             # so we can make things line up in the output.
@@ -1754,7 +1764,17 @@ probably not valid.".format(cik))
 
         return list(differ.compare(s1, s2))
 
-    def _infotree(self, cik, rid=None, restype='client', resinfo=None, nodeidfn=lambda rid, info: rid, options={}, level=None, raiseExceptions=True):
+    def _infotree(self,
+                  auth,
+                  rid=None,
+                  restype='client',
+                  resinfo=None,
+                  nodeidfn=lambda rid,
+                  info: rid,
+                  options={},
+                  level=None,
+                  raiseExceptions=True,
+                  errorfn=lambda auth, msg: None):
         '''Get all info for a cik and its children in a nested dict.
         The basic unit is {'rid': '<rid>', 'info': <info-with-children>},
         where <info-with-children> is just the info object for that node
@@ -1777,16 +1797,19 @@ probably not valid.".format(cik))
            (w/o children) for each node.
         '''
         try:
+            # handle passing cik for auth
+            if isinstance(auth, string_types):
+                auth = {'cik': auth}
             types = ['dataport', 'datarule', 'dispatch', 'client']
             listing = {}
             norid = rid is None
             if norid:
-                rid, resinfo = self._exomult(cik, [
+                rid, resinfo = self._exomult(auth, [
                     ['lookup', 'aliased', ''],
                     ['info', {'alias': ''}, options]])
             else:
                 if resinfo is None:
-                    resinfo = self._exomult(cik, [['info', rid, options]])[0]
+                    resinfo = self._exomult(auth, [['info', rid, options]])[0]
 
             myid = nodeidfn(rid, resinfo)
 
@@ -1796,8 +1819,15 @@ probably not valid.".format(cik))
             if restype == 'client':
                 if not norid:
                     # key is only available to owner (not the resource itself)
-                    cik = resinfo['key']
-                listing = self._exomult(cik, [['listing', types, {}]])[0]
+                    auth = {
+                        'cik': auth['cik'],
+                        'client_id': rid
+                    }
+                try:
+                    listing = self._exomult(auth, [['listing', types, {}]])[0]
+                except ExoRPC.RPCException as e:
+                    listing = dict([(t, []) for t in types])
+                    errorfn(auth, str(e))
                 rids = [rid for rid in list(itertools.chain.from_iterable([listing[t] for t in types]))]
                 # break info calls into chunks to prevent timeout
                 chunksize = 20
@@ -1807,7 +1837,7 @@ probably not valid.".format(cik))
                         yield l[i:i+n]
                 infos = []
                 for ridchunk in chunks(rids, chunksize):
-                    infos += self._exomult(cik, [['info', rid, options] for rid in ridchunk])
+                    infos += self._exomult(auth, [['info', rid, options] for rid in ridchunk])
             else:
                 listing = []
 
@@ -1817,14 +1847,15 @@ probably not valid.".format(cik))
                 if typ in listing:
                     ridlist = listing[typ]
                     for childrid in ridlist:
-                        tr = self._infotree(cik,
+                        tr = self._infotree(auth,
                                             rid=childrid,
                                             restype=typ,
                                             resinfo=infos[infoIndex],
                                             nodeidfn=nodeidfn,
                                             options=options,
                                             level=None if level is None else level-1,
-                                            raiseExceptions=raiseExceptions)
+                                            raiseExceptions=raiseExceptions,
+                                            errorfn=errorfn)
                         infoIndex += 1
                         resinfo['children'].append(tr)
             resinfo['children'].sort(key=lambda x: x['rid'] if 'rid' in x else '')
@@ -1834,7 +1865,7 @@ probably not valid.".format(cik))
             if raiseExceptions:
                 six.reraise(Exception, ex)
             else:
-                return {'exception': ex, 'cik': cik, 'rid': rid}
+                return {'exception': ex, 'auth': auth, 'rid': rid}
 
     def _difffilter(self, difflines):
         d = difflines
