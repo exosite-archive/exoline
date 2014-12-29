@@ -29,6 +29,12 @@ except ImportError:
 if sys.version_info < (3, 0):
     required.append('unicodecsv==0.9.4')
 
+import os
+long_description = open('README.md').read() + '\n\n' + open('HISTORY.md').read()
+if os.path.exists('README.txt'):
+    # read rst version if it exists
+    # (usually because register.py was run)
+    long_description = open('README.txt').read()
 
 setup(
     name='exoline',
@@ -37,8 +43,7 @@ setup(
     author = 'Dan Weaver',
     author_email = 'danweaver@exosite.com',
     description = 'Command line interface for Exosite platform.',
-    long_description = open('README.md').read() + '\n\n' +
-                      open('HISTORY.md').read(),
+    long_description = long_description,
     packages=['exoline', 'exoline.plugins'],
     package_dir={'exoline': 'exoline', 'plugins': 'exoline/plugins'},
     scripts=['bin/exo', 'bin/exoline'],

@@ -1028,6 +1028,8 @@ class ExoRPC():
              recursive=False,
              level=None):
         '''Returns info for RID as a dict.'''
+        if cikonly:
+            options = {'key': True}
         if recursive:
             rid = None if type(rid) is dict else rid
             response = self._infotree(cik,
