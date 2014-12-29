@@ -2356,11 +2356,12 @@ def tearDownModule(self):
     '''Do final things'''
     with open('test/testperf.json', 'w') as f:
         f.write(json.dumps(exo.PERF_DATA))
-    # delete test models
-    response = pop.model_list(config['vendortoken'])
-    models = response.body.splitlines()
-    for model in models:
-        if model.startswith('exolinetestmodel'):
-            response = pop.model_remove(config['vendortoken'], model)
+    if 'vendortoken' in config:
+        # delete test models
+        response = pop.model_list(config['vendortoken'])
+        models = response.body.splitlines()
+        for model in models:
+            if model.startswith('exolinetestmodel'):
+                response = pop.model_remove(config['vendortoken'], model)
     # drop all test clients
     rpc('drop', config['portalcik'], '--all-children')
