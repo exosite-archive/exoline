@@ -602,6 +602,13 @@ $ exo read $TEMP_CIK temp_f
 2014-11-24 10:50:18-06:00,-40.0
 ```
 
+Spec also works with shortened URLs.
+
+```
+$ TEMP_CIK=`curl cik.herokuapp.com`
+$ exo spec $TEMP_CIK http://tinyurl.com/exospec-tempconvert --create
+```
+
 The `spec` command has a lot of other capabilities, including `--generate` to create a spec file based on an existing device. Try `--help` and `--example` for information about usage.
 
 ```
