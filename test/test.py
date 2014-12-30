@@ -1087,7 +1087,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'info on all keys')
         info = json.loads(r.stdout)
         for k in allkeys:
-            self.assertTrue(k in info.keys(), 'found key {0} when options is empty'.format(k))
+            self.assertTrue(k in info.keys(), 'should find key {0} when options is empty'.format(k))
 
         for k in allkeys:
             # include each key
@@ -1313,7 +1313,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('spec', cik, spec, '--ids=1,2', '--create')
         self.ok(r, 'create dataports and scripts based on spec')
         r = rpc('spec', cik, spec, '--ids=1,2')
-        self.ok(r, 'create dataports and scripts based on spec', match='')
+        self.ok(r, 'check that client was set up based on spec', match='')
 
         # test correct number of children of each type
         r = rpc('drop', cik, '--all-children')
