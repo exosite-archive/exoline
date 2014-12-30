@@ -186,7 +186,7 @@ Record a bunch of data without timestamps
 $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
 ```
 
-Dump data from multiple dataports to Excel-compatible CSV
+Read data from multiple dataports to Excel-compatible CSV
 
 ```
 $ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
@@ -198,6 +198,27 @@ sys     0m0.506s
 $ wc -l alldata.csv
   316705 alldata.csv
 ```
+
+Read device and all its descendants to a zip file.
+
+```
+$ time exo dump 5fbbf0053a2294ad79f3ae0ea37f04750bdb7cd2 clientdump.zip
+infotree.json: 3 resources
+b4a243a16c702caccc991c8b771ef838623445db.json
+dump.json
+{"points": 88, "errors": [], "resources": 3}
+$ unzip -l clientdump.zip
+Archive:  clientdump.zip
+  Length     Date   Time    Name
+ --------    ----   ----    ----
+     1772  12-30-14 15:27   infotree.json
+     2212  12-30-14 15:27   dataport.b4a243a16c702caccc991c8b771ef838623445db.json
+       75  12-30-14 15:27   dump.json
+ --------                   -------
+     4059                   3 files
+```
+
+
 
 Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
 
