@@ -172,12 +172,18 @@ class TestRPC(TestCase):
                     match, label, std, len(match), len(std)))
 
     def notok(self, response, msg='', search=None, match=None):
+        self.assertTrue(
+            type(response.exitcode) is int,
+            'exit code is an int (found {0})'.format(type(response.exitcode)))
         if response.exitcode == 0:
             self._logall(response)
         self.assertNotEqual(response.exitcode, 0, msg + ' (exit code should not be 0)')
         self._stdre(response, msg, search=search, match=match, stderr=True)
 
     def ok(self, response, msg='', search=None, match=None):
+        self.assertTrue(
+            type(response.exitcode) is int,
+            'exit code is an int (found {0})'.format(type(response.exitcode)))
         if response.exitcode != 0:
             self._logall(response)
         self.assertEqual(response.exitcode, 0, msg + ' (exit code should be 0)')
@@ -2137,7 +2143,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def help_test(self):
         '''Test -h for all commands'''
         def check_help(r, command):
-            self.notok(r, 'error exit code')
+            self.ok(r, 'error exit code')
             self.assertTrue(
                 re.search(command, r.stdout, re.MULTILINE) is not None,
                 'help text is returned (no error)')
@@ -2149,6 +2155,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         def hlp(args):
             a = args + ['-h']
             r = rpc(*a)
+            self.l(args[-1] if len(args) > 0 else 'exo')
             check_help(r, args[-1] if len(args) > 0 else 'exo')
             # this assumes commands are followed by two newlines
             # and then another section

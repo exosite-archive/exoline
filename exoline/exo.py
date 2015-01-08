@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Exoline - Exosite IoT Command Line Interface
+"""Exoline - Exosite IoT Command Line
 https://github.com/exosite/exoline
 
 Usage:
@@ -24,19 +24,18 @@ Options:
   --portals=<server>     Portals server [default: https://portals.exosite.com]
   -t --vendortoken=<vt>  Vendor token (/admin/home in Portals)
   -n --vendor=<vendor>   Vendor identifier (/admin/managemodels in Portals)
-			 (See http://github.com/exosite/exoline#provisioning)
+                         (See http://github.com/exosite/exoline#provisioning)
   -h --help              Show this screen
   -v --version           Show version
 
 See 'exo <command> --help' for more information on a specific command.
 """
 
-# Copyright (c) 2014, Exosite, LLC
+# Copyright (c) 2015, Exosite, LLC
 # All rights reserved
 from __future__ import unicode_literals
 import sys
 import os
-from os.path import expanduser
 import json
 if sys.version_info < (3, 0):
     import unicodecsv as csv
@@ -2103,6 +2102,20 @@ class ExoUtilities():
             text += " {0}s".format(sec)
         return text.strip()
 
+    @classmethod
+    def handleSystemExit(cls, ex):
+        # Handle SystemExit per https://docs.python.org/2/library/exceptions.html#exceptions.SystemExit
+        if ex.code is None:
+            return 0
+        elif isinstance(ex.code, six.string_types):
+            sys.stderr.write(ex.code)
+            return 1
+        elif type(ex.code is int):
+            return ex.code
+        else:
+            sys.stderr.write('Unexpected exitcode: {0}\n'.format(ex.code))
+            return 1
+
 
 def spark(numbers, empty_val=None):
     """Generate a text based sparkline graph from a list of numbers (ints or
@@ -2934,7 +2947,8 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
             version="Exosite Command Line {0}".format(__version__),
             options_first=True)
     except SystemExit as ex:
-        return ex.code
+        return ExoUtilities.handleSystemExit(ex)
+
 
     global exoconfig
     exoconfig = ExoConfig(args['--config'])
@@ -2951,7 +2965,7 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         try:
             args_cmd = docopt(cmd_doc[cmd], argv=argv, options_first=options_first)
         except SystemExit as ex:
-            return ex.code
+            return ExoUtilities.handleSystemExit(ex)
     else:
         alphabet = 'abcdefghijklmnopqrstuvwxyz'
         def edits(word):
@@ -3060,7 +3074,6 @@ def run(argv, stdin=None):
             stdin = sio
         stdout = StringIO()
         stderr = StringIO()
-
         exitcode = cmd(argv=argv, stdin=stdin, stdout=stdout, stderr=stderr)
         stdout.seek(0)
         stdout = stdout.read().strip()  # strip to get rid of leading newline

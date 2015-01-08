@@ -749,8 +749,7 @@ http://docs.exosite.com/provision/device/#provisionactivate'''
 					try:
 						args_cmd = docopt(doc, argv=argv)
 					except SystemExit as ex:
-						print(str(ex))
-						return 1 # ex.code
+						return ExoUtilities.handleSystemExit(ex)
 					return meth(obj(), name, args_cmd, options)
 				else:
 					raise ExoException('Unknown command {0}. Try "exo --help"'.format(args['<command>']))
@@ -762,7 +761,7 @@ http://docs.exosite.com/provision/device/#provisionactivate'''
 			if ('-h' in argv or '--help' in argv):
 				cls = self.findSubcommandClass(argv, self)
 				print(cls.doc())
-				return 1
+				return 0
 			else:
 				raise ExoException("Could not find requested sub command {0}".format(args['<command>']))
 
