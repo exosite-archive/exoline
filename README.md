@@ -199,10 +199,10 @@ $ wc -l alldata.csv
   316705 alldata.csv
 ```
 
-Read device and all its descendants to a zip file.
+Dump client and all its descendants and time series data to a zip file.
 
 ```
-$ time exo dump 5fbbf0053a2294ad79f3ae0ea37f04750bdb7cd2 clientdump.zip
+$ time exo dump 5fbbf00000000000000000000000000000000000 clientdump.zip
 infotree.json: 3 resources
 b4a243a16c702caccc991c8b771ef838623445db.json
 dump.json
