@@ -633,17 +633,17 @@ scripts:
 
                                         else:
                                             if meta is None:
-                                                sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.')
+                                                sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.\n')
                                             elif 'datasource' not in meta:
-                                                sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.')
+                                                sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.\n')
                                             elif 'unit' not in meta['datasource'] and 'unit' in res:
-                                                bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.')
+                                                bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.\n')
                                             elif 'description' not in meta['datasource'] and 'description' in res:
-                                                bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.')
+                                                bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.\n')
                                             elif 'unit' in res and meta['datasource']['unit'] != res['unit']:
-                                                bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.'.format(meta['datasource']['unit']))
+                                                bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.\n'.format(meta['datasource']['unit']))
                                             elif 'description' in res and meta['datasource']['description'] != res['description']:
-                                                bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.'.format(meta['datasource']['description']))
+                                                bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.\n'.format(meta['datasource']['description']))
 
 
                                     if 'public' in res:
@@ -655,9 +655,9 @@ scripts:
                                                 new_desc['public'] = respub
                                                 rpc.update(cik, {'alias': alias}, new_desc)
                                             else:
-                                                sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
+                                                sys.stdout.write('spec expects public for {0} to be {1}, but they are not.\n'.format(alias, resPub))
                                         elif public != resPub:
-                                            sys.stdout.write('spec expects public for {0} to be {1}, but they are not.'.format(alias, resPub))
+                                            sys.stdout.write('spec expects public for {0} to be {1}, but they are not.\n'.format(alias, resPub))
 
 
                                     if 'subscribe' in res:
@@ -673,9 +673,9 @@ scripts:
                                                 new_desc['subscribe'] = resSub
                                                 rpc.update(cik, {'alias': alias}, new_desc)
                                             else:
-                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
+                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.\n'.format(alias, resSub))
                                         elif subscribe != resSub:
-                                            sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.'.format(alias, resSub))
+                                            sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.\n'.format(alias, resSub))
 
                                     if 'preprocess' in res:
                                         def fromAliases(pair):
@@ -691,9 +691,9 @@ scripts:
                                                 new_desc['preprocess'] = resPrep
                                                 rpc.update(cik, {'alias': alias}, new_desc)
                                             else:
-                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.'.format(alias, resPrep))
+                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.\n'.format(alias, resPrep))
                                         elif preprocess != resPrep:
-                                            sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.'.format(alias, resPrep, preprocess))
+                                            sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.\n'.format(alias, resPrep, preprocess))
 
                                     if 'retention' in res:
                                         resRet = {}
@@ -708,7 +708,7 @@ scripts:
                                             new_desc['retention'] = resRet
                                             rpc.update(cik, {'alias': alias}, new_desc)
                                         elif retention != resRet:
-                                            sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.'.format(alias, resRet, retention))
+                                            sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.\n'.format(alias, resRet, retention))
 
 
                                 elif typ == 'script':
