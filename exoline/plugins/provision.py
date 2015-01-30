@@ -269,10 +269,12 @@ Usage:
 			'''Upload content for a model.
 
 Usage:
-    exo [options] content put <model> <id> <file> [--mime=type] [--meta=meta]
+    exo [options] content put <model> <id> <file> [--mime=type] [--meta=meta] [--protected=<bool>]
 
 Command options:
-    --mime=type     Set the mime type of the uploaded data. Will autodetect if omitted'''
+    --mime=type         Set the mime type of the uploaded data. Will autodetect if omitted
+	--protected=<bool>  Set to true to make this content unavailable to other model
+						serial numbers [default: false]'''
 
 			pop = options['pop']
 			exoconfig = options['config']
@@ -288,7 +290,12 @@ Command options:
 					meta = args['--meta']
 					if meta is None:
 						meta = ''
-					mlist = pop.content_create(key, args['<model>'], args['<id>'], meta)
+					mlist = pop.content_create(
+						key,
+						args['<model>'],
+						args['<id>'],
+						meta,
+						protected=args['--protected']=='true')
 				else:
 					raise
 

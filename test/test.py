@@ -2101,14 +2101,22 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = prv('content', 'list', model)
         self.ok(r, 'no content was listed', match='')
 
-        def content(file, id, type):
+        def content(file, id, type, protected=None):
+            args = ['content', 'put', model, id, file, '--meta=thisissometa']
+            if protected is not None:
+                args.append('--protected=' + protected)
+
             # put content
-            r = prv('content', 'put', model, id, file, '--meta=thisissometa')
+            r = prv(*args)
             self.ok(r, 'put content', match='')
 
             # list content
             r = prv('content', 'list', model)
             self.ok(r, 'model was listed', match=id)
+
+            protectedTest = 'false' if protected is None else protected
+            r = prv('content', 'list', model, '--long')
+            self.ok(r, 'protected defaults to false', match=id + '.*,' + protectedTest + ',.*')
 
             # get content info
             r = prv('content', 'info', model, id)
@@ -2134,8 +2142,11 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             r = prv('content', 'info', model, id)
             self.notok(r, 'no info found', search='404 Not Found')
 
+
         # test various file types
         content('test/files/content.json', 'content.json', 'application/json')
+        content('test/files/content.json', 'content.json', 'application/json', protected='true')
+        content('test/files/content.json', 'content.json', 'application/json', protected='false')
         # TODO: get binary files working. Seems to work
         # at the command line, but not from the test.
         #content('test/files/content.bin', 'content.bin', 'application/octet-stream')

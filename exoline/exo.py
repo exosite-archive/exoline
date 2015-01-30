@@ -922,8 +922,8 @@ class ExoRPC():
                                'sms': 'inherit',
                                'sms_bucket': 'inherit',
                                'xmpp': 'inherit',
-                               'xmpp_bucket': 'inherit'},
-                    'writeinterval': 'inherit'}
+                               'xmpp_bucket': 'inherit'}
+            }
         if name is not None:
             desc['name'] = name
         return self.create(cik, 'client', desc)
