@@ -202,7 +202,7 @@ $ wc -l alldata.csv
 Dump client and all its descendants and time series data to a zip file.
 
 ```
-$ time exo dump 5fbbf00000000000000000000000000000000000 clientdump.zip
+$ exo dump 5fbbf00000000000000000000000000000000000 clientdump.zip
 infotree.json: 3 resources
 b4a243a16c702caccc991c8b771ef838623445db.json
 dump.json
