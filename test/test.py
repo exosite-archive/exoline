@@ -1829,6 +1829,16 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('listing', childcik2, '--filters=activated', '--plain')
         self.ok(r, 'one share in activated listing', match=dataport_rid1)
 
+        r = rpc('tree', childcik2)
+        self.ok(r, 'tree with share succeeds')
+        self.assertTrue(
+            re.search('.*{0}.*share: True.*'.format(dataport_rid1), r.stdout) is not None)
+
+        r = rpc('twee', childcik2, '--rids')
+        self.ok(r, 'twee with share succeeds')
+        self.assertTrue(
+            re.search('.*{0}.*(share).*'.format(dataport_rid1), r.stdout) is not None)
+
         r = rpc('deactivate', childcik2, '--share=' + share_code)
         self.ok(r, 'deactivate share from client that activated')
 

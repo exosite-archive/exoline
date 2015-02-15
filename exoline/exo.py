@@ -1302,6 +1302,9 @@ class ExoRPC():
         timestamp = self._format_timestamp(values)
         add_opt(values is not None, 'value', None if (val is None or timestamp is None) else val + '/' + timestamp)
 
+        if 'listing_option' in info and info['listing_option'] == 'activated':
+            add_opt(True, 'share', True)
+
         if maxlen == None:
             maxlen = {}
             maxlen['type'] = len(typ)
@@ -1362,6 +1365,7 @@ class ExoRPC():
                 bcolors.ID +
                 tweeid +
                 bcolors.SPACER +
+                (' (share)' if 'listing_option' in info and info['listing_option'] == 'activated' else '') +
                 ('' if typ == 'client' else ': ') +
                 bcolors.VALUE +
                 ('' if val is None else val) +
@@ -1424,15 +1428,32 @@ class ExoRPC():
 
         types = ['dataport', 'datarule', 'dispatch', 'client']
         try:
-            # TODO: get shares, too
             should_read = '--values' in cli_args and cli_args['--values']
+
+            #_listing_with_info() output looks like this
+            # {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
+            #  'dataport': {'<rid2>':<info2>}}
             listing = self._listing_with_info(auth,
                 types=types,
                 info_options=info_options,
-                listing_options={"owned": True},
-                read_options={"limit": 1} if should_read else None)
-            # _listing_with_info(): {'client': {'<rid0>':<info0>, '<rid1>':<info1>},
-            #                        'dataport': {'<rid2>':<info2>}}
+                listing_options={'owned': True},
+                read_options={'limit': 1} if should_read else None)
+            # mark as not shares
+            for t in types:
+                for info in listing[t].values():
+                    info['listing_option'] = 'owned'
+            # add annotations for shares
+            listing_shares = self._listing_with_info(auth,
+                types=types,
+                info_options=info_options,
+                listing_options={'activated': True},
+                read_options={'limit': 1} if should_read else None)
+            # mark as shares and add to listing
+            for t in types:
+                for rid, info in listing_shares[t].items():
+                    info['listing_option'] = 'activated'
+                    assert(rid not in listing[t])
+                    listing[t][rid] = info
         except pyonep.exceptions.OnePlatformException:
             self._print_tree_line(
                 spacer +
@@ -1870,8 +1891,6 @@ probably not valid.".format(cik))
 
     def _difffilter(self, difflines):
         d = difflines
-
-        # TODO: fix this for new infotree format
 
         # replace differing rid children lines with a single <<rid>>
         ridline = '^[+-](.*").*\.[a-f0-9]{40}(".*)\n'
