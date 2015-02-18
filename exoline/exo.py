@@ -178,7 +178,7 @@ Details:
     If - is not present, creates a resource with common defaults.'''),
     ('listing',
         '''List the RIDs of a client's children.\n\nUsage:
-    exo [options] listing <cik>
+    exo [options] listing <cik> [<rid>]
 
 Command options:
     --types=<type1>,...  which resource types to list
@@ -702,7 +702,7 @@ class ExoRPC():
 
     def _exomult(self, auth, commands):
         '''Takes a list of onep commands with cik omitted, e.g.:
-            [['info', {alias: ""}], ['listing']]'''
+            [['info', {alias: ""}], ['listing', {'alias': ''}, ['dataport']]'''
         if len(commands) == 0:
             return []
         if not (isinstance(auth, six.string_types) or type(auth) is dict):
@@ -962,8 +962,8 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def listing(self, cik, types, options={}):
-        isok, response = self.exo.listing(cik, types, options)
+    def listing(self, cik, rid, types, options={}):
+        isok, response = self.exo.listing(cik, rid, types, options)
         self._raise_for_response(isok, response)
         return response
 
@@ -982,7 +982,7 @@ class ExoRPC():
 
         assert(len(types) > 0)
 
-        listing = self._exomult(auth, [['listing', types, listing_options]])[0]
+        listing = self._exomult(auth, [['listing', {'alias': ''}, types, listing_options]])[0]
 
         # listing is a dictionary mapping types to lists of RIDs, like this:
         # {'client': ['<rid0>', '<rid1>'], 'dataport': ['<rid2>', '<rid3>']}
@@ -1518,6 +1518,7 @@ probably not valid.".format(cik))
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(
             cik,
+            {'alias': ''},
             types=['client', 'dataport', 'datarule', 'dispatch'],
             options={})
         self._raise_for_response(isok, listing)
@@ -1648,7 +1649,7 @@ probably not valid.".format(cik))
                     rid=rid)
 
     def lookup_rid(self, cik, cik_to_find):
-        isok, listing = self.exo.listing(cik, types=['client'], options={})
+        isok, listing = self.exo.listing(cik, {'alias': ''}, types=['client'], options={})
         self._raise_for_response(isok, listing)
 
         for rid in listing['client']:
@@ -1846,7 +1847,7 @@ probably not valid.".format(cik))
                         'client_id': rid
                     }
                 try:
-                    listing = self._exomult(auth, [['listing', types, {}]])[0]
+                    listing = self._exomult(auth, [['listing', {'alias': ''}, types, {}]])[0]
                 except ExoRPC.RPCException as e:
                     listing = dict([(t, []) for t in types])
                     errorfn(auth, str(e))
@@ -2257,7 +2258,7 @@ def read_cmd(er, cik, rids, args):
     if len(rids) == 0:
         # if only a CIK was passed, include all dataports and datarules
         # by default.
-        listing = er.listing(cik, ['dataport', 'datarule'], {})
+        listing = er.listing(cik, {'alias': ''}, ['dataport', 'datarule'], {})
         rids = listing['dataport'] + listing['datarule']
         aliases = er.info(cik, options={'aliases': True})['aliases']
         # look up aliases for column headers
@@ -2473,7 +2474,7 @@ def handle_args(cmd, args):
             else:
                 # look up full RID based on short version
                 tweetype, ridfrag = rid.split('.')
-                listing = er.listing(cik, ['client', 'dataport', 'datarule', 'dispatch'], {})
+                listing = er.listing(cik, {'alias': ''}, ['client', 'dataport', 'datarule', 'dispatch'], {})
                 candidates = []
                 for typ in listing:
                     for fullrid in listing[typ]:
@@ -2683,7 +2684,7 @@ def handle_args(cmd, args):
             if filters is not None:
                 for f in filters.split(','):
                     options[f] = True
-            listing = er.listing(cik, types, options)
+                listing = er.listing(cik, rids[0], types, options)
             if args['--plain']:
                 for t in types:
                     for rid in listing[t]:
