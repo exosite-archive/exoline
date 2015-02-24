@@ -150,20 +150,20 @@ ArduinoWifi  client cik: 2ca4f441538c1f2cc8bf01234567890123456789 (aliases: see 
   └─Temperature  float   dataport rid: 3bbee56c446f546b546901234567890123456789 (aliases: ["temperature"], value: 22/1 years ago)
 ```
 
-Write a Lua script
+Write Lua script
 
 ```
 $ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa     
 Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
 ```
 
-Read a Lua script (with help from the awesome [jq](http://stedolan.github.io/jq/))
+Read Lua script (with help from the awesome [jq](http://stedolan.github.io/jq/))
 
 ```
 $ exo info e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --include=description | jq -r .description.rule.script 
 ```
 
-Monitor output of a script
+Monitor debug output of a script
 
 ```
 $ exo read e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --follow 

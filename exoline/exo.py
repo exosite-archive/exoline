@@ -54,7 +54,6 @@ import copy
 import difflib
 
 import six
-from six import BytesIO
 from six import StringIO
 from six import iteritems
 from six import string_types
@@ -194,6 +193,9 @@ Command options:
                          that the client (<cik>) has read access to.
     --plain              show only the child RIDs
     --pretty             pretty print output'''),
+#    ('whee',
+#        '''Super-fast info tree.\n\nUsage:
+#    exo [options] whee <cik>'''),
     ('info',
         '''Get metadata for a resource in json format.\n\nUsage:
     exo [options] info <cik> [<rid>]
@@ -307,8 +309,6 @@ Example:
         }
     }
     '''),
-    #('ut', '''Display a tree as fast as possible\n\nUsage:
-    #exo [options] ut <cik>'''),
     ('script', '''Upload a Lua script\n\nUsage:
     exo [options] script <cik> [<rid>] --file=<script-file>
     exo [options] script <script-file> <cik> ...
@@ -700,23 +700,88 @@ class ExoRPC():
     def mult(self, cik, commands):
         return self._exomult(cik, commands)
 
+    def _check_exomult(self, auth):
+        if not (isinstance(auth, six.string_types) or type(auth) is dict):
+            raise Exception("_exomult: unexpected type for auth " + str(auth))
+        assert(not self.exo.has_deferred(auth))
+
     def _exomult(self, auth, commands):
         '''Takes a list of onep commands with cik omitted, e.g.:
             [['info', {alias: ""}], ['listing', {'alias': ''}, ['dataport']]'''
         if len(commands) == 0:
             return []
-        if not (isinstance(auth, six.string_types) or type(auth) is dict):
-            raise Exception("_exomult: unexpected type for auth " + str(auth))
-        assert(not self.exo.has_deferred(auth))
+        self._check_exomult(auth)
         for c in commands:
             if type(c) is not list:
-                raise Exception("_exomult: found invalid command")
+                raise Exception("_exomult: found invalid command " + str(c))
             method = getattr(self.exo, c[0])
             method(auth, *c[1:], defer=True)
         assert(self.exo.has_deferred(auth))
         r = self.exo.send_deferred(auth)
         responses = self._raise_for_deferred(r)
         return responses
+
+    def _exomult_with_responses(self, auth, commands):
+        '''Like _exomult, but returns full responses and does not raise
+           an exception for individual response errors. Call this if errors
+           from particular calls are not fatal. General RPC errors still
+           raise exceptions, though.'''
+        if len(commands) == 0:
+            return []
+        self._check_exomult(auth)
+        for c in commands:
+            if type(c) is not list:
+                raise Exception("_exomult: found invalid command " + str(c))
+            method = getattr(self.exo, c[0])
+            method(auth, *c[1:], defer=True)
+        r = self.exo.send_deferred(auth)
+        results = map(self._undo_pyonep_response_mangling, r)
+        return results
+
+    def _undo_pyonep_response_mangling(self, pyonep_response):
+        '''pyonep mixes RPC responses up, setting isok to status=='ok'
+           and response to either response or the status if status is not 'ok'.
+           This undoes that since that's the way pyonep should go.'''
+        call, isok, r = pyonep_response
+        if isok:
+            return {'status': 'ok', 'result': r}
+        else:
+            return {'status': r}
+
+    def _exobatch(self, auth, commands, batchsize=25):
+        '''Performs a set of commands, breaking them into batches of at most batchsize
+           to prevent timeout.
+             auth - either a cik or an auth dict
+             commands - a list of commandset objects like this:
+                      {'commands': [['info', rid, options]],
+                       'callback': lambda(commandset, result)}
+             batchsize - the maximum number of commands/command objects to include
+                       in each RPC request.
+           Returns a list of responses in the form {'status': !'ok'} on failure or
+                {'status': 'ok', 'result': result}
+           If any overall failures occur, an exception is raised.'''
+        # break calls into chunks to prevent timeout
+        def chunks(l, n):
+            '''Yield successive n-sized chunks from l.'''
+            for i in range(0, len(l), n):
+                yield l[i:i+n]
+        for commandchunk in chunks(commands, batchsize):
+            cmds = []
+            for commandset in commandchunk:
+                cmds = cmds + commandset['commands']
+            #sys.stderr.write('_exomult_with_responses with {0} commands.\n'.format(len(cmds)))
+            cmd_responses = self._exomult_with_responses(auth, cmds)
+            result_index = 0
+            # stitch the flattened result list into command sets
+            # and call the command set callbacks
+            for i, commandset in enumerate(commandchunk):
+                commandset_responses = []
+                for cmd in commandset['commands']:
+                    commandset_responses.append(cmd_responses[result_index])
+                    result_index += 1
+                if 'callback' in commandset:
+                    commandset['callback'](commandset, commandset_responses)
+                yield commandset_responses
 
     def _readoptions(self, limit, sort, starttime, endtime, selection):
         options ={'limit': limit,
@@ -1787,6 +1852,103 @@ probably not valid.".format(cik))
 
         return list(differ.compare(s1, s2))
 
+    #def _infotree(self,
+    #              auth,
+    #              rid=None,
+    #              restype='client',
+    #              resinfo=None,
+    #              nodeidfn=lambda rid,
+    #              info: rid,
+    #              options={},
+    #              level=None,
+    #              raiseExceptions=True,
+    #              errorfn=lambda auth, msg: None):
+
+    def _infotree_fast(self,
+                       auth,
+                       nodeidfn=lambda rid, info: rid,
+                       options={},
+                       level=None,
+                       listing_options={},
+                       visit=lambda tree, level, parentRID: None):
+        '''Faster version of _infotree that uses the new listing and breadth
+           first traversal to reduce the number of RPC calls.'''
+        rootnode = {'tree': {'type': 'client'}, 'par': None}
+        #if rid is not None:
+        #    # nodeidfn here?
+        #    rootnode['tree']['rid'] = rid
+        level = 0
+        gen = [rootnode]
+        nextgen = []
+        def callback(commandset, result):
+            # add the commandset results to the node
+            node = commandset['node']
+            tree = node['tree']
+            info_idx = 0
+            listing_idx = 1
+            lookup_idx = 2
+
+            # set node info
+            if result[info_idx]['status'] != 'ok':
+                tree['info'] = {'error': result[info_idx]}
+            else:
+                tree['info'] = result[info_idx]['result']
+
+            # lookup is only done for the root node when rid is not known
+            if len(result) == lookup_idx + 1:
+                # this would not be OK
+                assert(result[lookup_idx]['status'] == 'ok')
+                tree['rid'] = result[lookup_idx]['result']
+
+            tree['rid'] = nodeidfn(tree['rid'], tree['info'])
+
+            # set node listing
+            if tree['type'] == 'client':
+                if result[listing_idx]['status'] != 'ok':
+                    tree['children'] = {'error': result[listing_idx]}
+                else:
+                    children = []
+                    r = result[listing_idx]['result']
+                    for typ in r.keys():
+                        for rid in r[typ]:
+                            children.append({'rid': rid, 'type': typ})
+                    tree['children'] = children
+
+        def commandset(node):
+            rid = node['tree']['rid'] if 'rid' in node['tree'] else {'alias': ''}
+            types = ['client', 'dataport', 'datarule', 'dispatch']
+            commands = [
+                ['info', rid, options]
+            ]
+            if node['tree']['type'] == 'client':
+                commands.append(['listing', rid, types, listing_options])
+            if 'rid' not in node['tree']:
+                commands.append(['lookup', 'aliased', ''])
+            return {'node': node,
+                    'commands': commands,
+                    'callback': callback}
+
+        while len(gen) > 0:
+            # set up commandsets with callbacks that modify the nodes in gen
+            commands = map(commandset, gen)
+
+            # get info, listing, etc. for each node at this level
+            results = self._exobatch(auth, commands)
+            results = list(results)
+
+            # now the nodes are populated, so build up the next generation
+            for node in gen:
+                visit(node['tree'], level, node['par']);
+                if 'children' in node['tree']:
+                    for child_tree in node['tree']['children']:
+                        nextgen.append({'tree': child_tree, 'par': node['tree']['rid']})
+
+            gen = nextgen
+            nextgen = []
+            level += 1
+
+        return rootnode['tree']
+
     def _infotree(self,
                   auth,
                   rid=None,
@@ -2691,6 +2853,9 @@ def handle_args(cmd, args):
                         print(rid)
             else:
                 pr(json.dumps(listing))
+        elif cmd == 'whee':
+            tree = er._infotree_fast(cik, options={'basic': True})
+            pr(json.dumps(tree))
         elif cmd == 'info':
             include = args['--include']
             include = [] if include is None else [key.strip()

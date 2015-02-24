@@ -1,10 +1,11 @@
 History
 =======
 
-0.9.8 (2014-02-14)
+0.9.8 (2014-02-23)
 ------------------
 
 - list shares in tree and twee
+- update for listing changes in pyonep 0.10.0
 
 0.9.7 (2014-01-29)
 ------------------
