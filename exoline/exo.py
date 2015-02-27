@@ -707,7 +707,7 @@ class ExoRPC():
 
     def _exomult(self, auth, commands):
         '''Takes a list of onep commands with cik omitted, e.g.:
-            [['info', {alias: ""}], ['listing', {'alias': ''}, ['dataport']]'''
+            [['info', {alias: ""}], ['listing', ['dataport'], {}, {'alias': ''}]'''
         if len(commands) == 0:
             return []
         self._check_exomult(auth)
@@ -1027,8 +1027,8 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
-    def listing(self, cik, rid, types, options={}):
-        isok, response = self.exo.listing(cik, rid, types, options)
+    def listing(self, cik, types, options={}, rid=None):
+        isok, response = self.exo.listing(cik, types, options=options, rid=rid)
         self._raise_for_response(isok, response)
         return response
 
@@ -1047,7 +1047,7 @@ class ExoRPC():
 
         assert(len(types) > 0)
 
-        listing = self._exomult(auth, [['listing', {'alias': ''}, types, listing_options]])[0]
+        listing = self._exomult(auth, [['listing', types, listing_options, {'alias': ''}]])[0]
 
         # listing is a dictionary mapping types to lists of RIDs, like this:
         # {'client': ['<rid0>', '<rid1>'], 'dataport': ['<rid2>', '<rid3>']}
@@ -1583,9 +1583,9 @@ probably not valid.".format(cik))
     def drop_all_children(self, cik):
         isok, listing = self.exo.listing(
             cik,
-            {'alias': ''},
             types=['client', 'dataport', 'datarule', 'dispatch'],
-            options={})
+            options={},
+            rid={'alias': ''})
         self._raise_for_response(isok, listing)
         rids = itertools.chain(*[listing[t] for t in listing.keys()])
         self._exomult(cik, [['drop', rid] for rid in rids])
@@ -1714,7 +1714,7 @@ probably not valid.".format(cik))
                     rid=rid)
 
     def lookup_rid(self, cik, cik_to_find):
-        isok, listing = self.exo.listing(cik, {'alias': ''}, types=['client'], options={})
+        isok, listing = self.exo.listing(cik, types=['client'], options={}, rid={'alias': ''})
         self._raise_for_response(isok, listing)
 
         for rid in listing['client']:
@@ -1921,7 +1921,7 @@ probably not valid.".format(cik))
                 ['info', rid, options]
             ]
             if node['tree']['type'] == 'client':
-                commands.append(['listing', rid, types, listing_options])
+                commands.append(['listing', types, listing_options, rid])
             if 'rid' not in node['tree']:
                 commands.append(['lookup', 'aliased', ''])
             return {'node': node,
@@ -2009,7 +2009,7 @@ probably not valid.".format(cik))
                         'client_id': rid
                     }
                 try:
-                    listing = self._exomult(auth, [['listing', {'alias': ''}, types, {}]])[0]
+                    listing = self._exomult(auth, [['listing', types, {}, {'alias': ''}]])[0]
                 except ExoRPC.RPCException as e:
                     listing = dict([(t, []) for t in types])
                     errorfn(auth, str(e))
@@ -2420,7 +2420,7 @@ def read_cmd(er, cik, rids, args):
     if len(rids) == 0:
         # if only a CIK was passed, include all dataports and datarules
         # by default.
-        listing = er.listing(cik, {'alias': ''}, ['dataport', 'datarule'], {})
+        listing = er.listing(cik, ['dataport', 'datarule'], options={}, rid={'alias': ''})
         rids = listing['dataport'] + listing['datarule']
         aliases = er.info(cik, options={'aliases': True})['aliases']
         # look up aliases for column headers
@@ -2636,7 +2636,7 @@ def handle_args(cmd, args):
             else:
                 # look up full RID based on short version
                 tweetype, ridfrag = rid.split('.')
-                listing = er.listing(cik, {'alias': ''}, ['client', 'dataport', 'datarule', 'dispatch'], {})
+                listing = er.listing(cik, ['client', 'dataport', 'datarule', 'dispatch'], options={}, rid={'alias': ''})
                 candidates = []
                 for typ in listing:
                     for fullrid in listing[typ]:
@@ -2846,7 +2846,7 @@ def handle_args(cmd, args):
             if filters is not None:
                 for f in filters.split(','):
                     options[f] = True
-                listing = er.listing(cik, rids[0], types, options)
+                listing = er.listing(cik, types, options=options, rid=rids[0])
             if args['--plain']:
                 for t in types:
                     for rid in listing[t]:

@@ -234,7 +234,7 @@ scripts:
                     [['info', {'alias': ''}, {'basic': True,
                                               'description': True,
                                               'aliases': True}],
-                     ['listing', {'alias': ''}, ['dataport', 'datarule', 'dispatch'], {}]])
+                     ['listing', ['dataport', 'datarule', 'dispatch'], {}, {'alias': ''}]])
                 rids = listing['dataport'] + listing['datarule']
 
                 if len(rids) > 0:
