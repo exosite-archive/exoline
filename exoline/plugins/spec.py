@@ -685,15 +685,15 @@ scripts:
                                                 return pair
                                         resPrep = [fromAliases(x) for x in res['preprocess']]
                                         preprocess = info['description']['preprocess']
-                                        if preprocess is None or len(preprocess) == 0:
-                                            if create:
-                                                new_desc = info['description'].copy()
-                                                new_desc['preprocess'] = resPrep
-                                                rpc.update(cik, {'alias': alias}, new_desc)
-                                            else:
-                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are not.\n'.format(alias, resPrep))
-                                        elif preprocess != resPrep:
-                                            sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.\n'.format(alias, resPrep, preprocess))
+                                        if create:
+                                            new_desc = info['description'].copy()
+                                            new_desc['preprocess'] = resPrep
+                                            rpc.update(cik, {'alias': alias}, new_desc)
+                                        else:
+                                            if preprocess is None or len(preprocess) == 0:
+                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are missing.\n'.format(alias, resPrep))
+                                            elif preprocess != resPrep:
+                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.\n'.format(alias, resPrep, preprocess))
 
                                     if 'retention' in res:
                                         resRet = {}
