@@ -1,8 +1,13 @@
 History
 =======
 
-0.9.9 (2014-02-26)
+0.9.10 (2015-03-11)
 -------------------
+
+- spec --create support for preprocess updates
+
+0.9.9 (2014-02-26)
+------------------
 
 - update to pyonep 0.11.0
 
