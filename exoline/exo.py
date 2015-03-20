@@ -592,7 +592,7 @@ class ExoConfig:
             if 'keys' in self.config:
                 if cik in self.config['keys']:
                     return self.config['keys'][cik].strip()
-                elif int(cik) in self.config['keys']:
+                elif cik.isdigit() and int(cik) in self.config['keys']:
                     return self.config['keys'][int(cik)].strip()
                 else:                
                     raise ExoException('No CIK shortcut {0}\n{1}'.format(
