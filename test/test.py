@@ -27,10 +27,10 @@ import yaml
 from six import iteritems
 from dateutil import parser
 from nose.plugins.attrib import attr
+from tzlocal import get_localzone
 
 from exoline import exo
 from exoline.exo import ExolineOnepV1
-from exoline import timezone
 from pyonep import provision
 
 basedir = 'test'
@@ -835,7 +835,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         def tolocaltz(s):
             # parse string and translate to local timezone with offset
             # specified
-            tz = timezone.localtz()
+            tz = get_localzone()
             local_time_without_offset = datetime.fromtimestamp(parse_ts(s))
             return str(tz.localize(local_time_without_offset))
 
