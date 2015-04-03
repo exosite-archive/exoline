@@ -59,6 +59,8 @@ from six import iteritems
 from six import string_types
 
 import pytz
+import tzlocal
+
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -79,16 +81,14 @@ from pyonep import provision
 import pyonep
 
 try:
-    from ..exoline import timezone
-except:
-    from exoline import timezone
-
-try:
     from ..exoline import __version__
     from ..exoline.exocommon import ExoException
+    from ..exoline import exocommon
 except:
     from exoline import __version__
     from exoline.exocommon import ExoException
+    from exoline import exocommon
+
 
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
@@ -427,7 +427,7 @@ plugins = []
 if platform.system() != 'Windows':
     # load plugins. use timezone because this file may be running
     # as a script in some other location.
-    default_plugin_path = os.path.join(os.path.dirname(timezone.__file__), 'plugins')
+    default_plugin_path = os.path.join(os.path.dirname(exocommon.__file__), 'plugins')
 
     plugin_paths = os.getenv('EXO_PLUGIN_PATH', default_plugin_path).split(':')
 
@@ -2484,7 +2484,7 @@ def read_cmd(er, cik, rids, args):
         try:
             # this single call is slow if pytz is compressed
             # running pip unzip pytz fixes it
-            tz = timezone.localtz()
+            tz = tzlocal.get_localzone()
         except pytz.UnknownTimeZoneError as e:
             # Unable to detect local time zone, defaulting to UTC
             tz = pytz.utc
