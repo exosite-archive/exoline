@@ -5,6 +5,8 @@ History
 -------------------
 
 - make read --follow faster by using wait() API
+- support integer cik shortcuts in Exoline config
+- bump up versions of package dependencies
 
 0.9.10 (2015-03-11)
 -------------------
