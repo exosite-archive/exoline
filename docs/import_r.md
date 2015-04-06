@@ -1,6 +1,6 @@
 # Data Import in R
 
-CSV files imported into R have NA values when . To work around this, you can use the [zoo package](http://cran.r-project.org/web/packages/zoo/index.html) to carry the last observation forward.
+CSV files imported into R have NA values when all dataports aren't written at once. To work around this, you can use the [zoo package](http://cran.r-project.org/web/packages/zoo/index.html) to carry the last observation forward.
 
 ```
 $ exo read sensor1 humidity temperature gas event --limit=200 --header=name > sensor1.csv
