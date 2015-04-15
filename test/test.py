@@ -27,10 +27,10 @@ import yaml
 from six import iteritems
 from dateutil import parser
 from nose.plugins.attrib import attr
+from tzlocal import get_localzone
 
 from exoline import exo
 from exoline.exo import ExolineOnepV1
-from exoline import timezone
 from pyonep import provision
 
 basedir = 'test'
@@ -835,7 +835,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         def tolocaltz(s):
             # parse string and translate to local timezone with offset
             # specified
-            tz = timezone.localtz()
+            tz = get_localzone()
             local_time_without_offset = datetime.fromtimestamp(parse_ts(s))
             return str(tz.localize(local_time_without_offset))
 
@@ -1496,6 +1496,24 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'wrote to complex')
         r = rpc('read', cik, 'complex', '--format=raw')
         self.ok(r, 'read preprocessed value', match='30')
+
+        # Spec matches
+        r = rpc('spec', cik, spec)
+        self.ok(r, 'check spec and find no differences', match='')
+
+        # modify spec
+        spec2 = basedir + '/files/spec_preprocess_2.yaml'
+        r = rpc('spec', cik, spec2, '--create')
+        self.ok(r, 'modify preprocess to a second spec', match='')
+        r = rpc('write', cik, 'math', '--value=10')
+        self.ok(r, 'wrote to source')
+        r = rpc('read', cik, 'math', '--format=raw')
+        self.ok(r, 'read preprocessed value for spec2', match='15.5')
+        r = rpc('spec', cik, spec)
+        self.ok(r, 'check original spec and find differences', search='preprocess')
+        r = rpc('spec', cik, spec2)
+        self.ok(r, 'check spec2 and find no differences', match='')
+
 
     @attr('spec')
     def spec_retention_test(self):

@@ -1,0 +1,14 @@
+# Test spec
+dataports:
+    - alias: variable
+      format: float
+    - alias: math
+      format: float
+      preprocess:
+      - [add, 5.5]
+    - alias: complex
+      format: float
+      preprocess:
+      - [add, variable]
+      - [mul, 2]
+

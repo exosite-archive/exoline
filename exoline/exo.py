@@ -59,6 +59,8 @@ from six import iteritems
 from six import string_types
 
 import pytz
+import tzlocal
+
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -79,16 +81,14 @@ from pyonep import provision
 import pyonep
 
 try:
-    from ..exoline import timezone
-except:
-    from exoline import timezone
-
-try:
     from ..exoline import __version__
     from ..exoline.exocommon import ExoException
+    from ..exoline import exocommon
 except:
     from exoline import __version__
     from exoline.exocommon import ExoException
+    from exoline import exocommon
+
 
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
@@ -427,7 +427,7 @@ plugins = []
 if platform.system() != 'Windows':
     # load plugins. use timezone because this file may be running
     # as a script in some other location.
-    default_plugin_path = os.path.join(os.path.dirname(timezone.__file__), 'plugins')
+    default_plugin_path = os.path.join(os.path.dirname(exocommon.__file__), 'plugins')
 
     plugin_paths = os.getenv('EXO_PLUGIN_PATH', default_plugin_path).split(':')
 
@@ -592,9 +592,11 @@ class ExoConfig:
             if 'keys' in self.config:
                 if cik in self.config['keys']:
                     return self.config['keys'][cik].strip()
+                elif cik.isdigit() and int(cik) in self.config['keys']:
+                    return self.config['keys'][int(cik)].strip()
                 else:
                     raise ExoException('No CIK shortcut {0}\n{1}'.format(
-                        cik, '\n'.join(sorted(self.config['keys']))))
+                        cik, '\n'.join(sorted(map(str, self.config['keys'])))))
             else:
                 raise ExoException('Tried a CIK shortcut {0}, but found no keys'.format(cik))
         else:
@@ -624,12 +626,12 @@ class ExolineOnepV1(onep.OnepV1):
     '''Subclass that re-adds deprecated commands needed for devices created
     in Portals before the commands were deprecated.'''
 
-    def _callJsonRPC(self, cik, callrequests, returnreq=False):
+    def _callJsonRPC(self, cik, callrequests, returnreq=False, notimeout=False):
         '''Time all calls to _callJsonRPC'''
         try:
             ts = time.time()
             procedures = [cr['procedure'] for cr in callrequests]
-            r = onep.OnepV1._callJsonRPC(self, cik, callrequests, returnreq)
+            r = onep.OnepV1._callJsonRPC(self, cik, callrequests, returnreq, notimeout=notimeout)
         except:
             raise
         finally:
@@ -665,14 +667,14 @@ class ExoRPC():
         if user_agent is None:
             user_agent = "Exoline {0}".format(__version__)
         self.exo = ExolineOnepV1(
-	    host=host,
-	    port=port,
-	    httptimeout=httptimeout,
-	    https=https,
-	    agent=user_agent,
-	    reuseconnection=True,
-	    logrequests=logrequests,
-	    curldebug=curldebug)
+            host=host,
+            port=port,
+            httptimeout=httptimeout,
+            https=https,
+            agent=user_agent,
+            reuseconnection=True,
+            logrequests=logrequests,
+            curldebug=curldebug)
 
     def _raise_for_response(self, isok, response, call=None):
         if not isok:
@@ -782,6 +784,25 @@ class ExoRPC():
                 if 'callback' in commandset:
                     commandset['callback'](commandset, commandset_responses)
                 yield commandset_responses
+
+    def wait(self, auth, rid, since=None, timeout=None):
+        '''Returns timedout, point. If timedout is True,
+        point is None'''
+        options = {}
+        if since is not None:
+            options['since'] = since
+        if timeout is not None:
+            options['timeout'] = timeout
+        isok, response = self.exo.wait(
+            auth,
+            rid,
+            options)
+        if not isok and response=='expire':
+            return True, None
+        else:
+            self._raise_for_response(isok, response)
+            return False, response
+
 
     def _readoptions(self, limit, sort, starttime, endtime, selection):
         options ={'limit': limit,
@@ -2479,7 +2500,7 @@ def read_cmd(er, cik, rids, args):
         try:
             # this single call is slow if pytz is compressed
             # running pip unzip pytz fixes it
-            tz = timezone.localtz()
+            tz = tzlocal.get_localzone()
         except pytz.UnknownTimeZoneError as e:
             # Unable to detect local time zone, defaulting to UTC
             tz = pytz.utc
@@ -2533,46 +2554,37 @@ def read_cmd(er, cik, rids, args):
             dw.writerow(row)
 
 
-    sleep_seconds = 2
+    timeout_milliseconds = 60000
     if args['--follow']:
         if len(rids) > 1:
             raise ExoException('--follow does not support reading from multiple rids')
-        results = []
-        while len(results) == 0:
-            results = er.readmult(cik,
-                                  rids,
-                                  limit=1,
-                                  selection=args['--selection'],
-                                  sort='desc')
-            # --follow doesn't want the result to be an iterator
-            results = list(results)
-            if len(results) > 0:
-                for last_t, last_v in results:
-                    printline(last_t, last_v)
-            else:
-                time.sleep(sleep_seconds)
-        while True:
-            results = er.readmult(cik,
-                                  rids,
-                                  sort='desc',
-                                  # Read all points that arrived since last
-                                  # read time. Could also be now - last_t?
-                                  limit=sleep_seconds * 3,
-                                  selection=args['--selection'],
-                                  starttime=last_t + 1)
-            results = list(results)
-            results.reverse()
 
-            for t, v in results:
-                printline(t, v)
+        # do an initial read
+        results = er.readmult(cik,
+                                rids,
+                                limit=1,
+                                selection=args['--selection'],
+                                sort='desc')
+
+        # --follow doesn't want the result to be an iterator
+        results = list(results)
+        last_t, last_v = 0, None
+        if len(results) > 0:
+            last_t, last_v = results[0]
+            printline(last_t, last_v)
+
+        while True:
+            timedout, point = er.wait(
+                cik,
+                rids[0],
+                since=last_t + 1,
+                timeout=timeout_milliseconds)
+            if not timedout:
+                last_t, last_v = point
+                printline(last_t, [last_v])
 
             # flush output for piping this output to other programs
             sys.stdout.flush()
-
-            if len(results) > 0:
-                last_t, last_v = results[-1]
-
-            time.sleep(sleep_seconds)
     else:
         chunksize = int(args['--chunksize'])
         result = er.readmult(cik,

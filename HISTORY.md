@@ -1,8 +1,20 @@
 History
 =======
 
-0.9.9 (2014-02-26)
+0.9.11 (2015-04-03)
 -------------------
+
+- make read --follow faster by using wait() API
+- support integer cik shortcuts in Exoline config
+- bump up versions of package dependencies
+
+0.9.10 (2015-03-11)
+-------------------
+
+- spec --create support for preprocess updates
+
+0.9.9 (2014-02-26)
+------------------
 
 - update to pyonep 0.11.0
 
