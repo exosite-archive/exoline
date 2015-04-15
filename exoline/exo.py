@@ -1604,7 +1604,7 @@ probably not valid.".format(cik))
                     return rid
         return None
 
-    def _upload_script(self, cik, name, content, rid=None, meta='', alias=None):
+    def _upload_script(self, cik, name, content, rid=None, alias=None, version='0.1.0'):
         '''Upload a lua script, either creating one or updating the existing one'''
         desc = {
             'format': 'string',
@@ -1619,6 +1619,13 @@ probably not valid.".format(cik))
                 'duration': 'infinity'
             }
         }
+        meta = {
+            'version': version,
+            'uploads': 1,
+            'githash': ''
+        }
+        desc['meta'] = json.dumps(meta)
+        # TODO: if `git rev-parse HEAD` works, include that.
 
         if rid is None:
             success, rid = self.exo.create(cik, 'datarule', desc)
@@ -1635,6 +1642,15 @@ probably not valid.".format(cik))
             else:
                 raise ExoException("Error aliasing script")
         else:
+            isok, olddesc = self.exo.info(cik, rid)
+            if isok:
+                oldmetajs = olddesc['desciption']['meta']
+                oldmeta = json.load(oldmetajs)
+                uploads = oldmeta['uploads']
+                uploads = uploads + 1
+                meta['uploads'] = uploads
+                desc['meta'] = json.dumps(meta)
+
             isok, response = self.exo.update(cik, rid, desc)
             if isok:
                 print ("Updated script RID: {0}".format(rid))
