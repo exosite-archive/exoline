@@ -1645,8 +1645,13 @@ probably not valid.".format(cik))
             'uploads': 1,
             'githash': ''
         }
+        # if `git rev-parse HEAD` works, include that.
+        try:
+            githash = os.popen("git rev-parse HEAD").read()
+            meta['githash'] = githash
+        except:
+            pass
         desc['meta'] = json.dumps(meta)
-        # TODO: if `git rev-parse HEAD` works, include that.
 
         if rid is None:
             success, rid = self.exo.create(cik, 'datarule', desc)
@@ -1665,12 +1670,16 @@ probably not valid.".format(cik))
         else:
             isok, olddesc = self.exo.info(cik, rid)
             if isok:
-                oldmetajs = olddesc['desciption']['meta']
-                oldmeta = json.load(oldmetajs)
-                uploads = oldmeta['uploads']
-                uploads = uploads + 1
-                meta['uploads'] = uploads
-                desc['meta'] = json.dumps(meta)
+                try:
+                    oldmetajs = olddesc['description']['meta']
+                    oldmeta = json.loads(oldmetajs)
+                    uploads = oldmeta['uploads']
+                    uploads = uploads + 1
+                    meta['uploads'] = uploads
+                    desc['meta'] = json.dumps(meta)
+                except:
+                    pass
+                    # if none of that works, go with the default above.
 
             isok, response = self.exo.update(cik, rid, desc)
             if isok:
