@@ -243,10 +243,21 @@ $ exo create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=s
 rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 ```
 
+
+
 Update a the name of a resource
 
 ```
 $ echo '{"name":"New Name"}' | exo update ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa stringport -
+```
+
+Create a resource with a custom retention
+
+```
+$ c=`curl cik.herokuapp.com`
+$ echo '{"format": "string", "retention": {"count": 4, "duration": "infinity"}}' | exo create $c --type=dataport --alias=myconfig -
+$ exo info $c myconfig --include=description
+{"description": {"name": "", "format": "string", "subscribe": null, "meta": "", "preprocess": [], "public": false, "retention": {"count": 4, "duration": "infinity"}}}
 ```
 
 Get the RID for CIK ad0282...
