@@ -1,6 +1,8 @@
 Exoline
 =======
 
+[![Join the chat at https://gitter.im/exosite/exoline](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/exosite/exoline?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Exoline is a command line interface for the Exosite [One Platform](http://exosite.com/products/onep). 
 
 ![Command line usage of Exoline tree feature](images/twee_example.png)
