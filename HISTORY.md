@@ -1,6 +1,11 @@
 History
 =======
 
+0.9.12 (2015-04-28)
+-------------------
+
+- spec command support for operating on expired devices
+
 0.9.11 (2015-04-03)
 -------------------
 
