@@ -320,10 +320,11 @@ Example:
     script resource's name but not its alias.
 
 Command options:
-    --name=<name>  script name, if different from script filename. The name
-                   is used to identify the script, too.
-    --recursive    operate on client and any children
-    --create       create the script if it doesn't already exist'''),
+    --name=<name>     script name, if different from script filename. The name
+                      is used to identify the script, too.
+    --recursive       operate on client and any children
+    --create          create the script if it doesn't already exist
+    --setversion=<vn> set a version number on the script meta'''),
     ('spark', '''Show distribution of intervals between points.\n\nUsage:
     exo [options] spark <cik> [<rid>] --days=<days>
 
@@ -1704,7 +1705,8 @@ probably not valid.".format(cik))
                               recursive=False,
                               create=False,
                               filterfn=lambda script: script,
-                              rid=None):
+                              rid=None,
+                              version='0.0.0'):
         for cik in ciks:
             def up(cik, rid):
                 if rid is not None:
@@ -1716,11 +1718,11 @@ probably not valid.".format(cik))
                             raise ExoException('<rid> must be an alias when passing --create')
                         alias = rid['alias']
                         rid = None
-                    self._upload_script(cik, name, content, rid=rid, alias=alias)
+                    self._upload_script(cik, name, content, rid=rid, alias=alias, version=version)
                 else:
                     rid = self._lookup_rid_by_name(cik, name)
                     if rid is not None or create:
-                        self._upload_script(cik, name, content, rid=rid)
+                        self._upload_script(cik, name, content, rid=rid, version=version)
                     else:
                         # TODO: move this to spec plugin
                         print("Skipping CIK: {0} -- {1} not found".format(cik, name))
@@ -1739,7 +1741,8 @@ probably not valid.".format(cik))
                       recursive=False,
                       create=False,
                       filterfn=lambda script: script,
-                      rid=None):
+                      rid=None,
+                      version='0.0.0'):
         try:
             f = open(filename)
         except IOError:
@@ -1757,7 +1760,8 @@ probably not valid.".format(cik))
                     recursive=recursive,
                     create=create,
                     filterfn=filterfn,
-                    rid=rid)
+                    rid=rid,
+                    version=version)
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'], options={}, rid={'alias': ''})
