@@ -236,6 +236,9 @@ Command options:
     of <rid>.
 
     The --share variant returns the RID associated with a share code'''),
+    ('add',
+        '''Add an alias for a CIK to your exoline file.\n\nUsage:
+    exo add <cik> <name> [<type>]\n\n'''),
     ('drop',
         '''Drop (permanently delete) a resource.\n\nUsage:
     exo [options] drop <cik> [<rid> ...]
@@ -527,12 +530,14 @@ class ExoConfig:
 
     def __init__(self, configfile='~/.exoline'):
         configfile = self.realConfigFile(configfile)
+        self.configfile = configfile
         self.loadConfig(configfile)
 
     def realConfigFile(self, configfile):
         '''Find real path for a config file'''
         # Does the file as passed exist?
         cfgf = os.path.expanduser(configfile)
+
         if os.path.exists(cfgf):
             return cfgf
 
@@ -560,6 +565,21 @@ class ExoConfig:
                     self.config = yaml.safe_load(f)
             except IOError as ex:
                 self.config = {}
+
+    def addConfigOption(self, cik, name, key='keys'):
+        if len(cik) != 40 and len(name) == 40:
+            name, cik = cik, name
+        elif len(name) != 40 and len(cik) != 40:
+            raise ExoException('Neither name nor CIK are valid CIKs')
+        try:
+            self.config[key][name] = cik
+        except:
+            raise ExoException('''Unable to find %s in config.\nIf you want this key, you could manually add it in your .exoline file.'''%key)
+
+        with open(self.configfile, "w") as f:
+            ignored = ['host', 'portals', 'httptimeout', 'useragent', 'port']
+            config_save = {k:v for k,v in self.config.iteritems() if k not in ignored}
+            yaml.dump(config_save, f, indent=4, default_flow_style=False)
 
     def lookup_shortcut(self, cik):
         '''If a CIK has client/resource parts, seperate and look thouse up'''
@@ -955,7 +975,6 @@ class ExoRPC():
                     for r in res:
                         yield r
 
-
     def write(self, cik, rid, value):
         isok, response = self.exo.write(cik, rid, value)
         self._raise_for_response(isok, response)
@@ -1104,6 +1123,9 @@ class ExoRPC():
             listing_with_info[typ] = type_response
 
         return listing_with_info
+
+    def add(self, cik, name):
+        exoconfig.addConfigOption(cik, name)
 
     def info(self,
              cik,
@@ -3056,7 +3078,10 @@ def handle_args(cmd, args):
                     er.activate(cik, 'client', copycik)
                 # for convenience, look up the cik
                 pr('cik: {0}'.format(copycik))
-
+        elif cmd == 'add':
+            name = args['<name>']
+            key = args['<type>'] if args['<type>'] else 'keys'
+            exoconfig.addConfigOption(cik, name, key=key)
         else:
             # search plugins
             handled = False
@@ -3204,7 +3229,6 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
         args['--port'] = os.environ.get('EXO_PORT', None)
 
     exoconfig.mingleArguments(args)
-
     try:
         exitcode = handle_args(cmd, args)
         if exitcode is None:
