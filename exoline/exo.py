@@ -2538,7 +2538,7 @@ def read_cmd(er, cik, rids, args):
             dw.writerow(row)
 
 
-    timeout_milliseconds = 60000
+    timeout_milliseconds = 3000
     if args['--follow']:
         if len(rids) > 1:
             raise ExoException('--follow does not support reading from multiple rids')
