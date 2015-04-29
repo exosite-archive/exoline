@@ -1,6 +1,16 @@
 History
 =======
 
+0.9.13 (2015-04-29)
+-------------------
+
+- work around for script --follow wait issue
+
+0.9.12 (2015-04-28)
+-------------------
+
+- spec command support for operating on expired devices
+
 0.9.11 (2015-04-03)
 -------------------
 

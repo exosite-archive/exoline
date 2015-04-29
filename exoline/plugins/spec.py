@@ -378,7 +378,6 @@ scripts:
                         yield alias, {'id': id}
 
             reid = re.compile('<% *id *%>')
-
             def infoval(input_cik, alias):
                 '''Get info and latest value for a resource'''
                 return rpc._exomult(
@@ -389,10 +388,16 @@ scripts:
             spec, base_url = load_spec(args)
             check_spec(spec)
 
-            ciks = []
+            device_auths = []
             portal_ciks = []
 
             iterate_portals = False
+
+            def auth_string(auth):
+                if isinstance(auth, dict):
+                    return json.dumps(auth)
+                else:
+                    return auth
 
             if args['--portal'] == True:
                 portal_ciks.append((input_cik,''))
@@ -448,7 +453,7 @@ scripts:
                         clients = rpc._listing_with_info(portal_cik, ['client'])
                         #print(modelName)
                         # for each client
-                        for k,v in iteritems(list(iteritems(clients))[0][1]):
+                        for rid, v in iteritems(list(iteritems(clients))[0][1]):
                             # Get meta field
                             validJson = False
                             meta = None
@@ -467,30 +472,34 @@ scripts:
                                     # and it matches our vendor/model in the spec file
                                     if meta['device']['vendor'] == vendorName:
                                         if meta['device']['model'] == modelName:
-                                            # Append the cik to our list
-                                            ciks.append(v['key'])
-                                            print("  found: " + v['description']['name'] + " " + v['key'] )
+                                            # Append an auth for this device to our list
+                                            auth = {
+                                                'cik': portal_cik, # v['key'],
+                                                'client_id': rid
+                                            }
+                                            device_auths.append(auth)
+                                            print("  found: {0} {1}".format(v['description']['name'], auth_string(auth)))
             else:
                 # only for single client
-                ciks.append(input_cik)
+                device_auths.append(input_cik)
 
             # Make sure user knows they are about to update multiple devices
             # unless the `-f` flag is passed
             if ((args['--portal'] or args['--domain']) and args['--create']) and not args['-f']:
-                res = query_yes_no("You are about to update " + str(len(ciks)) + " devices, are you sure?")
+                res = query_yes_no("You are about to update " + str(len(device_auths)) + " devices, are you sure?")
                 if res == False:
                     print('exiting')
                     return
 
-            # for each device in our list of ciks
-            for cik in ciks:
+            # for each device in our list of device_auths
+            for auth in device_auths:
                 try:
                     aliases = {}
-                    print("Running spec on: " + cik)
+                    print("Running spec on: {0}".format(auth_string(auth)))
                     #   apply spec [--create]
 
                     # Get map of aliases
-                    info = rpc.info(cik, {'alias': ''}, {'aliases': True})
+                    info = rpc.info(auth, {'alias': ''}, {'aliases': True})
                     try:
                         for rid, alist in info['aliases'].items():
                             for alias in alist:
@@ -504,7 +513,7 @@ scripts:
                                 # TODO: handle nonexistence
                                 exists = True
                                 try:
-                                    info, val = infoval(cik, alias)
+                                    info, val = infoval(auth, alias)
                                 except rpc.RPCException as e:
                                     exists = False
                                     print('{0} not found.'.format(alias))
@@ -542,9 +551,9 @@ scripts:
                                     if not exists and create:
                                         print('Creating dataport with name: {0}, alias: {1}, format: {2}'.format(
                                             name, alias, format))
-                                        rid = rpc.create_dataport(cik, format, name=name)
-                                        rpc.map(cik, rid, alias)
-                                        info, val = infoval(cik, alias)
+                                        rid = rpc.create_dataport(auth, format, name=name)
+                                        rpc.map(auth, rid, alias)
+                                        info, val = infoval(auth, alias)
                                         aliases[alias] = rid
 
                                     # check type
@@ -562,9 +571,9 @@ scripts:
                                         if create:
                                             initialValue = template(res['initial'])
                                             print('Writing initial value {0}'.format(initialValue))
-                                            rpc.write(cik, {'alias': alias}, initialValue)
+                                            rpc.write(auth, {'alias': alias}, initialValue)
                                             # update values being validated
-                                            info, val = infoval(cik, alias)
+                                            info, val = infoval(auth, alias)
                                         else:
                                             print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
 
@@ -629,7 +638,7 @@ scripts:
 
                                             new_desc = info['description'].copy()
                                             new_desc['meta'] = json.dumps(meta)
-                                            rpc.update(cik, {'alias': alias}, new_desc)
+                                            rpc.update(auth, {'alias': alias}, new_desc)
 
                                         else:
                                             if meta is None:
@@ -653,7 +662,7 @@ scripts:
                                             if create:
                                                 new_desc = info['description'].copy()
                                                 new_desc['public'] = respub
-                                                rpc.update(cik, {'alias': alias}, new_desc)
+                                                rpc.update(auth, {'alias': alias}, new_desc)
                                             else:
                                                 sys.stdout.write('spec expects public for {0} to be {1}, but they are not.\n'.format(alias, resPub))
                                         elif public != resPub:
@@ -671,7 +680,7 @@ scripts:
                                             if create:
                                                 new_desc = info['description'].copy()
                                                 new_desc['subscribe'] = resSub
-                                                rpc.update(cik, {'alias': alias}, new_desc)
+                                                rpc.update(auth, {'alias': alias}, new_desc)
                                             else:
                                                 sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.\n'.format(alias, resSub))
                                         elif subscribe != resSub:
@@ -688,7 +697,7 @@ scripts:
                                         if create:
                                             new_desc = info['description'].copy()
                                             new_desc['preprocess'] = resPrep
-                                            rpc.update(cik, {'alias': alias}, new_desc)
+                                            rpc.update(auth, {'alias': alias}, new_desc)
                                         else:
                                             if preprocess is None or len(preprocess) == 0:
                                                 sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are missing.\n'.format(alias, resPrep))
@@ -706,7 +715,7 @@ scripts:
                                         if create:
                                             new_desc = info['description'].copy()
                                             new_desc['retention'] = resRet
-                                            rpc.update(cik, {'alias': alias}, new_desc)
+                                            rpc.update(auth, {'alias': alias}, new_desc)
                                         elif retention != resRet:
                                             sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.\n'.format(alias, resRet, retention))
 
@@ -726,7 +735,7 @@ scripts:
                                     else:
                                         content = res['code']
                                     if not exists and create:
-                                        rpc.upload_script_content([cik], content, name=alias, create=True, filterfn=template)
+                                        rpc.upload_script_content([auth], content, name=alias, create=True, filterfn=template)
                                         continue
 
                                     script_spec = template(content)
@@ -736,7 +745,7 @@ scripts:
                                         print('Script for {0} does not match {1}.'.format(alias, script_friendly))
                                         if updatescripts:
                                             print('Uploading script to {0}...'.format(alias))
-                                            rpc.upload_script_content([cik], script_spec, name=name, create=False, filterfn=template)
+                                            rpc.upload_script_content([auth], script_spec, name=name, create=False, filterfn=template)
                                         elif not args['--no-diff']:
                                             # show diff
                                             import difflib
