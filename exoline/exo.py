@@ -661,7 +661,7 @@ class ExoRPC():
                  verbose=True,
                  logrequests=False,
                  user_agent=None,
-		 curldebug=False):
+                 curldebug=False):
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
@@ -1626,7 +1626,7 @@ probably not valid.".format(cik))
                     return rid
         return None
 
-    def _upload_script(self, cik, name, content, rid=None, alias=None, version='0.1.0'):
+    def _upload_script(self, cik, name, content, rid=None, alias=None, version='0.0.0'):
         '''Upload a lua script, either creating one or updating the existing one'''
         desc = {
             'format': 'string',
@@ -2952,12 +2952,14 @@ def handle_args(cmd, args):
             else:
                 filename = args['<script-file>']
             rid = None if args['<rid>'] is None else rids[0]
+            svers = None if not '--setversion' in args else args['--setversion']
             er.upload_script(cik,
                 filename,
                 name=args['--name'],
                 recursive=args['--recursive'],
                 create=args['--create'],
-                rid=rid)
+                rid=rid,
+                version=svers)
         elif cmd == 'spark':
             days = int(args['--days'])
             end = ExoUtilities.parse_ts_tuple(datetime.now().timetuple())

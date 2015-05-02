@@ -736,8 +736,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('script', lua1['path'], '--create', cik)
         self.ok(r, 'New script')
         self.assertEqual(readscript(cik, lua1['name']), lua1['content'])
-        uploadCount = readscriptmeta(cik, lua1['name'])
-        self.assertEqual(uploadCount['uploads'], 1)
+        scriptVerisons = readscriptmeta(cik, lua1['name'])
+        self.assertEqual(scriptVerisons['uploads'], 1)
 
         #self._latest(cik, lua1['name'], lua1['out'],
         #             'debug output within {0} sec'.format(waitsec))
@@ -747,8 +747,20 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('script', lua2['path'], cik, '--name=' + lua1['name'])
         self.ok(r, 'Update existing script')
         self.assertEqual(readscript(cik, lua1['name']), lua2['content'])
-        uploadCount = readscriptmeta(cik, lua1['name'])
-        self.assertEqual(uploadCount['uploads'], 2)
+        scriptVerisons = readscriptmeta(cik, lua1['name'])
+        self.assertEqual(scriptVerisons['uploads'], 2)
+
+        r = rpc('script', lua2['path'], cik, '--name=' + lua1['name'], '--setversion=2.2.2')
+        self.ok(r, 'Update existing script')
+        scriptVerisons = readscriptmeta(cik, lua1['name'])
+        self.assertEqual(scriptVerisons['uploads'], 3)
+        self.assertEqual(scriptVerisons['version'], '2.2.2')
+
+        r = rpc('script', lua2['path'], cik, '--name=' + lua1['name'], '--setversion=2.9.0')
+        self.ok(r, 'Update existing script')
+        scriptVerisons = readscriptmeta(cik, lua1['name'])
+        self.assertEqual(scriptVerisons['uploads'], 4)
+        self.assertEqual(scriptVerisons['version'], '2.9.0')
 
         #self._latest(cik, lua1['name'], lua2['out'],
         #             'debug output from updated script within {0} sec'.format(waitsec))
