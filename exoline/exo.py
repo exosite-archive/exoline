@@ -324,7 +324,7 @@ Command options:
                       is used to identify the script, too.
     --recursive       operate on client and any children
     --create          create the script if it doesn't already exist
-    --follow       monitor the script's debug log'''),
+    --follow       monitor the script's debug log
     --setversion=<vn> set a version number on the script meta'''),
     ('spark', '''Show distribution of intervals between points.\n\nUsage:
     exo [options] spark <cik> [<rid>] --days=<days>
