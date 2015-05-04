@@ -191,7 +191,7 @@ $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw -
 Read data from multiple dataports to Excel-compatible CSV
 
 ```
-$ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
+$ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 --limit=10000 > alldata.csv
 
 real    1m58.377s
 user    0m10.981s
