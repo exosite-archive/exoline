@@ -320,11 +320,12 @@ Example:
     script resource's name but not its alias.
 
 Command options:
-    --name=<name>  script name, if different from script filename. The name
-                   is used to identify the script, too.
-    --recursive    operate on client and any children
-    --create       create the script if it doesn't already exist
-    --follow       monitor the script's debug log'''),
+    --name=<name>     script name, if different from script filename. The name
+                      is used to identify the script, too.
+    --recursive       operate on client and any children
+    --create          create the script if it doesn't already exist
+    --follow       monitor the script's debug log
+    --setversion=<vn> set a version number on the script meta'''),
     ('spark', '''Show distribution of intervals between points.\n\nUsage:
     exo [options] spark <cik> [<rid>] --days=<days>
 
@@ -661,7 +662,7 @@ class ExoRPC():
                  verbose=True,
                  logrequests=False,
                  user_agent=None,
-		 curldebug=False):
+                 curldebug=False):
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
@@ -1626,7 +1627,7 @@ probably not valid.".format(cik))
                     return rid
         return None
 
-    def _upload_script(self, cik, name, content, rid=None, meta='', alias=None):
+    def _upload_script(self, cik, name, content, rid=None, alias=None, version='0.0.0'):
         '''Upload a lua script, either creating one or updating the existing one'''
         desc = {
             'format': 'string',
@@ -1641,6 +1642,18 @@ probably not valid.".format(cik))
                 'duration': 'infinity'
             }
         }
+        meta = {
+            'version': version,
+            'uploads': 1,
+            'githash': ''
+        }
+        # if `git rev-parse HEAD` works, include that.
+        try:
+            githash = os.popen("git rev-parse HEAD").read()
+            meta['githash'] = githash
+        except:
+            pass
+        desc['meta'] = json.dumps(meta)
 
         if rid is None:
             success, rid = self.exo.create(cik, 'datarule', desc)
@@ -1657,6 +1670,19 @@ probably not valid.".format(cik))
             else:
                 raise ExoException("Error aliasing script")
         else:
+            isok, olddesc = self.exo.info(cik, rid)
+            if isok:
+                try:
+                    oldmetajs = olddesc['description']['meta']
+                    oldmeta = json.loads(oldmetajs)
+                    uploads = oldmeta['uploads']
+                    uploads = uploads + 1
+                    meta['uploads'] = uploads
+                    desc['meta'] = json.dumps(meta)
+                except:
+                    pass
+                    # if none of that works, go with the default above.
+
             isok, response = self.exo.update(cik, rid, desc)
             if isok:
                 print ("Updated script RID: {0}".format(rid))
@@ -1680,7 +1706,8 @@ probably not valid.".format(cik))
                               recursive=False,
                               create=False,
                               filterfn=lambda script: script,
-                              rid=None):
+                              rid=None,
+                              version='0.0.0'):
         for cik in ciks:
             def up(cik, rid):
                 if rid is not None:
@@ -1692,11 +1719,11 @@ probably not valid.".format(cik))
                             raise ExoException('<rid> must be an alias when passing --create')
                         alias = rid['alias']
                         rid = None
-                    self._upload_script(cik, name, content, rid=rid, alias=alias)
+                    self._upload_script(cik, name, content, rid=rid, alias=alias, version=version)
                 else:
                     rid = self._lookup_rid_by_name(cik, name)
                     if rid is not None or create:
-                        self._upload_script(cik, name, content, rid=rid)
+                        self._upload_script(cik, name, content, rid=rid, version=version)
                     else:
                         # TODO: move this to spec plugin
                         print("Skipping CIK: {0} -- {1} not found".format(cik, name))
@@ -1717,7 +1744,8 @@ probably not valid.".format(cik))
                       create=False,
                       filterfn=lambda script: script,
                       rid=None,
-                      follow=False):
+                      follow=False,
+                      version='0.0.0'):
         try:
             f = open(filename)
         except IOError:
@@ -1740,7 +1768,8 @@ probably not valid.".format(cik))
                         recursive=recursive,
                         create=create,
                         filterfn=filterfn,
-                        rid=rid)
+                        rid=rid,
+                        version=version)
                 if follow:
                     if len(ciks) > 1:
                         raise Exception('following more than one CIK is not supported')
@@ -1849,7 +1878,6 @@ probably not valid.".format(cik))
                         #print('char: ' + c)
                 else:
                     upl()
-
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'], options={}, rid={'alias': ''})
@@ -3004,14 +3032,15 @@ def handle_args(cmd, args):
             else:
                 filename = args['<script-file>']
             rid = None if args['<rid>'] is None else rids[0]
+            svers = None if not '--setversion' in args else args['--setversion']
             er.upload_script(cik,
                 filename,
                 name=args['--name'],
                 recursive=args['--recursive'],
                 create=args['--create'],
                 rid=rid,
-                follow=args['--follow'])
-
+                follow=args['--follow'],
+                version=svers)
 
         elif cmd == 'spark':
             days = int(args['--days'])

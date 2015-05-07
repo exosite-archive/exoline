@@ -721,23 +721,52 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             info = json.loads(r.stdout)
             return info['description']['rule']['script'].strip()
 
+        def readscriptmeta(cik, alias):
+            r = rpc('info', cik, alias, '--include=description')
+            self.l(r.exitcode)
+            self.l(r.stdout)
+            self.l(r.stderr)
+            info = json.loads(r.stdout)
+            meta = info['description']['meta']
+            return json.loads(meta)
+
         r = rpc('script', lua1['path'], cik)
         r = rpc('read', cik, lua1['name'])
         self.notok(r, "Don't create script unless --create passed")
         r = rpc('script', lua1['path'], '--create', cik)
         self.ok(r, 'New script')
         self.assertEqual(readscript(cik, lua1['name']), lua1['content'])
+        scriptVerisons = readscriptmeta(cik, lua1['name'])
+        self.assertEqual(scriptVerisons['uploads'], 1)
+
         #self._latest(cik, lua1['name'], lua1['out'],
         #             'debug output within {0} sec'.format(waitsec))
         #self._latest(cik, 'string_port_alias', lua1['portoutput'],
         #             'dataport write from script within {0} sec'.format(waitsec))
+
         r = rpc('script', lua2['path'], cik, '--name=' + lua1['name'])
         self.ok(r, 'Update existing script')
         self.assertEqual(readscript(cik, lua1['name']), lua2['content'])
+        scriptVerisons = readscriptmeta(cik, lua1['name'])
+        self.assertEqual(scriptVerisons['uploads'], 2)
+
+        r = rpc('script', lua2['path'], cik, '--name=' + lua1['name'], '--setversion=2.2.2')
+        self.ok(r, 'Update existing script')
+        scriptVerisons = readscriptmeta(cik, lua1['name'])
+        self.assertEqual(scriptVerisons['uploads'], 3)
+        self.assertEqual(scriptVerisons['version'], '2.2.2')
+
+        r = rpc('script', lua2['path'], cik, '--name=' + lua1['name'], '--setversion=2.9.0')
+        self.ok(r, 'Update existing script')
+        scriptVerisons = readscriptmeta(cik, lua1['name'])
+        self.assertEqual(scriptVerisons['uploads'], 4)
+        self.assertEqual(scriptVerisons['version'], '2.9.0')
+
         #self._latest(cik, lua1['name'], lua2['out'],
         #             'debug output from updated script within {0} sec'.format(waitsec))
         #self._latest(cik, 'string_port_alias', lua2['portoutput'],
         #             'dataport write from updated script within {0} sec'.format(waitsec))
+
         # test other form
         r = rpc('script', cik, '--file='+lua1['path'], '--name=' + lua1['name'] + '_form2', '--create')
         self.ok(r, 'upload new script with new argument form succeeds')
