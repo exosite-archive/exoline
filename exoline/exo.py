@@ -58,9 +58,6 @@ from six import StringIO
 from six import iteritems
 from six import string_types
 
-import pytz
-import tzlocal
-
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -84,15 +81,18 @@ try:
     from ..exoline import __version__
     from ..exoline.exocommon import ExoException
     from ..exoline import exocommon
+    from ..exoline import serieswriter
 except:
     from exoline import __version__
     from exoline.exocommon import ExoException
     from exoline import exocommon
+    from exoline import serieswriter
 
 
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
+SCRIPT_LIMIT_BYTES = 16 * 1024
 
 PERF_DATA = []
 
@@ -323,10 +323,12 @@ Example:
     script resource's name but not its alias.
 
 Command options:
-    --name=<name>  script name, if different from script filename. The name
-                   is used to identify the script, too.
-    --recursive    operate on client and any children
-    --create       create the script if it doesn't already exist'''),
+    --name=<name>     script name, if different from script filename. The name
+                      is used to identify the script, too.
+    --recursive       operate on client and any children
+    --create          create the script if it doesn't already exist
+    --follow       monitor the script's debug log
+    --setversion=<vn> set a version number on the script meta'''),
     ('spark', '''Show distribution of intervals between points.\n\nUsage:
     exo [options] spark <cik> [<rid>] --days=<days>
 
@@ -680,7 +682,7 @@ class ExoRPC():
                  verbose=True,
                  logrequests=False,
                  user_agent=None,
-		 curldebug=False):
+                 curldebug=False):
 
         if port is None:
             port = DEFAULT_PORT_HTTPS if https else DEFAULT_PORT
@@ -1647,7 +1649,7 @@ probably not valid.".format(cik))
                     return rid
         return None
 
-    def _upload_script(self, cik, name, content, rid=None, meta='', alias=None):
+    def _upload_script(self, cik, name, content, rid=None, alias=None, version='0.0.0'):
         '''Upload a lua script, either creating one or updating the existing one'''
         desc = {
             'format': 'string',
@@ -1662,6 +1664,18 @@ probably not valid.".format(cik))
                 'duration': 'infinity'
             }
         }
+        meta = {
+            'version': version,
+            'uploads': 1,
+            'githash': ''
+        }
+        # if `git rev-parse HEAD` works, include that.
+        try:
+            githash = os.popen("git rev-parse HEAD").read()
+            meta['githash'] = githash
+        except:
+            pass
+        desc['meta'] = json.dumps(meta)
 
         if rid is None:
             success, rid = self.exo.create(cik, 'datarule', desc)
@@ -1678,6 +1692,19 @@ probably not valid.".format(cik))
             else:
                 raise ExoException("Error aliasing script")
         else:
+            isok, olddesc = self.exo.info(cik, rid)
+            if isok:
+                try:
+                    oldmetajs = olddesc['description']['meta']
+                    oldmeta = json.loads(oldmetajs)
+                    uploads = oldmeta['uploads']
+                    uploads = uploads + 1
+                    meta['uploads'] = uploads
+                    desc['meta'] = json.dumps(meta)
+                except:
+                    pass
+                    # if none of that works, go with the default above.
+
             isok, response = self.exo.update(cik, rid, desc)
             if isok:
                 print ("Updated script RID: {0}".format(rid))
@@ -1701,7 +1728,8 @@ probably not valid.".format(cik))
                               recursive=False,
                               create=False,
                               filterfn=lambda script: script,
-                              rid=None):
+                              rid=None,
+                              version='0.0.0'):
         for cik in ciks:
             def up(cik, rid):
                 if rid is not None:
@@ -1713,11 +1741,11 @@ probably not valid.".format(cik))
                             raise ExoException('<rid> must be an alias when passing --create')
                         alias = rid['alias']
                         rid = None
-                    self._upload_script(cik, name, content, rid=rid, alias=alias)
+                    self._upload_script(cik, name, content, rid=rid, alias=alias, version=version)
                 else:
                     rid = self._lookup_rid_by_name(cik, name)
                     if rid is not None or create:
-                        self._upload_script(cik, name, content, rid=rid)
+                        self._upload_script(cik, name, content, rid=rid, version=version)
                     else:
                         # TODO: move this to spec plugin
                         print("Skipping CIK: {0} -- {1} not found".format(cik, name))
@@ -1729,6 +1757,7 @@ probably not valid.".format(cik))
             else:
                 up(cik, rid)
 
+
     def upload_script(self,
                       ciks,
                       filename,
@@ -1736,7 +1765,9 @@ probably not valid.".format(cik))
                       recursive=False,
                       create=False,
                       filterfn=lambda script: script,
-                      rid=None):
+                      rid=None,
+                      follow=False,
+                      version='0.0.0'):
         try:
             f = open(filename)
         except IOError:
@@ -1744,17 +1775,131 @@ probably not valid.".format(cik))
         else:
             with f:
                 content = filterfn(f.read())
+                if len(content) > SCRIPT_LIMIT_BYTES:
+                    sys.stderr.write(
+                        'WARNING: script is {0} bytes over the size limit of {1} bytes.\n'.format(
+                            len(content) - SCRIPT_LIMIT_BYTES, SCRIPT_LIMIT_BYTES))
                 if name is None:
                     # if no name is specified, use the file name as a name
                     name = os.path.basename(filename)
-                self.upload_script_content(
-                    ciks,
-                    content,
-                    name=name,
-                    recursive=recursive,
-                    create=create,
-                    filterfn=filterfn,
-                    rid=rid)
+                def upl():
+                    self.upload_script_content(
+                        ciks,
+                        content,
+                        name=name,
+                        recursive=recursive,
+                        create=create,
+                        filterfn=filterfn,
+                        rid=rid,
+                        version=version)
+                if follow:
+                    if len(ciks) > 1:
+                        raise Exception('following more than one CIK is not supported')
+                    lines = followSeries(
+                        self,
+                        ciks[0],
+                        {'alias': name},
+                        timeout_milliseconds=3000,
+                        printFirst=True)
+                    options = {'format': 'human'}
+                    writer = serieswriter.SeriesWriter(['timestamp', 'log'], options)
+                    last_modified = 0
+                    last_activity = 0
+                    last_status = ''
+                    uploaded = False
+                    nocolor = platform.system() == 'Windows'
+                    class colors:
+                        PINK = '' if nocolor else '\033[35m'
+                        CYAN = '' if nocolor else '\033[36m'
+                        YELLOW = '' if nocolor else '\033[33m'
+                        GREEN = '' if nocolor else '\033[32m'
+                        RED = '' if nocolor else '\033[31m'
+                        GRAY = '' if nocolor else '\033[1;30m'
+                        ENDC = '' if nocolor else '\033[0m'
+                    def status_color(status):
+                        return colors.RED if status == 'error' else colors.GREEN
+                    # loop forever
+                    for timestamp, vals in lines:
+                        towrite = []
+                        info = self._exomult(ciks[0], [
+                            ['info', {'alias': name}, {'basic': True, 'description': True}]])[0]
+                        code = info['description']['rule']['script']
+                        if timestamp is not None and vals is not None:
+                            # received a point
+
+                            # break up lines
+                            if uploaded:
+                                lines = vals[0].split('\n')
+                                for line in lines:
+                                    # Parse lua errors and show the line with the error
+                                    # [string "..."]:6: global namespace is reserved
+                                    match = re.match('\[string ".*\.\.\."\]:(\d+): (.*)', line)
+                                    if match is None:
+                                        towrite.append([timestamp, [line], 'debug'])
+                                    else:
+                                        err_line = int(match.groups()[0])
+                                        code_lines = code.splitlines()
+
+                                        code_excerpt = ''
+                                        # previous line
+                                        if err_line > 1:
+                                            code_excerpt += (' ' * 11 + str(err_line - 1) + ' ' + code_lines[err_line - 2] + '\n')
+                                        # line with the error
+                                        code_excerpt += ' ' * 11 + str(err_line) + ' ' + code_lines[err_line - 1] + '\n'
+                                        # next line
+                                        if err_line < len(code_lines):
+                                            code_excerpt += (' ' * 11 + str(err_line + 1) + ' ' + code_lines[err_line])
+
+                                        err_msg = match.groups()[1]
+                                        towrite.append([timestamp, [colors.RED + 'ERROR: ' + err_msg + colors.ENDC + ' (line ' + str(err_line) + ')\n' + code_excerpt], 'debug'])
+
+                        modified = info['basic']['modified']
+                        if modified != last_modified:
+                            if uploaded:
+                                towrite.append([modified, [colors.PINK + 'script modified' + colors.ENDC], '00 modified'])
+                            last_modified = modified
+                        '''# sort by timestamp to keep the code simple
+                        activities = sorted(info['basic']['activity'], key=lambda x: x[0])
+                        for act_ts, act_list in activities:
+                            if act_ts > last_activity:
+                                if uploaded:
+                                    msg = ', '.join(reversed([status_color(s) + s + colors.ENDC for s in act_list])) + colors.ENDC
+                                    towrite.append(
+                                        [act_ts, [msg], '01 activity'])
+                                last_activity = act_ts'''
+                        status = info['basic']['status']
+                        if status != last_status:
+                            # this doesn't have a timestamp, so use the highest timestamp
+                            towrite.append([
+                                None,
+                                ['[' + colors.GRAY + '.' * 8 + colors.ENDC + '] ' +
+                                 status_color(status) + status + colors.ENDC],
+                                '02 status'])
+                            last_status = status
+
+                        # upload *after* getting info for the first time,
+                        # for more consistent output
+                        if not uploaded:
+                            # warn if script is unchanged
+                            if code == content:
+                                sys.stderr.write(colors.PINK + 'WARNING' + colors.ENDC + ': script code matches what is on the server, so script will NOT be restarted\n')
+                            upl()
+                            uploaded = True
+
+                        # sort by timestamp, then tag
+                        # (sorting by tag puts modified before status, which is more common)
+                        towrite = sorted(towrite, key=lambda x: (x[0], x[2]))
+                        for ts, vals, tag in towrite:
+                            if ts is not None:
+                                writer.write(ts, vals)
+                            else:
+                                print(vals[0])
+
+
+                        #c = exocommon.getch()
+                        #print('char: ' + c)
+                else:
+                    upl()
 
     def lookup_rid(self, cik, cik_to_find):
         isok, listing = self.exo.listing(cik, types=['client'], options={}, rid={'alias': ''})
@@ -2458,6 +2603,41 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
     sys.stdout.write(max_label + '\n')
 
 
+# return a generator that reads rid forever and yields either:
+# A. timestamp, value pair (on data)
+# B. None, None (on timeout)
+def followSeries(er, cik, rid, timeout_milliseconds, printFirst=True):
+    # do an initial read
+    results = er.readmult(
+        cik,
+        [rid],
+        limit=1,
+        selection='all',
+        sort='desc')
+
+    # --follow doesn't want the result to be an iterator
+    results = list(results)
+    last_t, last_v = 0, None
+    if len(results) > 0 and printFirst:
+        last_t, last_v = results[0]
+        yield(last_t, last_v)
+
+    while True:
+        timedout, point = er.wait(
+            cik,
+            rid,
+            since=last_t + 1,
+            timeout=timeout_milliseconds)
+        if not timedout:
+            last_t, last_v = point
+            yield(last_t, [last_v])
+
+            # flush output for piping this output to other programs
+            sys.stdout.flush()
+        else:
+            yield(None, None)
+
+
 def read_cmd(er, cik, rids, args):
     '''Read command'''
     if len(rids) == 0:
@@ -2492,105 +2672,35 @@ def read_cmd(er, cik, rids, args):
         # aliases)
         headers = ['timestamp'] + [str(r) for r in cmdline_rids]
 
-    dw = csv.DictWriter(sys.stdout, headers)
-    if headertype is not None:
-        # write headers
-        dw.writerow(dict([(h, h) for h in headers]))
-
     fmt = args['--format']
-
     tz = args['--tz']
 
-    if tz == None:
-        # default to UTC
-        try:
-            # this single call is slow if pytz is compressed
-            # running pip unzip pytz fixes it
-            tz = tzlocal.get_localzone()
-        except pytz.UnknownTimeZoneError as e:
-            # Unable to detect local time zone, defaulting to UTC
-            tz = pytz.utc
-    else:
-        try:
-            tz = pytz.timezone(tz)
-        except Exception as e:
-            #default to utc if error
-            raise ExoException('Error parsing --tz option, defaulting to local timezone')
+    options = {
+        'format': fmt,
+        'timeformat': timeformat,
+        'tz': tz
+    }
 
-    recarriage = re.compile('\r(?!\\n)')
+    lw = serieswriter.SeriesWriter(headers, options)
+    if headertype is not None:
+        # write headers
+        lw.write_headers()
 
-    def printline(timestamp, val):
-        if fmt == 'raw':
-            if not six.PY3 and isinstance(val[0], six.string_types):
-                # Beer bounty for anyone who can tell me how to make
-                # both of these work without this awkward try: except:
-                # $ ./testone.sh utf8_test -e py27
-                # $ exoline/exo.py read myClient foo --format=raw | tail -100
-                try:
-                    # this works with stdout piped to
-                    print(val[0])
-                except UnicodeEncodeError:
-                    # this works from inside test using StringIO
-                    print(val[0].encode('utf-8'))
-            else:
-                print(val[0])
-        else:
-            if timeformat == 'unix':
-                dt = timestamp
-            elif timeformat == 'iso8601':
-                dt = datetime.isoformat(pytz.utc.localize(datetime.utcfromtimestamp(timestamp)))
-            elif timeformat == 'excel':
-                # This date format works for Excel scatter plots
-                dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).strftime('%m/%d/%y %H:%M:%S')
-            else:
-                dt = pytz.utc.localize(datetime.utcfromtimestamp(timestamp)).astimezone(tz)
-
-            row = {'timestamp': str(dt)}
-
-            def stripcarriage(s):
-                # strip carriage returns not followed
-                if isinstance(s, six.string_types):
-                    return recarriage.sub('', s)
-                else:
-                    return s
-
-            values = dict([(str(headers[i + 1]), stripcarriage(val[i])) for i in range(len(rids))])
-
-            row.update(values)
-            dw.writerow(row)
-
-
-    timeout_milliseconds = 60000
+    timeout_milliseconds = 3000
     if args['--follow']:
         if len(rids) > 1:
             raise ExoException('--follow does not support reading from multiple rids')
 
-        # do an initial read
-        results = er.readmult(cik,
-                                rids,
-                                limit=1,
-                                selection=args['--selection'],
-                                sort='desc')
-
-        # --follow doesn't want the result to be an iterator
-        results = list(results)
-        last_t, last_v = 0, None
-        if len(results) > 0:
-            last_t, last_v = results[0]
-            printline(last_t, last_v)
-
-        while True:
-            timedout, point = er.wait(
-                cik,
-                rids[0],
-                since=last_t + 1,
-                timeout=timeout_milliseconds)
-            if not timedout:
-                last_t, last_v = point
-                printline(last_t, [last_v])
-
-            # flush output for piping this output to other programs
-            sys.stdout.flush()
+        lines = followSeries(
+            er,
+            cik,
+            rids[0],
+            timeout_milliseconds=timeout_milliseconds,
+            printFirst=True)
+        # goes forever
+        for ts, v in lines:
+            if ts is not None and v is not None:
+                lw.write(ts, v)
     else:
         chunksize = int(args['--chunksize'])
         result = er.readmult(cik,
@@ -2602,11 +2712,10 @@ def read_cmd(er, cik, rids, args):
                              selection=args['--selection'],
                              chunksize=chunksize)
         for t, v in result:
-            printline(t, v)
+            lw.write(t, v)
 
 
 def plain_print(arg):
-    #raise Exception("{0} {1}".format(arg, type(arg)))
     print(arg)
 
 
@@ -2945,12 +3054,16 @@ def handle_args(cmd, args):
             else:
                 filename = args['<script-file>']
             rid = None if args['<rid>'] is None else rids[0]
+            svers = None if not '--setversion' in args else args['--setversion']
             er.upload_script(cik,
                 filename,
                 name=args['--name'],
                 recursive=args['--recursive'],
                 create=args['--create'],
-                rid=rid)
+                rid=rid,
+                follow=args['--follow'],
+                version=svers)
+
         elif cmd == 'spark':
             days = int(args['--days'])
             end = ExoUtilities.parse_ts_tuple(datetime.now().timetuple())

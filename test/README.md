@@ -19,3 +19,11 @@ To run Exoline tests, copy test/testconfig.py.template to test/testconfig.py and
     $ # def script_test(self):
     $ ./testattr.sh "spec and not script"
 ```
+
+## Issues?
+
+Occasionally package versions don't update correctly. Sometimes this helps:
+
+```
+$ rm -rf .tox
+```

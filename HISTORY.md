@@ -1,6 +1,18 @@
 History
 =======
 
+0.9.14 (2015-05-01)
+-------------------
+
+- add --follow option for attractive script logs
+- warn if a script is >16k
+- warn that script will not be restarted if script was unchanged
+
+0.9.13 (2015-04-29)
+-------------------
+
+- work around for read --follow wait issue for script logs
+
 0.9.12 (2015-04-28)
 -------------------
 

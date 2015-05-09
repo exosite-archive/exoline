@@ -1,6 +1,8 @@
 Exoline
 =======
 
+[![Join the chat at https://gitter.im/exosite/exoline](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/exosite/exoline?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Exoline is a command line interface for the Exosite [One Platform](http://exosite.com/products/onep). 
 
 ![Command line usage of Exoline tree feature](images/twee_example.png)
@@ -189,7 +191,7 @@ $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw -
 Read data from multiple dataports to Excel-compatible CSV
 
 ```
-$ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
+$ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 --limit=10000 > alldata.csv
 
 real    1m58.377s
 user    0m10.981s
