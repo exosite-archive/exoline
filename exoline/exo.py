@@ -1236,9 +1236,6 @@ class ExoRPC():
 
         return listing_with_info
 
-    def add(self, cik, name):
-        exoconfig.addConfigOption(cik, name)
-
     def info(self,
              cik,
              rid={'alias': ''},
