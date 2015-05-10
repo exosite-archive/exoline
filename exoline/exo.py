@@ -312,6 +312,44 @@ Example:
         }
     }
     '''),
+('find', '''Search resource's descendants for matches.\n\nUsage:
+    exo find <cik> --match <matches> [--show <shows>]
+
+Command options:
+    --show=<shows>           Things to show on match (default: cik)
+    --match=<matches>        List of --match x=y,z=w to match on
+
+Example:
+    $ exo find $CIK --match "status=activated,model=$CLIENT_MODEL"
+    7893635162b84f78e4475c2d6383645659545344
+    7893635162b84f78e4475c2d6383645659545341
+    7893635162b84f78e4475c2d6383645659545342
+
+    exo find $CIK --match "model=$CLIENT_MODEL" --show="status,sn"
+    activated   A8-UQN6L7-TUMCN0-PNZMH
+    activated   A8-KJGJS3-WRC1RK-S9ECK
+    activated   A8-K3CFRF-NP3NH3-2B7UA
+    activated   A8-0KP131-C1QFXQ-4HCU4
+
+    exo find $CIK --match "status=activated,model=$CLIENT_MODEL" --show='basic'
+    {u'status': u'activated', u'type': u'client', u'modified': 1429041332, u'subscribers': 0}
+    {u'status': u'activated', u'type': u'client', u'modified': 1430422683, u'subscribers': 0}
+    {u'status': u'activated', u'type': u'client', u'modified': 1431013655, u'subscribers': 0}
+    {u'status': u'activated', u'type': u'client', u'modified': 1431013616, u'subscribers': 0}
+
+
+    To use the CIKs that are output from the find command, pipe to xargs
+    exo find $CIK --match "model=$CLIENT_MODEL" | xargs -I cik sh -c 'printf "cik\t"; exo read cik elapsed_time --time=unix'
+    7893635162b84f78e4475c2d6383645659545344    1431203202,4398
+    7893635162b84f78e4475c2d6383645659545342    1431203197,4338
+
+
+    The output from find is tab delimited.
+
+    '''),
+
+
+
     ('script', '''Upload a Lua script\n\nUsage:
     exo [options] script <cik> [<rid>] --file=<script-file>
     exo [options] script <script-file> <cik> ...
@@ -851,6 +889,97 @@ class ExoRPC():
             options)
         self._raise_for_response(isok, response)
         return response
+
+    def find(self, cik, matches, shows, verbose=False):
+        showcik = False
+        if "cik" in shows:
+            shows = shows.replace("cik", "key")
+        if verbose:
+            print "Matching %s and showing %s" %(matches, shows)
+        matchers = {}
+        for matchval in matches.split(","):
+            data = re.findall(r"(.*?)([=<>^])(.*)", matchval)
+            for d in data:
+                if len(d) == 3:
+                    matchers[d[0]] = (d[2], d[1])
+
+        shows = [s.strip() for s in shows.split(",")]
+        if verbose:
+            print "Showing: ", shows
+            print "Matching: ", matchers
+
+        data = self._infotree_fast(cik)
+
+        display_data = []
+
+
+        def match_node(node, level=0, parents=None):
+            if not parents:
+                parents = []
+            results = {'__matches':[], '__shows':[], "__children":[], "__output":[]}
+            if type(node) == type({}):
+                for k,v in node.iteritems():
+                    #print "\t"*level, k
+                    if type(v) == type({}):
+                        res = match_node(v, level+1, parents+[k])
+                        results['__shows'].extend(res['__shows'])
+                        results['__matches'].extend(res['__matches'])
+                        results['__children'].extend(res['__children'])
+                        results['__output'].extend(res['__output'])
+
+                    if k in shows:
+                        #print "Show: ", k, v
+                        results['__shows'].append((k,v, level, parents))
+                    if k in matchers and matchers.get(k)[0] == v:
+                        if verbose:
+                            print "Match: ", k, v
+                        results['__matches'].append( (k,v,level, parents))
+                    if k == "meta":
+                        try:
+                            jv = json.loads(v)
+                            if type(jv) == type({}):
+                                res = match_node(jv, level)
+                                results['__shows'].extend(res['__shows'])
+                                results['__matches'].extend(res['__matches'])
+                                results['__children'].extend(res['__children'])
+                                results['__output'].extend(res['__output'])
+
+                        except:
+                            if verbose:
+                                print "Bad meta: ", v
+                            pass
+
+                children = node.get('children', [])
+                for child in children:
+                    res = match_node(child, level+1, [])
+                    match_keys = set(r[0] for r in res['__matches'])
+                    if all(k in match_keys for k in matchers.keys()):
+                        results['__output'].append( res['__shows'] )
+
+            if type(node) == type([]):
+                for l in node:
+                    res = match_node(l, level+1)
+                    results['__shows'].extend(res['__shows'])
+                    results['__matches'].extend(res['__matches'])
+                    results['__children'].extend(res['__children'])
+                    results['__output'].extend(res['__output'])
+
+            if type(node) == type(""):
+                pass
+
+            return results
+
+        output = []
+        for d in match_node(data)['__output']:
+            out = []
+            # Loop through so we get the correct order from our input shows
+            for show in shows:
+                for e in d:
+                    if e[0] == show:
+                        out.append(str(e[1]))
+            output.append("\t".join(out))
+        print "\n".join(output)
+
 
     def _combinereads(self, reads, sort):
         '''
@@ -3042,6 +3171,9 @@ def handle_args(cmd, args):
         # special commands
         elif cmd == 'tree':
             er.tree(cik, cli_args=args)
+        elif cmd == 'find':
+            shows = args['--show'] if args['--show'] else "cik"
+            er.find(cik, args['--match'], shows)
         elif cmd == 'twee':
             args['--values'] = True
             if platform.system() == 'Windows':
