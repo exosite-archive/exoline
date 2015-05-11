@@ -314,7 +314,7 @@ Example:
 
 Command options:
     --show=<shows>           Things to show on match (default: cik)
-    --match=<matches>        List of --match x=y,z=w to match on
+    --match=<matches>        List of --match x=y,z=w to match on (supported operations: ^ (not), >, <, =)
 
 Example:
     $ exo find $CIK --match "status=activated,model=$CLIENT_MODEL"
@@ -322,13 +322,13 @@ Example:
     7893635162b84f78e4475c2d6383645659545341
     7893635162b84f78e4475c2d6383645659545342
 
-    exo find $CIK --match "model=$CLIENT_MODEL" --show="status,sn"
+    $ exo find $CIK --match "model=$CLIENT_MODEL" --show="status,sn"
     activated   A8-UQN6L7-TUMCN0-PNZMH
     activated   A8-KJGJS3-WRC1RK-S9ECK
     activated   A8-K3CFRF-NP3NH3-2B7UA
     activated   A8-0KP131-C1QFXQ-4HCU4
 
-    exo find $CIK --match "status=activated,model=$CLIENT_MODEL" --show='basic'
+    $ exo find $CIK --match "status=activated,model=$CLIENT_MODEL" --show='basic'
     {u'status': u'activated', u'type': u'client', u'modified': 1429041332, u'subscribers': 0}
     {u'status': u'activated', u'type': u'client', u'modified': 1430422683, u'subscribers': 0}
     {u'status': u'activated', u'type': u'client', u'modified': 1431013655, u'subscribers': 0}
@@ -336,17 +336,19 @@ Example:
 
 
     To use the CIKs that are output from the find command, pipe to xargs
-    exo find $CIK --match "model=$CLIENT_MODEL" | xargs -I cik sh -c 'printf "cik\t"; exo read cik elapsed_time --time=unix'
+    $ exo find $CIK --match "model=$CLIENT_MODEL" | xargs -I cik sh -c 'printf "cik\t"; exo read cik elapsed_time --time=unix'
     7893635162b84f78e4475c2d6383645659545344    1431203202,4398
     7893635162b84f78e4475c2d6383645659545342    1431203197,4338
 
 
+    To find all devices that aren't activated:
+    $ exo find portal --match "status^activated" --show "name,cik,status"
+
+    $ # they're all activated
+
     The output from find is tab delimited.
 
     '''),
-
-
-
     ('script', '''Upload a Lua script\n\nUsage:
     exo [options] script <cik> [<rid>] --file=<script-file>
     exo [options] script <script-file> <cik> ...
@@ -894,6 +896,25 @@ class ExoRPC():
         display_data = []
 
 
+        def compare(valueA, comp, valueB):
+            if verbose:
+                print valueA, comp, valueB
+            if comp == "^":
+                return valueA != valueB
+            elif comp == ">":
+                try:
+                    return float(valueA) > float(valueB)
+                except:
+                    return False
+            elif comp == "<":
+                try:
+                    return float(valueA) < float(valueB)
+                except:
+                    return False
+            elif comp == "=":
+                return valueA == valueB
+            return False
+
         def match_node(node, level=0, parents=None):
             if not parents:
                 parents = []
@@ -911,10 +932,13 @@ class ExoRPC():
                     if k in shows:
                         #print "Show: ", k, v
                         results['__shows'].append((k,v, level, parents))
-                    if k in matchers and matchers.get(k)[0] == v:
-                        if verbose:
-                            print "Match: ", k, v
-                        results['__matches'].append( (k,v,level, parents))
+                    if k in matchers:
+                        value, comparison = matchers.get(k)
+                        result = compare(v, comparison, value)
+                        if result:
+                            if verbose:
+                                print "Match: ", k, v
+                            results['__matches'].append( (k,v,level, parents))
                     if k == "meta":
                         try:
                             jv = json.loads(v)
