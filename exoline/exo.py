@@ -876,7 +876,7 @@ class ExoRPC():
         if "cik" in shows:
             shows = shows.replace("cik", "key")
         if verbose:
-            print "Matching %s and showing %s" %(matches, shows)
+            print("Matching {0} and showing {1}".format(matches, shows))
         matchers = {}
         for matchval in matches.split(","):
             data = re.findall(r"(.*?)([=<>^])(.*)", matchval)
@@ -886,8 +886,8 @@ class ExoRPC():
 
         shows = [s.strip() for s in shows.split(",")]
         if verbose:
-            print "Showing: ", shows
-            print "Matching: ", matchers
+            print("Showing: {0}".format(shows))
+            print("Matching: {0}".format(matchers))
 
         data = self._infotree_fast(cik)
 
@@ -913,7 +913,7 @@ class ExoRPC():
                         results['__shows'].append((k,v, level, parents))
                     if k in matchers and matchers.get(k)[0] == v:
                         if verbose:
-                            print "Match: ", k, v
+                            print("Match: {0} {1}".format(k, v))
                         results['__matches'].append( (k,v,level, parents))
                     if k == "meta":
                         try:
@@ -927,8 +927,7 @@ class ExoRPC():
 
                         except:
                             if verbose:
-                                print "Bad meta: ", v
-                            pass
+                                print("Bad meta: {0}".format(v))
 
                 children = node.get('children', [])
                 for child in children:
@@ -959,7 +958,7 @@ class ExoRPC():
                     if e[0] == show:
                         out.append(str(e[1]))
             output.append("\t".join(out))
-        print "\n".join(output)
+        print("\n".join(output))
 
 
     def _combinereads(self, reads, sort):
