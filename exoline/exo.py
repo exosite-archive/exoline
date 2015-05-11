@@ -1668,8 +1668,9 @@ class ExoRPC():
             for t in types:
                 for rid, info in listing_shares[t].items():
                     info['listing_option'] = 'activated'
-                    assert(rid not in listing[t])
-                    listing[t][rid] = info
+                    # skip any shares that are in the same listing
+                    if rid not in listing[t]:
+                        listing[t][rid] = info
         except pyonep.exceptions.OnePlatformException:
             self._print_tree_line(
                 spacer +
