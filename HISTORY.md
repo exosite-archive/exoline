@@ -1,12 +1,21 @@
 History
 =======
 
+0.9.15 (2015-05-11)
+-------------------
+
+- find command (beta)
+- script --version string to store version in meta
+- fix assertion in tree/twee when resource and its
+  share have the same parent. In this case, only show
+  the original.
+
 0.9.14 (2015-05-01)
 -------------------
 
 - add --follow option for attractive script logs
 - warn if a script is >16k
-- warn that script will not be restarted if script was unchanged
+- warn that script will not be restarted if code was unchanged
 
 0.9.13 (2015-04-29)
 -------------------
