@@ -1422,7 +1422,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # at a time, confirm report is correct, then confirm passing --create
         # resolves it.
 
-        # text --example script
+        # test --example script
         r = rpc('drop', cik, '--all-children')
         self.ok(r, 'drop children from test client')
         r = rpc('spec', '--example')
@@ -1503,6 +1503,42 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'wrote to source')
         r = rpc('read', cik, 'destination', '--format=raw')
         self.ok(r, 'read subscribed value', match='ATEST')
+
+    @attr('spec')
+    def spec_datarule_test(self):
+        '''Test spec with datarule'''
+        cik = self.client.cik()
+        spec = basedir + '/files/spec_datarule.yaml'
+        r = rpc('spec', cik, spec, '--create')
+        self.ok(r, 'create datarule based on spec')
+
+        r = rpc('write', cik, 'temp', '--value=80')
+        self.ok(r, 'wrote low temp')
+        r = rpc('read', cik, 'highTemp', '--format=raw')
+        self.ok(r, 'read subscribed value', match='')
+
+        r = rpc('write', cik, 'temp', '--value=81')
+        self.ok(r, 'wrote high temp')
+        r = rpc('read', cik, 'highTemp', '--format=raw')
+        self.ok(r, 'read subscribed value', match='1.0')
+
+    @attr('spec')
+    def spec_dispatch_test(self):
+        '''Test spec with dispatch'''
+        cik = self.client.cik()
+        spec = basedir + '/files/spec_dispatch.yaml'
+        r = rpc('spec', cik, spec, '--create')
+        self.ok(r, 'create dispatch based on spec')
+
+        r = rpc('write', cik, 'humidity', '--value=99')
+        self.ok(r, 'wrote humidity')
+        r = rpc('read', cik, 'notify', '--format=raw')
+        self.ok(r, 'read subscribed value', match='')
+
+        r = rpc('write', cik, 'temp', '--value=79')
+        self.ok(r, 'wrote temp')
+        r = rpc('read', cik, 'notify', '--format=raw')
+        self.ok(r, 'read subscribed value', match='.+')
 
     @attr('spec')
     def spec_preprocess_test(self):

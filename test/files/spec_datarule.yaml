@@ -1,0 +1,15 @@
+dataports:
+    - alias: temp 
+      format: float
+
+datarules:
+    - alias: highTemp
+      format: float
+      subscribe: temp
+      rule: {
+        "simple": {
+          "comparison": "gt",
+          "constant": 80,
+          "repeat": true
+        }
+      }

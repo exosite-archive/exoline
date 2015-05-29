@@ -1,0 +1,11 @@
+dataports:
+    - alias: temp 
+      format: float
+    - alias: humidity
+      format: float
+
+dispatches:
+    - alias: notify
+      subscribe: temp
+      method: http_get
+      recipient: https://portals.exosite.com/exoline404test

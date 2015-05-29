@@ -44,7 +44,13 @@ import requests
 import six
 from six import iteritems
 
-TYPES = ['dataport', 'client', 'script']
+TYPES = ['dataport', 'client', 'script', 'datarule', 'dispatch']
+
+def plural(typ):
+    if typ == 'dispatch':
+        return 'dispatches'
+    else:
+        return typ + 's'
 
 class Spec401Exception(BaseException):
     # Used when a 401 is caught during a spec
@@ -102,7 +108,7 @@ dataports:
     - alias: place
       # An description of the dataport.
       description: 'This is a place I have been'
-      # Dataport are private by default,
+      # Dataports are not public by default,
       # but if you want to share one with the world
       public: true
 
@@ -145,6 +151,32 @@ scripts:
       # written to each script datarule.
       #
       alias: convert<% id %>.lua
+
+# list of dispatches that must exist
+dispatches:
+    - alias: myDispatch
+      # email | http_get | http_post | http_put | sms | xmpp
+      method: email
+      recipient: support@exosite.com
+      message: hello from Exoline spec example!
+      subject: hello!
+      # may be an RID or alias
+      subscribe: mystring
+
+# list of simple datarules that must exist.
+# scripts may go here too, but it's better to
+# to put them under scripts (above)
+datarules:
+    - alias: highTemp
+      format: float
+      subscribe: temp
+      rule: {
+        "simple": {
+          "comparison": "gt",
+          "constant": 80,
+          "repeat": true
+        }
+      }
 '''
             if not six.PY3:
                 s = s.encode('utf-8')
@@ -186,9 +218,9 @@ scripts:
         def check_spec(spec):
             msgs = []
             for typ in TYPES:
-                if typ in spec and typ + 's' not in spec:
+                if typ in spec and plural(typ) not in spec:
                     msgs.append('found "{0}"... did you mean "{1}"?'.format(typ, typ + 's'))
-            required = [t + 's' for t in TYPES]
+            required = [plural(t) for t in TYPES]
             if not any([k in spec for k in required]):
                 msgs.append('spec should have one of these, but none were found: ' + ', '.join(required))
             for dp in spec.get('dataports', []):
@@ -213,6 +245,246 @@ scripts:
             check_spec(spec)
             return
 
+        reid = re.compile('<% *id *%>')
+        def infoval(input_cik, alias):
+            '''Get info and latest value for a resource'''
+            return rpc._exomult(
+                input_cik,
+                [['info', {'alias': alias}, {'description': True, 'basic': True}],
+                ['read', {'alias': alias}, {'limit': 1}]])
+
+        def check_or_create_common(auth, res, info, alias, aliases):
+            if info['basic']['type'] != typ:
+                raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
+
+            if 'public' in res:
+                res_pub = res['public']
+                desc = info['description']
+                if desc['public'] != res_pub:
+                    if create:
+                        new_desc = desc.copy()
+                        new_desc['public'] = res_pub
+                        rpc.update(auth, {'alias': alias}, new_desc)
+                    else:
+                        sys.stdout.write('spec expects public for {0} to be {1}, but it is not.\n'.format(alias, res_pub))
+                        print(json.dumps(res))
+
+            if 'subscribe' in res:
+                # Alias *must* be local to this client
+                resSub = res['subscribe']
+                # Lookup alias/name if need be
+                if resSub in aliases:
+                    resSub = aliases[resSub]
+                desc = info['description']
+                if desc['subscribe'] != resSub:
+                    if create:
+                        new_desc = desc.copy()
+                        new_desc['subscribe'] = resSub
+                        rpc.update(auth, {'alias': alias}, new_desc)
+                    else:
+                        sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.\n'.format(alias, resSub))
+
+            if 'preprocess' in res:
+                def fromAliases(pair):
+                    if pair[1] in aliases:
+                        return [pair[0], aliases[pair[1]]]
+                    else:
+                        return pair
+                resPrep = [fromAliases(x) for x in res['preprocess']]
+                preprocess = info['description']['preprocess']
+                if create:
+                    new_desc = info['description'].copy()
+                    new_desc['preprocess'] = resPrep
+                    rpc.update(auth, {'alias': alias}, new_desc)
+                else:
+                    if preprocess is None or len(preprocess) == 0:
+                        sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are missing.\n'.format(alias, resPrep))
+                    elif preprocess != resPrep:
+                        sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.\n'.format(alias, resPrep, preprocess))
+
+            if 'retention' in res:
+                resRet = {}
+                if 'count' in res['retention']:
+                    resRet['count'] = res['retention']['count']
+                if 'duration' in res['retention']:
+                    resRet['duration'] = res['retention']['duration']
+                retention = info['description']['retention']
+                if create:
+                    new_desc = info['description'].copy()
+                    new_desc['retention'] = resRet
+                    rpc.update(auth, {'alias': alias}, new_desc)
+                elif retention != resRet:
+                    sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.\n'.format(alias, resRet, retention))
+
+        def get_format(res, default='string'):
+            format = res['format'] if 'format' in res else default
+            pieces = format.split('/')
+            if len(pieces) > 1:
+                format = pieces[0]
+                format_content = pieces[1]
+            else:
+                format_content = None
+            return format, format_content
+
+        def add_desc(key, res, desc, required=False):
+            '''add key from spec resource to a 1P resource description'''
+            if key in res:
+                desc[key] = res[key]
+            else:
+                if required:
+                    raise ExoException('{0} in spec is missing required property {1}.'.format(alias, key))
+
+        def create_resource(auth, typ, desc, alias, msg=''):
+            name = res['name'] if 'name' in res else alias
+            print('Creating {0} with name: {1}, alias: {2}{3}'.format(
+                typ, name, alias, msg))
+            rid = rpc.create(auth, typ, desc, name=name)
+            rpc.map(auth, rid, alias)
+            info, val = infoval(auth, alias)
+            aliases[alias] = rid
+            return info, val
+
+        def check_or_create_datarule(auth, res, info, val, alias, aliases):
+            format, format_content = get_format(res, 'float')
+            if not exists and create:
+                desc = {'format': format}
+                desc['retention'] = {'count': 'infinity', 'duration': 'infinity'}
+                add_desc('rule', res, desc, required=True)
+                info, val = create_resource(
+                    auth,
+                    'datarule',
+                    desc,
+                    alias,
+                    msg=', format: {0}, rule: {1}'.format(desc['format'], desc['rule']))
+
+            check_or_create_common(auth, res, info, alias, aliases)
+
+        def check_or_create_dataport(auth, res, info, val, alias, aliases):
+            format, format_content = get_format(res, 'string')
+            if not exists and create:
+                desc = {'format': format}
+                desc['retention'] = {'count': 'infinity', 'duration': 'infinity'}
+                info, val = create_resource(
+                    auth,
+                    'dataport',
+                    desc,
+                    alias,
+                    msg=', format: {0}'.format(format))
+
+            # check format
+            if format != info['description']['format']:
+                raise ExoException(
+                    '{0} is a {1} but should be a {2}.'.format(
+                    alias, info['description']['format'], format))
+
+            # check initial value
+            if 'initial' in res and len(val) == 0:
+                if create:
+                    initialValue = template(res['initial'])
+                    print('Writing initial value {0}'.format(initialValue))
+                    rpc.write(auth, {'alias': alias}, initialValue)
+                    # update values being validated
+                    info, val = infoval(auth, alias)
+                else:
+                    print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
+
+            # check format content (e.g. json)
+            if format_content == 'json':
+                if format != 'string':
+                    raise ExoException(
+                        'Invalid spec for {0}. json content type only applies to string, not {1}.'.format(alias, format));
+                if len(val) == 0:
+                    print('Spec requires {0} be in JSON format, but it is empty.'.format(alias))
+                else:
+                    obj = None
+                    try:
+                        obj = json.loads(val[0][1])
+                    except:
+                        print('Spec requires {0} be in JSON format, but it does not parse as JSON. Value: {1}'.format(
+                            alias,
+                            val[0][1]))
+
+                    if obj is not None and 'jsonschema' in res:
+                        schema = res['jsonschema']
+                        if isinstance(schema, six.string_types):
+                            schema = json.loads(open(schema).read())
+                        try:
+                            jsonschema.validate(obj, schema)
+                        except Exception as ex:
+                            print("{0} failed jsonschema validation.".format(alias))
+                            print(ex)
+
+            elif format_content is not None:
+                raise ExoException(
+                    'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))
+
+            # check unit
+            if 'unit' in res or 'description' in res:
+                meta_string = info['description']['meta']
+                try:
+                    meta = json.loads(meta_string)
+                except:
+                    meta = None
+
+                def bad_desc_msg(s):
+                    desc='""'
+                    if 'description' in res:
+                        desc = res['description']
+                    sys.stdout.write('spec expects description for {0} to be {1}{2}\n'.format(alias, desc, s))
+                def bad_unit_msg(s):
+                    unit=''
+                    if 'unit' in res:
+                        unit = res['unit']
+                    sys.stdout.write('spec expects unit for {0} to be {1}{2}\n'.format(alias, unit, s))
+
+                if create:
+                    if meta is None:
+                        meta = {'datasource':{'description':'','unit':''}}
+                    if 'datasource' not in meta:
+                        meta['datasource'] = {'description':'','unit':''}
+                    if 'unit' in res:
+                        meta['datasource']['unit'] = res['unit']
+                    if 'description:' in res:
+                        meta['datasource']['description'] = res['description']
+
+                    new_desc = info['description'].copy()
+                    new_desc['meta'] = json.dumps(meta)
+                    rpc.update(auth, {'alias': alias}, new_desc)
+
+                else:
+                    if meta is None:
+                        sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.\n')
+                    elif 'datasource' not in meta:
+                        sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.\n')
+                    elif 'unit' not in meta['datasource'] and 'unit' in res:
+                        bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.\n')
+                    elif 'description' not in meta['datasource'] and 'description' in res:
+                        bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.\n')
+                    elif 'unit' in res and meta['datasource']['unit'] != res['unit']:
+                        bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.\n'.format(meta['datasource']['unit']))
+                    elif 'description' in res and meta['datasource']['description'] != res['description']:
+                        bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.\n'.format(meta['datasource']['description']))
+
+            check_or_create_common(auth, res, info, alias, aliases)
+
+        def check_or_create_dispatch(auth, res, info, alias, aliases):
+            if not exists and create:
+                desc = {}
+                add_desc('method', res, desc, required=True)
+                add_desc('recipient', res, desc, required=True)
+                add_desc('subject', res, desc)
+                add_desc('message', res, desc)
+                desc['retention'] = {'count': 'infinity', 'duration': 'infinity'}
+                info, val = create_resource(
+                    auth,
+                    'dispatch',
+                    desc,
+                    alias,
+                    msg=', method: {0}, recipient: {1}'.format(desc['method'], desc['recipient']))
+
+            check_or_create_common(auth, res, info, alias, aliases)
+
+
         input_cik = options['cik']
         rpc = options['rpc']
         asrid = args['--asrid']
@@ -235,7 +507,7 @@ scripts:
                                               'description': True,
                                               'aliases': True}],
                      ['listing', ['dataport', 'datarule', 'dispatch'], {}, {'alias': ''}]])
-                rids = listing['dataport'] + listing['datarule']
+                rids = listing['dataport'] + listing['datarule'] + listing['dispatch']
 
                 if len(rids) > 0:
                     child_info = rpc._exomult(input_cik, [['info', rid, {'basic': True, 'description': True}] for rid in rids])
@@ -247,13 +519,12 @@ scripts:
                         if rid not in info['aliases']:
                             skip_msg('It needs an alias.')
                             continue
-                        typ = myinfo['basic']['type']
-                        if typ == 'dataport':
-                            dp = {'name': myinfo['description']['name'],
-                                  'alias': info['aliases'][rid][0],
-                                  'format': myinfo['description']['format']
-                                  }
 
+                        # adds properties common to dataports and dispatches:
+                        # preprocess, subscribe, retention, meta, public
+                        def add_common_things(res):
+                            res['name'] = myinfo['description']['name']
+                            res['alias'] = info['aliases'][rid][0]
                             preprocess = myinfo['description']['preprocess']
                             if preprocess is not None and len(preprocess) > 0:
                                 def toAlias(pair):
@@ -261,15 +532,15 @@ scripts:
                                         return [pair[0], info['aliases'][pair[1]][0]]
                                     else:
                                         return pair
-                                dp['preprocess'] = [toAlias(x) for x in preprocess]
+                                res['preprocess'] = [toAlias(x) for x in preprocess]
 
 
                             subscribe = myinfo['description']['subscribe']
                             if subscribe is not None and subscribe is not "":
                                 if not asrid and subscribe in info['aliases']:
-                                    dp['subscribe'] = info['aliases'][subscribe][0]
+                                    res['subscribe'] = info['aliases'][subscribe][0]
                                 else:
-                                    dp['subscribe'] = subscribe
+                                    res['subscribe'] = subscribe
 
                             retention = myinfo['description']['retention']
                             if retention is not None:
@@ -281,41 +552,60 @@ scripts:
                                     if duration == 'infinity':
                                         del retention['duration']
                                     if len(retention) > 0:
-                                        dp['retention'] = retention
+                                        res['retention'] = retention
 
                             meta_string = myinfo['description']['meta']
                             try:
                                 meta = json.loads(meta_string)
                                 unit = meta['datasource']['unit']
                                 if len(unit) > 0:
-                                    dp['unit'] = unit
+                                    res['unit'] = unit
                                 desc = meta['datasource']['description']
                                 if len(desc) > 0:
-                                    dp['description'] = desc
+                                    res['description'] = desc
                             except:
                                 # assume unit is not present in metadata
                                 pass
-                            spec.setdefault('dataports', []).append(dp)
 
                             public = myinfo['description']['public']
                             if public is not None and public:
-                                dp['public'] = public
+                                res['public'] = public
 
+
+                        typ = myinfo['basic']['type']
+                        if typ == 'dataport':
+                            res = {
+                                'format': myinfo['description']['format']
+                            }
+                            add_common_things(res)
+                            spec.setdefault('dataports', []).append(res)
 
                         elif typ == 'datarule':
                             desc = myinfo['description']
                             is_script = desc['format'] == 'string' and 'rule' in desc and 'script' in desc['rule']
-                            if not is_script:
-                                skip_msg('Datarules that are not scripts are not supported.')
-                                continue
-                            filename = os.path.join(script_dir, info['aliases'][rid][0])
-                            spec.setdefault('scripts', []).append({'file': filename})
-                            with open(filename, 'w') as f:
-                                print('Writing {0}...'.format(filename))
-                                f.write(desc['rule']['script'])
+                            if is_script:
+                                filename = os.path.join(script_dir, info['aliases'][rid][0])
+                                spec.setdefault('scripts', []).append({'file': filename})
+                                with open(filename, 'w') as f:
+                                    print('Writing {0}...'.format(filename))
+                                    f.write(desc['rule']['script'])
+                            else:
+                                res = {
+                                    'rule': desc['rule']
+                                }
+                                add_common_things(res)
+                                spec.setdefault('datarules', []).append(res)
+
                         elif typ == 'dispatch':
-                            skip_msg('dispatch type is not yet supported by spec command.')
-                            continue
+                            desc = myinfo['description']
+                            res = {
+                                'method': desc['method'],
+                                'message': desc['message'],
+                                'recipient': desc['recipient'],
+                                'subject': desc['subject']
+                            }
+                            add_common_things(res)
+                            spec.setdefault('dispatches', []).append(res)
 
                 with open(spec_file, 'w') as f:
                     print('Writing {0}...'.format(spec_file))
@@ -376,14 +666,6 @@ scripts:
                     ids = ids.split(',')
                     for id, alias in [(id, reid.sub(id, alias_template)) for id in ids]:
                         yield alias, {'id': id}
-
-            reid = re.compile('<% *id *%>')
-            def infoval(input_cik, alias):
-                '''Get info and latest value for a resource'''
-                return rpc._exomult(
-                    input_cik,
-                    [['info', {'alias': alias}, {'description': True, 'basic': True}],
-                    ['read', {'alias': alias}, {'limit': 1}]])
 
             spec, base_url = load_spec(args)
             check_spec(spec)
@@ -508,13 +790,15 @@ scripts:
                         pass
 
                     for typ in TYPES:
-                        for res in spec.get(typ + 's', []):
+                        for res in spec.get(plural(typ), []):
                             for alias, resource_data in generate_aliases_and_data(res, args):
                                 # TODO: handle nonexistence
                                 exists = True
                                 try:
                                     info, val = infoval(auth, alias)
                                 except rpc.RPCException as e:
+                                    info = None
+                                    val = None
                                     exists = False
                                     print('{0} not found.'.format(alias))
                                     if not create:
@@ -540,186 +824,11 @@ scripts:
                                             print('Client creation is not yet supported')
                                         continue
                                 elif typ == 'dataport':
-                                    format = res['format'] if 'format' in res else 'string'
-                                    pieces = format.split('/')
-                                    if len(pieces) > 1:
-                                        format = pieces[0]
-                                        format_content = pieces[1]
-                                    else:
-                                        format_content = None
-                                    name = res['name'] if 'name' in res else alias
-                                    if not exists and create:
-                                        print('Creating dataport with name: {0}, alias: {1}, format: {2}'.format(
-                                            name, alias, format))
-                                        rid = rpc.create_dataport(auth, format, name=name)
-                                        rpc.map(auth, rid, alias)
-                                        info, val = infoval(auth, alias)
-                                        aliases[alias] = rid
-
-                                    # check type
-                                    if info['basic']['type'] != typ:
-                                        raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
-
-                                    # check format
-                                    if format != info['description']['format']:
-                                        raise ExoException(
-                                            '{0} is a {1} but should be a {2}.'.format(
-                                            alias, info['description']['format'], format))
-
-                                    # check initial value
-                                    if 'initial' in res and len(val) == 0:
-                                        if create:
-                                            initialValue = template(res['initial'])
-                                            print('Writing initial value {0}'.format(initialValue))
-                                            rpc.write(auth, {'alias': alias}, initialValue)
-                                            # update values being validated
-                                            info, val = infoval(auth, alias)
-                                        else:
-                                            print('Required initial value not found in {0}. Pass --create to write initial value.'.format(alias))
-
-                                    # check format content (e.g. json)
-                                    if format_content == 'json':
-                                        if format != 'string':
-                                            raise ExoException(
-                                                'Invalid spec for {0}. json content type only applies to string, not {1}.'.format(alias, format));
-                                        if len(val) == 0:
-                                            print('Spec requires {0} be in JSON format, but it is empty.'.format(alias))
-                                        else:
-                                            obj = None
-                                            try:
-                                                obj = json.loads(val[0][1])
-                                            except:
-                                                print('Spec requires {0} be in JSON format, but it does not parse as JSON. Value: {1}'.format(
-                                                    alias,
-                                                    val[0][1]))
-
-                                            if obj is not None and 'jsonschema' in res:
-                                                schema = res['jsonschema']
-                                                if isinstance(schema, six.string_types):
-                                                    schema = json.loads(open(schema).read())
-                                                try:
-                                                    jsonschema.validate(obj, schema)
-                                                except Exception as ex:
-                                                    print("{0} failed jsonschema validation.".format(alias))
-                                                    print(ex)
-
-                                    elif format_content is not None:
-                                        raise ExoException(
-                                            'Invalid spec for {0}. Unrecognized format content {1}'.format(alias, format_content))
-
-                                    # check unit
-                                    if 'unit' in res or 'description' in res:
-                                        meta_string = info['description']['meta']
-                                        try:
-                                            meta = json.loads(meta_string)
-                                        except:
-                                            meta = None
-
-                                        def bad_desc_msg(s):
-                                            desc='""'
-                                            if 'description' in res:
-                                                desc = res['description']
-                                            sys.stdout.write('spec expects description for {0} to be {1}{2}\n'.format(alias, desc, s))
-                                        def bad_unit_msg(s):
-                                            unit=''
-                                            if 'unit' in res:
-                                                unit = res['unit']
-                                            sys.stdout.write('spec expects unit for {0} to be {1}{2}\n'.format(alias, unit, s))
-
-                                        if create:
-                                            if meta is None:
-                                                meta = {'datasource':{'description':'','unit':''}}
-                                            if 'datasource' not in meta:
-                                                meta['datasource'] = {'description':'','unit':''}
-                                            if 'unit' in res:
-                                                meta['datasource']['unit'] = res['unit']
-                                            if 'description:' in res:
-                                                meta['datasource']['description'] = res['description']
-
-                                            new_desc = info['description'].copy()
-                                            new_desc['meta'] = json.dumps(meta)
-                                            rpc.update(auth, {'alias': alias}, new_desc)
-
-                                        else:
-                                            if meta is None:
-                                                sys.stdout.write('spec expects metadata but found has no metadata at all. Pass --create to write metadata.\n')
-                                            elif 'datasource' not in meta:
-                                                sys.stdout.write('spec expects datasource in metadata but found its not there. Pass --create to write metadata.\n')
-                                            elif 'unit' not in meta['datasource'] and 'unit' in res:
-                                                bad_unit_msg(', but no unit is specified in metadata. Pass --create to set unit.\n')
-                                            elif 'description' not in meta['datasource'] and 'description' in res:
-                                                bad_desc_msg(', but no description is specified in metadata. Pass --create to set description.\n')
-                                            elif 'unit' in res and meta['datasource']['unit'] != res['unit']:
-                                                bad_unit_msg(', but metadata specifies unit of {0}. Pass --create to update unit.\n'.format(meta['datasource']['unit']))
-                                            elif 'description' in res and meta['datasource']['description'] != res['description']:
-                                                bad_desc_msg(', but metadata specifies description of {0}. Pass --create to update description.\n'.format(meta['datasource']['description']))
-
-
-                                    if 'public' in res:
-                                        resPub = res['public']
-                                        public = info['description']['public']
-                                        if public is None:
-                                            if create:
-                                                new_desc = info['description'].copy()
-                                                new_desc['public'] = respub
-                                                rpc.update(auth, {'alias': alias}, new_desc)
-                                            else:
-                                                sys.stdout.write('spec expects public for {0} to be {1}, but they are not.\n'.format(alias, resPub))
-                                        elif public != resPub:
-                                            sys.stdout.write('spec expects public for {0} to be {1}, but they are not.\n'.format(alias, resPub))
-
-
-                                    if 'subscribe' in res:
-                                        # Alias *must* be local to this CIK
-                                        resSub = res['subscribe']
-                                        # Lookup alias/name if need be
-                                        if resSub in aliases:
-                                            resSub = aliases[resSub]
-                                        subscribe = info['description']['subscribe']
-                                        if subscribe is None:
-                                            if create:
-                                                new_desc = info['description'].copy()
-                                                new_desc['subscribe'] = resSub
-                                                rpc.update(auth, {'alias': alias}, new_desc)
-                                            else:
-                                                sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.\n'.format(alias, resSub))
-                                        elif subscribe != resSub:
-                                            sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.\n'.format(alias, resSub))
-
-                                    if 'preprocess' in res:
-                                        def fromAliases(pair):
-                                            if pair[1] in aliases:
-                                                return [pair[0], aliases[pair[1]]]
-                                            else:
-                                                return pair
-                                        resPrep = [fromAliases(x) for x in res['preprocess']]
-                                        preprocess = info['description']['preprocess']
-                                        if create:
-                                            new_desc = info['description'].copy()
-                                            new_desc['preprocess'] = resPrep
-                                            rpc.update(auth, {'alias': alias}, new_desc)
-                                        else:
-                                            if preprocess is None or len(preprocess) == 0:
-                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are missing.\n'.format(alias, resPrep))
-                                            elif preprocess != resPrep:
-                                                sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are {2}.\n'.format(alias, resPrep, preprocess))
-
-                                    if 'retention' in res:
-                                        resRet = {}
-                                        if 'count' in res['retention']:
-                                            resRet['count'] = res['retention']['count']
-                                        if 'duration' in res['retention']:
-                                            resRet['duration'] = res['retention']['duration']
-
-                                        retention = info['description']['retention']
-                                        if create:
-                                            new_desc = info['description'].copy()
-                                            new_desc['retention'] = resRet
-                                            rpc.update(auth, {'alias': alias}, new_desc)
-                                        elif retention != resRet:
-                                            sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.\n'.format(alias, resRet, retention))
-
-
+                                    check_or_create_dataport(auth, res, info, val, alias, aliases)
+                                elif typ == 'dispatch':
+                                    check_or_create_dispatch(auth, res, info, alias, aliases)
+                                elif typ == 'datarule':
+                                    check_or_create_datarule(auth, res, info, val, alias, aliases)
                                 elif typ == 'script':
                                     if 'file' not in res and 'code' not in res:
                                         raise ExoException('{0} is a script, so it needs a "file" or "code" key'.format(alias))
