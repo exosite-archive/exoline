@@ -357,6 +357,26 @@ datarules:
                     alias,
                     msg=', format: {0}, rule: {1}'.format(desc['format'], desc['rule']))
 
+            # check format
+            if format != info['description']['format']:
+                raise ExoException(
+                    '{0} is a {1} but should be a {2}.'.format(
+                    alias, info['description']['format'], format))
+
+            # check rule
+            infoRule = json.dumps(info['description']['rule'], sort_keys=True)
+            specRule = json.dumps(res['rule'], sort_keys=True)
+            if infoRule != specRule:
+                if create:
+                    new_desc = info['description'].copy()
+                    new_desc['rule'] = res['rule']
+                    rpc.update(auth, {'alias': alias}, new_desc)
+                    sys.stdout.write('updated rule for {0}\n'.format(alias))
+                else:
+                    sys.stdout.write(
+                        'spec expects rule for {0} to be:\n{1}\n...but it is:\n{2}\n'.format(
+                        alias, specRule, infoRule))
+
             check_or_create_common(auth, res, info, alias, aliases)
 
         def check_or_create_dataport(auth, res, info, val, alias, aliases):
@@ -481,6 +501,29 @@ datarules:
                     desc,
                     alias,
                     msg=', method: {0}, recipient: {1}'.format(desc['method'], desc['recipient']))
+
+            # check dispatch-specific things
+            def check_desc(key, res, desc):
+                '''check a specific key and return whether an update is required'''
+                if key in res and desc[key] != res[key]:
+                    if create:
+                        desc[key] = res[key]
+                        return True
+                    else:
+                        sys.stdout.write(
+                            'spec expects {0} for {1} to be {2} but it is {3}\n'.format(
+                            key, alias, res[key], desc[key]))
+                return False
+
+            desc = info['description']
+            need_update = False
+            need_update = check_desc('method', res, desc) or need_update
+            need_update = check_desc('recipient', res, desc) or need_update
+            need_update = check_desc('subject', res, desc) or need_update
+            need_update = check_desc('message', res, desc) or need_update
+            if need_update:
+                rpc.update(auth, {'alias': alias}, desc)
+                sys.stdout.write('updated {0} to {1}\n'.format(alias, json.dumps(desc, sort_keys=True)))
 
             check_or_create_common(auth, res, info, alias, aliases)
 

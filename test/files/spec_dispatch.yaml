@@ -7,5 +7,7 @@ dataports:
 dispatches:
     - alias: notify
       subscribe: temp
-      method: http_get
-      recipient: https://portals.exosite.com/exoline404test
+      method: email
+      recipient: danweaver+exolinetest@exosite.com
+      subject: hello from Exoline test
+      message: hi

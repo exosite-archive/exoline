@@ -1522,6 +1522,24 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', cik, 'highTemp', '--format=raw')
         self.ok(r, 'read subscribed value', match='1.0')
 
+        # update things to be out of spec
+        new_desc = {
+            'rule': {"timeout":{"timeout":100,"repeat":True}}
+        }
+        r = rpc('update', cik, 'highTemp', '-',
+                stdin=json.dumps(new_desc))
+        self.ok(r, 'update client to be out of spec', match='')
+        r = rpc('spec', cik, spec)
+        self.ok(r, 'check spec again now that it\'s broken')
+        self.assertTrue('rule' in r.stdout)
+        r = rpc('spec', cik, spec, '--create')
+        self.ok(r, 'update client to be back in spec')
+        r = rpc('spec', cik, spec)
+        self.ok(r, 'update client to be back in spec')
+        self.assertTrue('rule' not in r.stdout)
+
+
+
     @attr('spec')
     def spec_dispatch_test(self):
         '''Test spec with dispatch'''
@@ -1539,6 +1557,28 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'wrote temp')
         r = rpc('read', cik, 'notify', '--format=raw')
         self.ok(r, 'read subscribed value', match='.+')
+
+        # update things to be out of spec
+        new_desc = {
+            'recipient': 'danweaver+exolinetest2@exosite.com',
+            'subject': 'hello',
+            'message': 'more hello'
+        }
+        r = rpc('update', cik, 'notify', '-',
+                stdin=json.dumps(new_desc))
+        self.ok(r, 'update client to be out of spec', match='')
+        r = rpc('spec', cik, spec)
+        self.ok(r, 'check spec again now that it\'s broken')
+        self.assertTrue('recipient' in r.stdout)
+        self.assertTrue('subject' in r.stdout)
+        self.assertTrue('message' in r.stdout)
+        r = rpc('spec', cik, spec, '--create')
+        self.ok(r, 'update client to be back in spec')
+        r = rpc('spec', cik, spec)
+        self.ok(r, 'update client to be back in spec')
+        self.assertTrue('recipient' not in r.stdout)
+        self.assertTrue('subject' not in r.stdout)
+        self.assertTrue('message' not in r.stdout)
 
     @attr('spec')
     def spec_preprocess_test(self):
