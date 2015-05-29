@@ -1,6 +1,11 @@
 History
 =======
 
+0.9.16 (2015-05-29)
+-------------------
+
+- add spec support for dispatches and datarules
+
 0.9.15 (2015-05-11)
 -------------------
 
