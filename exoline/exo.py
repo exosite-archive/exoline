@@ -477,7 +477,7 @@ if platform.system() != 'Windows':
         plugin_names = [os.path.basename(f)[:-3]
             for f in glob.glob(plugin_path + "/*.py")
             if not os.path.basename(f).startswith('_')]
-
+    
         for module_name in plugin_names:
             try:
                 plugin = importlib.import_module('plugins.' + module_name)
@@ -549,6 +549,7 @@ else:
         p = dump.Plugin()
         plugins.append(p)
         cmd_doc[p.command()] = dump.__doc__
+
 
     except Exception as ex:
         import traceback
@@ -3346,6 +3347,9 @@ def handle_args(cmd, args):
                     except NameError:
                         # no problem
                         pass
+
+                    if cmd == "switches":
+                        options['doc'] = cmd_doc
                     exitcode = plugin.run(cmd, args, options)
                     handled = True
                     break
