@@ -12,7 +12,7 @@ class Plugin():
         return 'keys'
 
     def run(self, cmd, args, options):
-		conf = options['config'].config
-		print(" ".join(map(str, conf.get("keys", {}).keys())))
-		
+        conf = options['config'].config
+        print(" ".join(map(str, conf.get("keys", {}).keys())))
+        
 

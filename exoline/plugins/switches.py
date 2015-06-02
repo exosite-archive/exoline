@@ -12,5 +12,5 @@ class Plugin():
         return 'switches'
 
     def run(self, cmd, args, options):
-		doc=options['doc'].get(args["<args>"][-1], "")
-		print(" ".join(set(r for r in re.findall(r"(--\w+[^= \n()<>])", doc) if r.startswith("-"))))
+        doc=options['doc'].get(args["<args>"][-1], "")
+        print(" ".join(set(r for r in re.findall(r"(--\w+[^= \n()<>])", doc) if r.startswith("-"))))
