@@ -11,7 +11,7 @@ Commands:
 Options:
   --host=<host>          OneP host. Default is $EXO_HOST or m2.exosite.com
   --port=<port>          OneP port. Default is $EXO_PORT or 443
-  -c --config=<file>     Config file [default: ~/.exoline]
+  -c --config=<file>     Config file Default is $EXO_CONFIG or ~/.exoline
   --httptimeout=<sec>    HTTP timeout [default: 60] (default for copy is 480)
   --https                Enable HTTPS (deprecated, HTTPS is default)
   --http                 Disable HTTPS
@@ -3428,6 +3428,8 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
 
 
     global exoconfig
+    if args['--config'] is None:
+        args['--config'] = os.environ.get('EXO_CONFIG', '~/.exoline')
     exoconfig = ExoConfig(args['--config'])
 
     # get command args
