@@ -11,7 +11,7 @@ Commands:
 Options:
   --host=<host>          OneP host. Default is $EXO_HOST or m2.exosite.com
   --port=<port>          OneP port. Default is $EXO_PORT or 443
-  -c --config=<file>     Config file [default: ~/.exoline]
+  -c --config=<file>     Config file Default is $EXO_CONFIG or ~/.exoline
   --httptimeout=<sec>    HTTP timeout [default: 60] (default for copy is 480)
   --https                Enable HTTPS (deprecated, HTTPS is default)
   --http                 Disable HTTPS
@@ -52,6 +52,7 @@ import logging
 from collections import defaultdict
 import copy
 import difflib
+import warnings
 
 import six
 from six import StringIO
@@ -69,6 +70,7 @@ import glob
 
 from docopt import docopt
 from dateutil import parser
+from dotenv import load_dotenv
 import requests
 import yaml
 import importlib
@@ -92,6 +94,7 @@ except:
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
+DEFAULT_CONFIG = '~/.exoline'
 SCRIPT_LIMIT_BYTES = 16 * 1024
 
 PERF_DATA = []
@@ -465,6 +468,10 @@ doc_replace = {
     '{{ helpoption }}': '''    -h --help  Show this screen.''',
 }
 
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    load_dotenv(os.path.join(os.getcwd(), '.env'))
+
 plugins = []
 if platform.system() != 'Windows':
     # load plugins. use timezone because this file may be running
@@ -647,24 +654,32 @@ class ExoConfig:
             return cik
 
     def mingleArguments(self, args):
-        '''This mixes the settings applied from the configfile and the command line.
-        Part of this is making those items availible in both places.
-        Command line always overrides configfile.
+        '''This mixes the settings applied from the configfile, the command line and the ENV.
+        Command line always overrides ENV which always overrides configfile.
         '''
         # This ONLY works with options that take a parameter.
         toMingle = ['host', 'port', 'httptimeout', 'useragent', 'portals', 'vendortoken', 'vendor']
-        # args overrule config.
-        # If not in arg but in config: copy to arg.
+
+        # Precedence: ARGV then ENV then CFG
+
+        # Looks for ENV vars and pull them in, unless in ARGV
+        for arg in toMingle:
+            if args['--'+arg] is None:
+                env = os.getenv('EXO_'+arg.upper())
+                if env is not None:
+                    args['--'+arg] = env
+
+        # Look for CFG vars and pull them in, unless in ARGV
         for arg in toMingle:
             if arg in self.config and args['--'+arg] is None:
                 args['--'+arg] = self.config[arg]
 
-        # copy args to config.
+        # Copy all ARGV vars to CFG for uniform lookups.
         for arg in toMingle:
             self.config[arg] = args['--'+arg]
 
 
-exoconfig = ExoConfig()
+exoconfig = ExoConfig(os.getenv('EXO_CONFIG', DEFAULT_CONFIG))
 
 class ExolineOnepV1(onep.OnepV1):
     '''Subclass that re-adds deprecated commands needed for devices created
@@ -3420,6 +3435,8 @@ def cmd(argv=None, stdin=None, stdout=None, stderr=None):
 
 
     global exoconfig
+    if args['--config'] is None:
+        args['--config'] = os.environ.get('EXO_CONFIG', '~/.exoline')
     exoconfig = ExoConfig(args['--config'])
 
     # get command args
