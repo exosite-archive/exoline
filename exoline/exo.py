@@ -52,6 +52,7 @@ import logging
 from collections import defaultdict
 import copy
 import difflib
+import warnings
 
 import six
 from six import StringIO
@@ -467,7 +468,9 @@ doc_replace = {
     '{{ helpoption }}': '''    -h --help  Show this screen.''',
 }
 
-load_dotenv(os.path.join(osgetcwd(), '.env'))
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    load_dotenv(os.path.join(os.getcwd(), '.env'))
 
 plugins = []
 if platform.system() != 'Windows':
