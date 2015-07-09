@@ -69,6 +69,7 @@ import glob
 
 from docopt import docopt
 from dateutil import parser
+from dotenv import load_dotenv
 import requests
 import yaml
 import importlib
@@ -92,6 +93,7 @@ except:
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
 DEFAULT_PORT_HTTPS = '443'
+DEFAULT_CONFIG = '~/.exoline'
 SCRIPT_LIMIT_BYTES = 16 * 1024
 
 PERF_DATA = []
@@ -465,6 +467,8 @@ doc_replace = {
     '{{ helpoption }}': '''    -h --help  Show this screen.''',
 }
 
+load_dotenv(os.path.join(osgetcwd(), '.env'))
+
 plugins = []
 if platform.system() != 'Windows':
     # load plugins. use timezone because this file may be running
@@ -672,7 +676,7 @@ class ExoConfig:
             self.config[arg] = args['--'+arg]
 
 
-exoconfig = ExoConfig()
+exoconfig = ExoConfig(os.getenv('EXO_CONFIG', DEFAULT_CONFIG))
 
 class ExolineOnepV1(onep.OnepV1):
     '''Subclass that re-adds deprecated commands needed for devices created
