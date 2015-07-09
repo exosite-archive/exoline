@@ -647,19 +647,27 @@ class ExoConfig:
             return cik
 
     def mingleArguments(self, args):
-        '''This mixes the settings applied from the configfile and the command line.
-        Part of this is making those items availible in both places.
-        Command line always overrides configfile.
+        '''This mixes the settings applied from the configfile, the command line and the ENV.
+        Command line always overrides ENV which always overrides configfile.
         '''
         # This ONLY works with options that take a parameter.
         toMingle = ['host', 'port', 'httptimeout', 'useragent', 'portals', 'vendortoken', 'vendor']
-        # args overrule config.
-        # If not in arg but in config: copy to arg.
+
+        # Precedence: ARGV then ENV then CFG
+
+        # Looks for ENV vars and pull them in, unless in ARGV
+        for arg in toMingle:
+            if args['--'+arg] is None:
+                env = os.getenv('EXO_'+arg.upper())
+                if env is not None:
+                    args['--'+arg] = env
+
+        # Look for CFG vars and pull them in, unless in ARGV
         for arg in toMingle:
             if arg in self.config and args['--'+arg] is None:
                 args['--'+arg] = self.config[arg]
 
-        # copy args to config.
+        # Copy all ARGV vars to CFG for uniform lookups.
         for arg in toMingle:
             self.config[arg] = args['--'+arg]
 
