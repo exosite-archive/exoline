@@ -22,7 +22,6 @@ import filecmp
 import tempfile
 import zipfile
 
-import six
 import yaml
 from six import iteritems
 from dateutil import parser
@@ -33,6 +32,7 @@ from exoline import exo
 from exoline.exo import ExolineOnepV1
 from pyonep import provision
 
+NOTEARDOWN = False
 basedir = 'test'
 
 try:
@@ -318,7 +318,8 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
     def tearDown(self):
         '''Clean up any test client'''
-        rpc('drop', self.portalcik, self.client.rid)
+        if not NOTEARDOWN:
+            rpc('drop', self.portalcik, self.client.rid)
 
     @attr('auth')
     def auth_cik_clientid_test(self):
@@ -2110,7 +2111,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         cik = self.client.cik()
         model, modelrid = self._createModel()
 
-        sn = 'sn' + model
+        sn = 'sn.' + model
 
         # add sn
         r = prv('sn', 'add', model, sn)
@@ -2119,6 +2120,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         # list sn
         r = prv('sn', 'list', model)
         self.ok(r, 'list sn', match=sn)
+
+        # sn log
+        r = prv('sn', 'log', model, sn)
+        self.ok(r, 'sn log', match='')
 
         # enable. This creates a clone in a particular portal,
         # associates it with a serial number, and opens a 24
@@ -2379,7 +2384,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             aliases=True,
             comments=True,
             historical=True)
-        sn = '123456'
+        sn = model + '.sn'
         # add sn
         r = prv('sn', 'add', model, sn)
         self.ok(r, 'add sn')
@@ -2512,14 +2517,15 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
 
 def tearDownModule(self):
     '''Do final things'''
-    with open('test/testperf.json', 'w') as f:
-        f.write(json.dumps(exo.PERF_DATA))
-    if 'vendortoken' in config:
-        # delete test models
-        response = pop.model_list(config['vendortoken'])
-        models = response.body.splitlines()
-        for model in models:
-            if model.startswith('exolinetestmodel'):
-                response = pop.model_remove(config['vendortoken'], model)
-    # drop all test clients
-    rpc('drop', config['portalcik'], '--all-children')
+    if not NOTEARDOWN:
+        with open('test/testperf.json', 'w') as f:
+            f.write(json.dumps(exo.PERF_DATA))
+        if 'vendortoken' in config:
+            # delete test models
+            response = pop.model_list(config['vendortoken'])
+            models = response.body.splitlines()
+            for model in models:
+                if model.startswith('exolinetestmodel'):
+                    response = pop.model_remove(config['vendortoken'], model)
+        # drop all test clients
+        rpc('drop', config['portalcik'], '--all-children')
