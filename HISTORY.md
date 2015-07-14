@@ -1,13 +1,14 @@
 History
 =======
 
-0.9.17 (2015-07-12)
+0.9.17 (2015-07-14)
 -------------------
 
 - fix issue where spec would not update public, subscribe, 
   preprocess, retention
 - support [tab completion](https://github.com/exosite/exoline/blob/master/exoline/complete.sh)
 - support .env
+- temporarily drop support for Python 2.6
 
 0.9.16 (2015-05-29)
 -------------------
