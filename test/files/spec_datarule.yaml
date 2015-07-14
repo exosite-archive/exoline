@@ -6,6 +6,9 @@ datarules:
     - alias: highTemp
       format: float
       subscribe: temp
+      retention: 
+        count: 10
+        duration: infinity
       rule: {
         "simple": {
           "comparison": "gt",

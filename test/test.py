@@ -1512,6 +1512,11 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('spec', cik, spec, '--create')
         self.ok(r, 'create datarule based on spec')
 
+        r = rpc('info', cik, 'highTemp', '--include=description')
+        self.ok(r, 'read description')
+        desc = json.loads(r.stdout)
+        self.assertEqual(desc['description']['retention']['count'], 10, 'retention is set correctly')
+
         r = rpc('write', cik, 'temp', '--value=80')
         self.ok(r, 'wrote low temp')
         r = rpc('read', cik, 'highTemp', '--format=raw')
@@ -1534,8 +1539,10 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.assertTrue('rule' in r.stdout)
         r = rpc('spec', cik, spec, '--create')
         self.ok(r, 'update client to be back in spec')
+        print(r.stdout)
         r = rpc('spec', cik, spec)
-        self.ok(r, 'update client to be back in spec')
+        self.ok(r, 'client is back in spec')
+        print(r.stdout)
         self.assertTrue('rule' not in r.stdout)
 
 

@@ -257,14 +257,16 @@ datarules:
             if info['basic']['type'] != typ:
                 raise ExoException('{0} is a {1} but should be a {2}.'.format(alias, info['basic']['type'], typ))
 
+            new_desc = info['description'].copy()
+            need_update = False
+
             if 'public' in res:
                 res_pub = res['public']
                 desc = info['description']
                 if desc['public'] != res_pub:
                     if create:
-                        new_desc = desc.copy()
                         new_desc['public'] = res_pub
-                        rpc.update(auth, {'alias': alias}, new_desc)
+                        need_update = True
                     else:
                         sys.stdout.write('spec expects public for {0} to be {1}, but it is not.\n'.format(alias, res_pub))
                         print(json.dumps(res))
@@ -278,9 +280,8 @@ datarules:
                 desc = info['description']
                 if desc['subscribe'] != resSub:
                     if create:
-                        new_desc = desc.copy()
                         new_desc['subscribe'] = resSub
-                        rpc.update(auth, {'alias': alias}, new_desc)
+                        need_update = True
                     else:
                         sys.stdout.write('spec expects subscribe for {0} to be {1}, but they are not.\n'.format(alias, resSub))
 
@@ -293,9 +294,8 @@ datarules:
                 resPrep = [fromAliases(x) for x in res['preprocess']]
                 preprocess = info['description']['preprocess']
                 if create:
-                    new_desc = info['description'].copy()
                     new_desc['preprocess'] = resPrep
-                    rpc.update(auth, {'alias': alias}, new_desc)
+                    need_update = True
                 else:
                     if preprocess is None or len(preprocess) == 0:
                         sys.stdout.write('spec expects preprocess for {0} to be {1}, but they are missing.\n'.format(alias, resPrep))
@@ -310,11 +310,13 @@ datarules:
                     resRet['duration'] = res['retention']['duration']
                 retention = info['description']['retention']
                 if create:
-                    new_desc = info['description'].copy()
                     new_desc['retention'] = resRet
-                    rpc.update(auth, {'alias': alias}, new_desc)
+                    need_update = True
                 elif retention != resRet:
                     sys.stdout.write('spec expects retention for {0} to be {1}, but they are {2}.\n'.format(alias, resRet, retention))
+
+            if need_update:
+                rpc.update(auth, {'alias': alias}, new_desc)
 
         def get_format(res, default='string'):
             format = res['format'] if 'format' in res else default
@@ -368,9 +370,8 @@ datarules:
             specRule = json.dumps(res['rule'], sort_keys=True)
             if infoRule != specRule:
                 if create:
-                    new_desc = info['description'].copy()
-                    new_desc['rule'] = res['rule']
-                    rpc.update(auth, {'alias': alias}, new_desc)
+                    info['description']['rule'] = res['rule']
+                    rpc.update(auth, {'alias': alias}, info['description'])
                     sys.stdout.write('updated rule for {0}\n'.format(alias))
                 else:
                     sys.stdout.write(
@@ -467,9 +468,8 @@ datarules:
                     if 'description:' in res:
                         meta['datasource']['description'] = res['description']
 
-                    new_desc = info['description'].copy()
-                    new_desc['meta'] = json.dumps(meta)
-                    rpc.update(auth, {'alias': alias}, new_desc)
+                    info['description']['meta'] = json.dumps(meta)
+                    rpc.update(auth, {'alias': alias}, info['description'])
 
                 else:
                     if meta is None:

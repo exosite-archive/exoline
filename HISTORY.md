@@ -1,6 +1,14 @@
 History
 =======
 
+0.9.17 (2015-07-12)
+-------------------
+
+- fix issue where spec would not update public, subscribe, 
+  preprocess, retention
+- support [tab completion](https://github.com/exosite/exoline/blob/master/exoline/complete.sh)
+- support .env
+
 0.9.16 (2015-05-29)
 -------------------
 
