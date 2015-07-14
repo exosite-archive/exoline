@@ -1,7 +1,6 @@
 Exoline
 =======
-
-[![Join the chat at https://gitter.im/exosite/exoline](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/exosite/exoline?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![PyPI version](https://badge.fury.io/py/exoline.svg)](http://badge.fury.io/py/exoline) [![PyPI](https://img.shields.io/pypi/dm/exoline.svg)]() [![Join the chat at https://gitter.im/exosite/exoline](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/exosite/exoline?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Exoline is a command line interface for the Exosite [One Platform](http://exosite.com/products/onep). 
 
