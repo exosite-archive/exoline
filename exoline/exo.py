@@ -70,7 +70,7 @@ import glob
 
 from docopt import docopt
 from dateutil import parser
-from dotenv import load_dotenv
+from dotenv import Dotenv
 import requests
 import yaml
 import importlib
@@ -468,9 +468,10 @@ doc_replace = {
     '{{ helpoption }}': '''    -h --help  Show this screen.''',
 }
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    load_dotenv(os.path.join(os.getcwd(), '.env'))
+dotpath = os.path.join(os.getcwd(), '.env')
+if os.path.exists(dotpath):
+    dotenv=Dotenv(dotpath)
+    os.environ.update(dotenv)
 
 plugins = []
 if platform.system() != 'Windows':
