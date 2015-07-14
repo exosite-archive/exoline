@@ -8,4 +8,4 @@ pytz==2015.2
 tzlocal==1.1.2
 jsonschema==2.3.0
 ordereddict>=1.1
-python-dotenv==0.1.2
+dotenv==0.0.5
