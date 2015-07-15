@@ -654,7 +654,9 @@ Tab completion
 
 There is now tab completion with Exoline. To use it, you must download the complete script with 
 
-`wget -O ~/.exoline_autocomplete https://raw.githubusercontent.com/exosite/exoline/master/exoline/complete.sh`
+```
+wget -O ~/.exoline_autocomplete https://raw.githubusercontent.com/exosite/exoline/master/exoline/complete.sh
+```
 
 Then add the script to your ~/.bash_profile so it works whenever you log in.
 
