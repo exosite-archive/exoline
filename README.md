@@ -732,7 +732,7 @@ myproj $ printf "keys:\n" > ~/.exoline
 myproj $ printf "    mydevice: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> .exoline
 myproj $ printf "vendor: weaver\n" >> .exoline
 myproj $ printf "token: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> .exoline
-myproj $ printf "EXO_CONFIG:.exoline"
+myproj $ printf "EXO_CONFIG=.exoline" > .env
 myproj $ exo read mydevice temperature
 2013-08-18 04:55:36,24.1
 ```
