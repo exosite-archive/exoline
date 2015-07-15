@@ -1,0 +1,6 @@
+device:
+    vendor: myVendor
+    model: myModel
+    limits: 
+        # limit this client to two dataports
+        dataport: 2

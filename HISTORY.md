@@ -1,6 +1,13 @@
 History
 =======
 
+0.9.18 (2015-07-15)
+-------------------
+
+- support client limits in spec (device.limits)
+- re-add support for Python 2.6 (run pip uninstall 
+  python-dotenv to upgrade from 0.9.17)
+
 0.9.17 (2015-07-14)
 -------------------
 

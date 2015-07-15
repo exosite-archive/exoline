@@ -155,9 +155,9 @@ class TestRPC(TestCase):
 
     def _logall(self, r):
         self.l('stdout: {0}\nstdout length:{1}\nstderr: {2}\nstderr length:{3}'.format(abbrev(r.stdout),
-                                                                                       len(r.stdout),
-                                                                                       abbrev(r.stderr),
-                                                                                       len(r.stderr)))
+                                                       len(r.stdout),
+                                                       abbrev(r.stderr),
+                                                       len(r.stderr)))
 
     def _stdre(self, r, msg, search, match, stderr=False):
         std, label = (r.stderr, "stderr") if stderr else (r.stdout, "stdout")
@@ -165,9 +165,10 @@ class TestRPC(TestCase):
             self.assertTrue(
                 re.search(search, std, flags=re.MULTILINE) is not None,
                 msg + ' - failed to find in {1}:\n{2}\nsearch expression:\n{0}\nlengths: {3} (search) vs. {4} ({1})'.format(
-                    search, label, std, len(search), len(std)))
+                      search, label, std, len(search), len(std)))
         if match is not None:
-            self.assertTrue(re.match(match, std, flags=re.MULTILINE) is not None,
+            self.assertTrue(
+                re.match(match, std, flags=re.MULTILINE) is not None,
                 msg + ' - failed to match in {1}:\n{2}\nmatch expression:\n{0}\nlengths: {3} (match) vs. {4} ({1})'.format(
                     match, label, std, len(match), len(std)))
 
@@ -937,26 +938,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', copycik, 'foo', '--format=raw')
         self.ok(r, 'time series data was not copied when --nohistorical was specified', match='')
 
-        # clone dataport
-        #copyrid = clone_helper(cik, 'foo')
-        #self.ok(r, 'copy a dataport')
-        #
-        #r = rpc('diff', cik, copycik)
-        #if sys.version_info < (2, 7):
-        #    self.notok(r, 'diff not supported with Python <2.7')
-        #else:
-        #    self.ok(r, 'diff after cloning dataport in only one of two clones, notices differences', match='.+')
-        #
-        #copyrid = clone_helper(copycik, 'foo')
-        #self.ok(r, 'copy another dataport')
-        #
-        #r = rpc('diff', cik, copycik)
-        #if sys.version_info < (2, 7):
-        #    self.notok(r, 'diff not supported with Python <2.7')
-        #else:
-        #    self.ok(r, 'diff after cloning dataport in two clones, no differences', match='')'''
-        # TODO: test --noaliases
-
     def copy_diff_test(self):
         '''Copy and diff commands'''
         stdports = self._createDataports()
@@ -1014,18 +995,6 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
             self.notok(r, 'diff not supported with Python <2.7')
         else:
             self.ok(r, 'aliases match now', match='')
-
-        #r = rpc('copy', cik, cik, '--cikonly')
-        #self.ok(r, 'copy client into itself', match=self.RE_RID)
-        #innercik = r.stdout
-        #
-        #r = rpc('copy', copycik, copycik, '--cikonly')
-        #self.ok(r, 'copy client copy into itself', match=self.RE_RID)
-        #innercopycik = r.stdout
-        #
-        #r = rpc('lookup', innercopycik, 'string_port_alias')
-        #self.ok(r, 'lookup dataport on inner cik copy', match=self.RE_RID)
-        #innercopydataportrid = r.stdout
 
     def _stddesc(self, name):
         return {'limits': {'client': 'inherit',
@@ -1444,6 +1413,16 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         os.remove(example_spec)
 
     @attr('spec')
+    def spec_no_resources_test(self):
+        '''Test that spec files without resources are supported'''
+        cik = self.client.cik()
+        spec = basedir + '/files/spec_no_resources.yaml'
+        r = rpc('spec', spec, '--check')
+        self.ok(r, 'empty spec file passes check')
+        r = rpc('spec', cik, spec, '--create')
+        self.ok(r, 'empty spec file passes create')
+
+    @attr('spec')
     def spec_check_test(self):
         '''Test that invalid spec files are detected'''
         cik = self.client.cik()
@@ -1457,6 +1436,50 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         test_file('spec_mistyped_key.yaml')
         test_file('spec_invalid_jsonschema.yaml')
         test_file('spec_missing_keys.yaml')
+
+    @attr('spec')
+    def spec_client_limits_test(self):
+        '''Test things in the client description'''
+        cik = self.client.cik()
+
+        # meta fields for test devices
+        metaMyModel = "{\"device\":{\"type\":\"vendor\",\"model\":\"myModel\",\"vendor\":\"myVendor\"}}"
+
+        # Create two devices of myModel type,
+        myDev1_r = Resource(
+            cik,
+            'client',
+            {"name": "myDev1",
+            "meta":metaMyModel})
+
+        # Create devices
+        myDev1 = self._create(myDev1_r)
+
+        spec = basedir + '/files/spec_client_limits.yaml'
+        r = rpc('spec', cik, spec, '--portal')
+        self.ok(r, 'spec fails due to limits', search='limits')
+
+        r = rpc('spec', myDev1.cik(), spec)
+        self.ok(r, 'spec fails at device level due to limits', search='limits')
+
+        r = rpc('spec', myDev1.cik(), spec, '--create')
+        self.notok(r, 'spec should fail to update limits at device level', search='limits')
+
+        r = rpc('spec', cik, spec, '--portal', '--create', '-f')
+        self.ok(r, 'spec should update limits at portal level')
+
+        r = rpc('spec', cik, spec, '--portal')
+        self.ok(r, 'limits were updated')
+
+        r = rpc('spec', myDev1.cik(), spec, '--portal')
+        self.ok(r, 'limits were updated (checking at the device level this time)')
+
+        r = rpc('info', myDev1.cik(), '--include=description')
+        self.ok(r, 'get info for child')
+        self.assertEqual(
+            json.loads(r.stdout)['description']['limits']['dataport'],
+            2, 'limit was set')
+
 
     @attr('spec')
     def spec_url_test(self):

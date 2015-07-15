@@ -73,6 +73,8 @@ class Plugin():
 device:
     model: "myModel"
     vendor: "myVendor"
+    limits:
+        dataport: 10
 
 # list of dataports that must exist
 dataports:
@@ -215,14 +217,11 @@ datarules:
             except yaml.scanner.ScannerError as ex:
                 raise ExoException('Error parsing YAML in {0}\n{1}'.format(args['<spec-yaml>'],ex))
 
-        def check_spec(spec):
+        def check_spec(spec, args):
             msgs = []
             for typ in TYPES:
                 if typ in spec and plural(typ) not in spec:
                     msgs.append('found "{0}"... did you mean "{1}"?'.format(typ, typ + 's'))
-            required = [plural(t) for t in TYPES]
-            if not any([k in spec for k in required]):
-                msgs.append('spec should have one of these, but none were found: ' + ', '.join(required))
             for dp in spec.get('dataports', []):
                 if 'alias' not in dp:
                     msgs.append('dataport is missing alias: {0}'.format(dp))
@@ -242,7 +241,7 @@ datarules:
         if args['--check']:
             # Validate all the jsonschema
             spec, base_url = load_spec(args)
-            check_spec(spec)
+            check_spec(spec, args)
             return
 
         reid = re.compile('<% *id *%>')
@@ -252,6 +251,32 @@ datarules:
                 input_cik,
                 [['info', {'alias': alias}, {'description': True, 'basic': True}],
                 ['read', {'alias': alias}, {'limit': 1}]])
+
+        def check_or_create_description(auth, info, args):
+            if 'device' in spec and 'limits' in spec['device']:
+                speclimits = spec['device']['limits']
+                infolimits = info['description']['limits']
+                limits_mismatched = False
+                for limit in speclimits:
+                    if limit not in infolimits:
+                        raise ExoException('spec file includes invalid limit {0}'.format(limit))
+                    if speclimits[limit] != infolimits[limit]:
+                        limits_mismatched = True
+                if limits_mismatched:
+                    if create:
+                        if 'client_id' not in auth:
+                            raise ExoException('limits update for client requires --portal or --domain')
+
+                        rpc.update(auth['cik'], auth['client_id'], {'limits': speclimits})
+                        sys.stdout.write('updated limits for client' +
+                                         ' RID {0}'.format(auth['client_id']))
+                    else:
+                        sys.stdout.write(
+                            'limits for client {0} do not match spec:\nspec: {1}\nclient: {2}'.format(
+                                auth,
+                                json.dumps(speclimits, sort_keys=True),
+                                json.dumps(infolimits, sort_keys=True)))
+
 
         def check_or_create_common(auth, res, info, alias, aliases):
             if info['basic']['type'] != typ:
@@ -711,7 +736,7 @@ datarules:
                         yield alias, {'id': id}
 
             spec, base_url = load_spec(args)
-            check_spec(spec)
+            check_spec(spec, args)
 
             device_auths = []
             portal_ciks = []
@@ -773,7 +798,7 @@ datarules:
                         # If the portal has no name, use the cik as the name
                         if portal_name == '':
                             portal_name = portal_cik
-                        print('Looking in ' + portal_name + " for " + modelName + "/" + vendorName)
+                        print('Looking in ' + portal_name + ' for ' + modelName + '/' + vendorName)
                         # Get all clients in the portal
                         clients = rpc._listing_with_info(portal_cik, ['client'])
                         #print(modelName)
@@ -803,7 +828,7 @@ datarules:
                                                 'client_id': rid
                                             }
                                             device_auths.append(auth)
-                                            print("  found: {0} {1}".format(v['description']['name'], auth_string(auth)))
+                                            print('  found: {0} {1}'.format(v['description']['name'], auth_string(auth)))
             else:
                 # only for single client
                 device_auths.append(input_cik)
@@ -823,14 +848,17 @@ datarules:
                     print("Running spec on: {0}".format(auth_string(auth)))
                     #   apply spec [--create]
 
-                    # Get map of aliases
-                    info = rpc.info(auth, {'alias': ''}, {'aliases': True})
+                    # Get map of aliases and description
+                    info = rpc.info(auth, {'alias': ''}, {'aliases': True, 'description': True})
                     try:
                         for rid, alist in info['aliases'].items():
                             for alias in alist:
                                 aliases[alias] = rid
                     except:
                         pass
+
+                    # Check limits
+                    check_or_create_description(auth, info, args)
 
                     for typ in TYPES:
                         for res in spec.get(plural(typ), []):

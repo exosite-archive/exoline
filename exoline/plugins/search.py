@@ -68,6 +68,7 @@ class Plugin():
                     # http://developers.exosite.com/display/POR/Developing+for+Portals
                     if len(node['info']['description']['meta']) > 0:
                         meta = json.loads(node['info']['description']['meta'])
+                        print('here???')
                         device = meta['device']
                         if device['type'] == 'vendor':
                             sn = device['model'] + '#' + device['sn']
@@ -106,7 +107,7 @@ class Plugin():
                     a = ''
                 else:
                     a = ' > alias:' + alias + ' '
-                print("{0}{1} name:{2}{3}{4}".format(
+                print('{0}{1} name:{2}{3}{4}'.format(
                     ' > '.join(p),
                     a,
                     name,

@@ -649,8 +649,8 @@ $ exo spec --help
 $ exo spec --example 
 ```
 
-Tab completion
-------------
+Tab Completion
+--------------
 
 There is now tab completion with Exoline. To use it, you must download the complete script with 
 
@@ -693,31 +693,62 @@ $ exo read coffee dailybrews --<TAB>
 --chunksize --end   --follow  --format  --header  --help  --limit  --selection  --sort  --start --timeformat  --tz
 ```
 
+CIK Shortcuts
+-------------
+
+Store your commonly used CIKs in a config file:
+
+```
+$ printf "keys:\n" > ~/.exoline
+$ printf "    mydevice: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> ~/.exoline
+$ exo read mydevice temperature
+2013-08-18 04:55:36,24.1
+>>>>>>> Stashed changes
+```
+
 Environment Variables
 ---------------------
 
 For convenience, several command line options may be replaced by environment variables.
 
-* EXO\_HOST: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
-* EXO\_PORT: port, e.g. 80. Currently this only applies to exo, not exodata.
+* `EXO\_HOST`: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
+* `EXO\_PORT`: port, e.g. 80. Currently this only applies to exo, not exodata.
+* `EXO\_PLUGIN\_PATH`: additional places to look for plugins
+* `EXO\_CONFIG`: location of config file. If not specified, this is `~/.exoline`
+
+In general, command line options may be set from the environment using the convention `EXO\_` + `\<option\>`.
+
+Exoline looks in the working directory for a `.env` file, and if it finds one, it puts its contents into the environment. This allows you to set up different configurations for different projects.
 
 
-CIK Shortcuts
--------------
+Multiple Projects
+-----------------
 
-Store your commonly used CIKs in a file:
+Set up a project directory for a domain with its own .exoline file
 
 ```
-$ printf "keys:\n" > ~/.exoline
-$ printf "    foo: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> ~/.exoline
-$ exo read foo temperature
+$ cd myproj
+myproj $ printf "keys:\n" > ~/.exoline
+myproj $ printf "    mydevice: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> .exoline
+myproj $ printf "vendor: weaver\n" >> .exoline
+myproj $ printf "token: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> .exoline
+myproj $ printf "EXO_CONFIG:.exoline"
+myproj $ exo read mydevice temperature
 2013-08-18 04:55:36,24.1
 ```
+
+WARNING: Exoline config files are best kept out of source control, since they my contain keys and vendor token. Here's how to configure git to ignore that file.
+
+```
+myproj $ printf "\n.exoline" >> .gitignore
+```
+
 
 Help 
 ----
 
 For help, run each command with -h from the command line.
+
 
 Portals
 -------

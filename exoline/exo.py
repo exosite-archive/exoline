@@ -485,7 +485,7 @@ if platform.system() != 'Windows':
         plugin_names = [os.path.basename(f)[:-3]
             for f in glob.glob(plugin_path + "/*.py")
             if not os.path.basename(f).startswith('_')]
-    
+
         for module_name in plugin_names:
             try:
                 plugin = importlib.import_module('plugins.' + module_name)
@@ -2733,15 +2733,6 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
             mapfn = itertools.imap
         bins.append(float(sum(mapfn(critfn, intervals))))
 
-    if False:
-        # debug
-        print(bins)
-        print(num_bins * bin_size)
-        print(bin_size)
-        print(min_t)
-        print(max_t)
-        print(set(intervals))
-
     print(spark(bins, empty_val=0))
 
     min_label = ExoUtilities.format_time(min_t)
@@ -3250,7 +3241,7 @@ def handle_args(cmd, args):
                 re_assign = re.compile('(.*),(.*)')
                 for w in writes:
                     if w.count(',') > 1:
-                        raise ExoException('Values with commas not supported yet.')
+                        raise ExoException('Values with commas are not supported.')
                     m = re_assign.match(w)
                     if m is None or len(m.groups()) != 2:
                         raise ExoException("Bad alias assignment format")
