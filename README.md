@@ -649,6 +649,49 @@ $ exo spec --help
 $ exo spec --example 
 ```
 
+Tab completion
+------------
+
+There is now tab completion with Exoline. To use it, you must download the complete script with 
+
+```
+wget -O ~/.exoline_autocomplete https://raw.githubusercontent.com/exosite/exoline/master/exoline/complete.sh
+```
+
+Then add the script to your ~/.bash_profile so it works whenever you log in.
+
+`echo "source ~/.exoline_autocomplete" >> ~/.bash_profile`
+
+Then re-source your current bash_profile to activate the autocompleter.
+
+`source ~/.bash_profile`
+
+Or all together:
+```
+wget -O ~/.exoline_autocomplete https://raw.githubusercontent.com/exosite/exoline/master/exoline/complete.sh; echo "source ~/.exoline_autocomplete" >> ~/.bash_profile; source ~/.bash_profile
+```
+
+Completion will complete anything that should be completed. 
+
+```
+$ exo <TAB>
+activate       content        data           drop           flush          keys           makeShortcuts  ndup           record         search         spark          transform      unmap          write
+```
+
+```
+$ exo read <TAB>
+12345678       my_other_key      my_cool_device      coffee
+```
+
+```
+$ exo copy coffee <TAB>
+adc    cur    e_waterheat  errors    powsw  upstatus
+```
+
+```
+$ exo read coffee dailybrews --<TAB>
+--chunksize --end   --follow  --format  --header  --help  --limit  --selection  --sort  --start --timeformat  --tz
+```
 
 Environment Variables
 ---------------------
