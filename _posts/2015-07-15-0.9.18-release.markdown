@@ -44,5 +44,6 @@ Note: Due to a dependency conflict if you installed 0.9.17 yesterday, you'll nee
 
 ```
 $ pip uninstall python-dotenv
+
 $ pip install --upgrade exoline
 ```
