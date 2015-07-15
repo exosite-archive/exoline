@@ -43,7 +43,8 @@ https://github.com/exosite/exoline#multiple-projects
 Note: Due to a dependency conflict if you installed 0.9.17 yesterday, you'll need to do this to make 0.9.18 work:
 
 ```
-$ pip uninstall python-dotenv
 
+$ pip uninstall python-dotenv
 $ pip install --upgrade exoline
+
 ```
