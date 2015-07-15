@@ -4,9 +4,9 @@ title: About
 permalink: /about/
 ---
 
-Exoline is a command line interface for the Exosite One Platform.
+Exoline is a command line interface for the Exosite [One Platform](http://exosite.com/products/onep). 
 
-![Command line usage of Exoline tree feature](https://raw.githubusercontent.com/exosite/exoline/master/images/twee_example.png)
+![Command line usage of Exoline tree feature](images/twee_example.png)
 
 Installation 
 ------------
@@ -25,7 +25,7 @@ Here's how to install from source:
 
 [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/) is a great way to manage Python environments and avoid needing to use sudu for package installs.
 
-Exoline supports Python 2.6 and above. (Tests run against 2.6, 2.7, 3.2, 3.3, and 3.4)
+Exoline supports Python 2.6 and above. (Tests run against 2.6, 2.7, 3.2, 3.3, and 3.4.)
 
 Installation - Windows
 ----------------------
@@ -50,7 +50,7 @@ To upgade your version of exoline you can use the following command.
 Usage
 -----
 
-    Exoline - Exosite IoT Command Line Interface
+    Exoline - Exosite IoT Command Line
     https://github.com/exosite/exoline
 
     Usage:
@@ -73,6 +73,7 @@ Usage
       usage          Display usage of One Platform resources over a time period.
       tree           Display a resource's descendants.
       twee           Display a resource's descendants. Like tree, but more wuvable.
+      find           Search resource's descendants for matches.
       script         Upload a Lua script
       spark          Show distribution of intervals between points.
       copy           Make a copy of a client.
@@ -86,6 +87,9 @@ Usage
       activate       Activate a share code
       deactivate     Deactivate a share code
       clone          Create a clone of a client
+      aliases        Get dataport aliases from a CIK
+      dump           Write a zip file with all of a client's data
+      keys           Get keys from ~/.exolinerc
       makeShortcuts  Build a list of shortcuts from a client
       ndup           Duplicate a value in a dataport
       model          Manage client models for a subdomain (alpha)
@@ -93,12 +97,13 @@ Usage
       content        Manage content, e.g. firmware images, for a model (alpha)
       search         Search resource names, aliases, serial numbers, and script content
       spec           Determine whether a client matches a specification (beta)
+      switches       Get switches for a command from its documentation
       transform      Transform data on in a dataport by mapping all values (alpha)
 
     Options:
       --host=<host>          OneP host. Default is $EXO_HOST or m2.exosite.com
       --port=<port>          OneP port. Default is $EXO_PORT or 443
-      -c --config=<file>     Config file [default: ~/.exoline]
+      -c --config=<file>     Config file Default is $EXO_CONFIG or ~/.exoline
       --httptimeout=<sec>    HTTP timeout [default: 60] (default for copy is 480)
       --https                Enable HTTPS (deprecated, HTTPS is default)
       --http                 Disable HTTPS
@@ -111,7 +116,7 @@ Usage
       --portals=<server>     Portals server [default: https://portals.exosite.com]
       -t --vendortoken=<vt>  Vendor token (/admin/home in Portals)
       -n --vendor=<vendor>   Vendor identifier (/admin/managemodels in Portals)
-                 (See http://github.com/exosite/exoline#provisioning)
+                             (See http://github.com/exosite/exoline#provisioning)
       -h --help              Show this screen
       -v --version           Show version
 
@@ -141,16 +146,15 @@ Show a tree view of a client with values
       ├─Metadata     string  dataport rid: e93eea75d58615e78e8f01234567890123456789 (aliases: ["metadata"], value: {"foo":"bar","baz.../1 years ago)
       └─Temperature  float   dataport rid: 3bbee56c446f546b546901234567890123456789 (aliases: ["temperature"], value: 22/1 years ago)
 
-Write a Lua script
+Write Lua script
 
     $ exo script translate_gps.lua e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa     
     Updated script RID: 6c130838e14903f7e12d39b5e76c8e3aaaaaaaaa
 
-Read a Lua script (with help from the awesome [jq](http://stedolan.github.io/jq/))
+Read Lua script (with help from the awesome [jq](http://stedolan.github.io/jq/))
 
     $ exo info e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --include=description | jq -r .description.rule.script 
-
-Monitor output of a script
+Monitor debug output of a script
 
     $ exo read e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa translate_gps.lua --follow 
     2013-07-09 11:57:45,line 2: Running translate_gps.lua...
@@ -167,9 +171,9 @@ Record a bunch of data without timestamps
 
     $ cat myrawgps | exo record e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa gps-raw - 
 
-Dump data from multiple dataports to Excel-compatible CSV
+Read data from multiple dataports to Excel-compatible CSV
 
-    $ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 > alldata.csv
+    $ time exo read 2ca4f441538c1f2cc8bfaaaaaaaaaaaaaaaaaaaa gas temperature humidity event --timeformat=excel --start=5/1/2013 --end=8/1/2013 --limit=10000 > alldata.csv
 
     real    1m58.377s
     user    0m10.981s
@@ -177,6 +181,24 @@ Dump data from multiple dataports to Excel-compatible CSV
 
     $ wc -l alldata.csv
       316705 alldata.csv
+
+Dump client and all its descendants and time series data to a zip file.
+
+    $ exo dump 5fbbf00000000000000000000000000000000000 clientdump.zip
+    infotree.json: 3 resources
+    b4a243a16c702caccc991c8b771ef838623445db.json
+    dump.json
+    {"points": 88, "errors": [], "resources": 3}
+    $ unzip -l clientdump.zip
+    Archive:  clientdump.zip
+      Length     Date   Time    Name
+     --------    ----   ----    ----
+         1772  12-30-14 15:27   infotree.json
+         2212  12-30-14 15:27   dataport.b4a243a16c702caccc991c8b771ef838623445db.json
+           75  12-30-14 15:27   dump.json
+     --------                   -------
+         4059                   3 files
+
 
 Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
 
@@ -195,9 +217,18 @@ Create a new client or resource
     $ exo create ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa --type=dataport --format=string --alias=stringport --name="Original Name"
     rid: 34eaae237988167d90bfc2ffeb666daaaaaaaaaa
 
+
+
 Update a the name of a resource
 
     $ echo '{"name":"New Name"}' | exo update ad02824a8c7cb6b98fdfe0a9014b3c0faaaaaaaa stringport -
+
+Create a resource with a custom retention
+
+    $ c=`curl cik.herokuapp.com`
+    $ echo '{"format": "string", "retention": {"count": 4, "duration": "infinity"}}' | exo create $c --type=dataport --alias=myconfig -
+    $ exo info $c myconfig --include=description
+    {"description": {"name": "", "format": "string", "subscribe": null, "meta": "", "preprocess": [], "public": false, "retention": {"count": 4, "duration": "infinity"}}}
 
 Get the RID for CIK ad0282...
 
@@ -395,6 +426,27 @@ Share a dataport with another client.
     $ exo revoke 0a35320000000000000000000000000000000000 --share=e9a52a0000000000000000000000000000000000
     ok
 
+Create a dump of a client. The dump is a zip file containing the info tree (as output by info --recursive), the timestamp at which timeseries values were read, and each timeseries resource under the client. Timeseries resources include type dataport and type datarule.
+
+    $ exo dump sensor1 sensor1.zip
+    $ unzip -l sensor1.zip
+    Archive:  sensor1.zip
+      Length     Date   Time    Name
+     --------    ----   ----    ----
+         3938  12-16-14 22:58   infotree
+           10  12-16-14 22:58   timestamp
+      5367020  12-16-14 23:00   dataport.3bbee56c446f546b5469f629610b8afbcd1fe093
+      5367610  12-16-14 23:02   dataport.4fa572ba020cd9210388f9f60e4708bd623a7c8a
+     10747240  12-16-14 23:06   dataport.5c9d695fdbe1503c6622b0d0f603edc231349c53
+          127  12-16-14 23:06   dataport.76143aaf0930802775e295b190d540d709ebc6b1
+       767969  12-16-14 23:06   dataport.8dc131ea3fff528b122324def5b65159523f7c77
+          151  12-16-14 23:06   dataport.e93eea75d58615e78e8fd0915e7166edf7ad0525
+        23949  12-16-14 23:06   dataport.f264984bc4f9cf205e88a548f42f5ffbfdd21f09
+     --------                   -------
+     22278014                   9 files
+
+
+
 Provisioning
 ------------
 
@@ -519,35 +571,100 @@ Exoline's `spec` command allows you to use a specification file to succinctly sp
     $ exo read $TEMP_CIK temp_f
     2014-11-24 10:50:18-06:00,-40.0
 
+Spec also works with shortened URLs.
+
+    $ TEMP_CIK=`curl cik.herokuapp.com`
+    $ exo spec $TEMP_CIK http://tinyurl.com/exospec-tempconvert --create
+
 The `spec` command has a lot of other capabilities, including `--generate` to create a spec file based on an existing device. Try `--help` and `--example` for information about usage.
 
     $ exo spec --help
     $ exo spec --example 
 
+Tab Completion
+--------------
+
+There is now tab completion with Exoline. To use it, you must download the complete script with 
+
+    wget -O ~/.exoline_autocomplete https://raw.githubusercontent.com/exosite/exoline/master/exoline/complete.sh
+
+Then add the script to your ~/.bash_profile so it works whenever you log in.
+
+`echo "source ~/.exoline_autocomplete" >> ~/.bash_profile`
+
+Then re-source your current bash_profile to activate the autocompleter.
+
+`source ~/.bash_profile`
+
+Or all together:
+
+    wget -O ~/.exoline_autocomplete https://raw.githubusercontent.com/exosite/exoline/master/exoline/complete.sh; echo "source ~/.exoline_autocomplete" >> ~/.bash_profile; source ~/.bash_profile
+
+Completion will complete anything that should be completed. 
+
+    $ exo <TAB>
+    activate       content        data           drop           flush          keys           makeShortcuts  ndup           record         search         spark          transform      unmap          write
+
+    $ exo read <TAB>
+    12345678       my_other_key      my_cool_device      coffee
+
+    $ exo copy coffee <TAB>
+    adc    cur    e_waterheat  errors    powsw  upstatus
+
+    $ exo read coffee dailybrews --<TAB>
+    --chunksize --end   --follow  --format  --header  --help  --limit  --selection  --sort  --start --timeformat  --tz
+
+
+CIK Shortcuts
+-------------
+
+Store your commonly used CIKs in a config file:
+
+    $ printf "keys:\n" > ~/.exoline
+    $ printf "    mydevice: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> ~/.exoline
+    $ exo read mydevice temperature
+    2013-08-18 04:55:36,24.1
+    >>>>>>> Stashed changes
 
 Environment Variables
 ---------------------
 
 For convenience, several command line options may be replaced by environment variables.
 
-* EXO\_HOST: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
-* EXO\_PORT: port, e.g. 80. Currently this only applies to exo, not exodata.
+* `EXO_HOST`: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
+* `EXO_PORT`: port, e.g. 80. Currently this only applies to exo, not exodata.
+* `EXO_PLUGIN_PATH`: additional places to look for plugins
+* `EXO_CONFIG`: location of config file. If not specified, this is `~/.exoline`
+
+In general, command line options may be set from the environment using the convention `EXO_` + `<option>`.
+
+Exoline looks in the working directory for a `.env` file, and if it finds one, it puts its contents into the environment. This allows you to set up different configurations for different projects.
 
 
-CIK Shortcuts
--------------
+Multiple Projects
+-----------------
 
-Store your commonly used CIKs in a file:
+Set up a project directory for a domain with its own .exoline file
 
-    $ printf "keys:\n" > ~/.exoline
-    $ printf "    foo: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> ~/.exoline
-    $ exo read foo temperature
+    $ cd myproj
+    myproj $ printf "keys:\n" > ~/.exoline
+    myproj $ printf "    mydevice: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> .exoline
+    myproj $ printf "vendor: weaver\n" >> .exoline
+    myproj $ printf "token: 2ca4f441538c1f2cc8bf01234567890123456789\n" >> .exoline
+    myproj $ printf "EXO_CONFIG=.exoline" > .env
+    myproj $ exo read mydevice temperature
     2013-08-18 04:55:36,24.1
+
+WARNING: Exoline config files are best kept out of source control, since they my contain keys and vendor token. Here's how to configure git to ignore that file.
+
+    myproj $ printf "\n.exoline" >> .gitignore
+
 
 Help 
 ----
 
 For help, run each command with -h from the command line.
+
 
 Portals
 -------
@@ -616,7 +733,7 @@ Microsoft Excel:
 - In the Chart ribbon, select Scatter -> Marked Scatter
 - The result looks like this:
 
-![Excel time series graph example](https://raw.githubusercontent.com/exosite/exoline/master/images/excel_chart.png)
+![Excel time series graph example](images/excel_chart.png)
 
 Google Docs:
 
@@ -634,7 +751,7 @@ Google Docs:
 - press Insert
 - the result looks like this:
 
-![Google Docs time series graph example](https://raw.githubusercontent.com/exosite/exoline/master/images/docs_chart.png)
+![Google Docs time series graph example](images/docs_chart.png)
 
 
 Issues/Feature Requests
