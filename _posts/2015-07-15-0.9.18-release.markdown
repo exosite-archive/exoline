@@ -4,18 +4,18 @@ title:  "Exoline 0.9.18: tab completion, spec improvements, multiple project sup
 date:   2015-07-15 15:22:07
 ---
 
-Here's a roundup of features that have been added to Exoline over the past few months:
+Here's a roundup of features that have been added to Exoline over the past few months. Special thanks to [Andrew Solz](https://github.com/asolz) and [Mike Tilstra](https://github.com/tadpol) for working on many of these features.
 
-- support for [tab completion](https://github.com/exosite/exoline#tab-completion) - thanks [Andrew Solz](https://github.com/asolz)!
-- spec command supports [non-script datarules](https://github.com/exosite/exoline/blob/master/test/files/spec_datarule.yaml), [dispatches](https://github.com/exosite/exoline/blob/master/test/files/spec_dispatch.yaml), [client limits](https://github.com/exosite/exoline/blob/master/test/files/spec_client_limits.yaml), [loading from a URL](https://github.com/exosite/exoline#tab-completion), and [embedding Lua scripts](https://github.com/exosite/exoline/blob/master/test/files/spec_script_embedded.yaml)
-- better support for [working on multiple Portals domains](https://github.com/exosite/exoline#multiple-projects) - thanks [Mike Tilstra](https://github.com/tadpol)!
-- dump command for archiving catalog and time series data
-- script --follow option (for script development)
-- find command for finding resources, currently just inside a direct parent
-- search command for searching resources, including script content
+- support for [tab completion](https://github.com/exosite/exoline#tab-completion)
+- `spec` command supports [non-script datarules](https://github.com/exosite/exoline/blob/master/test/files/spec_datarule.yaml), [dispatches](https://github.com/exosite/exoline/blob/master/test/files/spec_dispatch.yaml), [client limits](https://github.com/exosite/exoline/blob/master/test/files/spec_client_limits.yaml), [loading from a URL](https://github.com/exosite/exoline#tab-completion), and [embedding Lua scripts](https://github.com/exosite/exoline/blob/master/test/files/spec_script_embedded.yaml)
+- better support for [working on multiple Portals domains](https://github.com/exosite/exoline#multiple-projects)
+- `dump` command for archiving catalog and time series data
+- `script --follow` option (for script debugging)
+- `find` command for selecting a subset of resources, currently just inside a direct parent
+- `search` command for locating resource that match a query, including full text of script content
 
 
-Note: Due to a dependency conflict if you installed 0.9.17 yesterday, you'll need to do this to make 0.9.18 work:
+**Note**: Due to a dependency conflict if you installed 0.9.17 yesterday, you'll need to do this to make 0.9.18 work:
 
 
 ```
