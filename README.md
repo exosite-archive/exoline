@@ -711,12 +711,12 @@ Environment Variables
 
 For convenience, several command line options may be replaced by environment variables.
 
-* `EXO\_HOST`: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
-* `EXO\_PORT`: port, e.g. 80. Currently this only applies to exo, not exodata.
-* `EXO\_PLUGIN\_PATH`: additional places to look for plugins
-* `EXO\_CONFIG`: location of config file. If not specified, this is `~/.exoline`
+* `EXO_HOST`: host, e.g. m2.exosite.com. This supplies --host to exo and --url for exodata.
+* `EXO_PORT`: port, e.g. 80. Currently this only applies to exo, not exodata.
+* `EXO_PLUGIN_PATH`: additional places to look for plugins
+* `EXO_CONFIG`: location of config file. If not specified, this is `~/.exoline`
 
-In general, command line options may be set from the environment using the convention `EXO\_` + `\<option\>`.
+In general, command line options may be set from the environment using the convention `EXO_` + `<option>`.
 
 Exoline looks in the working directory for a `.env` file, and if it finds one, it puts its contents into the environment. This allows you to set up different configurations for different projects.
 
