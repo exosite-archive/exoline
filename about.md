@@ -6,7 +6,7 @@ permalink: /about/
 
 Exoline is a command line interface for the Exosite [One Platform](http://exosite.com/products/onep). 
 
-![Command line usage of Exoline tree feature](images/twee_example.png)
+![Command line usage of Exoline tree feature](https://raw.githubusercontent.com/exosite/exoline/master/images/twee_example.png)
 
 Installation 
 ------------
@@ -733,7 +733,7 @@ Microsoft Excel:
 - In the Chart ribbon, select Scatter -> Marked Scatter
 - The result looks like this:
 
-![Excel time series graph example](images/excel_chart.png)
+![Excel time series graph example](https://raw.githubusercontent.com/exosite/exoline/master/images/excel_chart.png)
 
 Google Docs:
 
@@ -751,7 +751,7 @@ Google Docs:
 - press Insert
 - the result looks like this:
 
-![Google Docs time series graph example](images/docs_chart.png)
+![Google Docs time series graph example](https://raw.githubusercontent.com/exosite/exoline/master/images/docs_chart.png)
 
 
 Issues/Feature Requests
