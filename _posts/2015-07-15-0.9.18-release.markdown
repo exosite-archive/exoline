@@ -11,7 +11,7 @@ Anyone who's been watching the Exoline [HISTORY file](https://github.com/exosite
 
 This has been the #1 most requested feature since the first release. Thanks to a script by [Andrew Solz](https://github.com/asolz), if you run bash you can set up your environment to tab-complete commands, keys, and even options:
 
-https://github.com/exosite/exoline#tab-completion
+[https://github.com/exosite/exoline#tab-completion](https://github.com/exosite/exoline#tab-completion)
 
 
 ## Spec Improvements
@@ -42,9 +42,7 @@ https://github.com/exosite/exoline#multiple-projects
 
 Note: Due to a dependency conflict if you installed 0.9.17 yesterday, you'll need to do this to make 0.9.18 work:
 
+
 ```
-
 $ pip uninstall python-dotenv
-$ pip install --upgrade exoline
-
 ```
