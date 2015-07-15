@@ -73,8 +73,6 @@ class Plugin():
 device:
     model: "myModel"
     vendor: "myVendor"
-    limits:
-        dataport: 10
 
 # list of dataports that must exist
 dataports:

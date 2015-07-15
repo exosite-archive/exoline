@@ -5,8 +5,12 @@ History
 -------------------
 
 - support client limits in spec (device.limits)
-- re-add support for Python 2.6 (run pip uninstall 
+- support spec files without resources
+- re-add support for Python 2.6 by switching to 
+  dotenv from python-dotenv (run pip uninstall 
   python-dotenv to upgrade from 0.9.17)
+- fix extraneous output from search
+- document tab completion and .env
 
 0.9.17 (2015-07-14)
 -------------------

@@ -55,7 +55,7 @@ Usage
 -----
 
 ```
-Exoline - Exosite IoT Command Line Interface
+Exoline - Exosite IoT Command Line
 https://github.com/exosite/exoline
 
 Usage:
@@ -78,6 +78,7 @@ Commands:
   usage          Display usage of One Platform resources over a time period.
   tree           Display a resource's descendants.
   twee           Display a resource's descendants. Like tree, but more wuvable.
+  find           Search resource's descendants for matches.
   script         Upload a Lua script
   spark          Show distribution of intervals between points.
   copy           Make a copy of a client.
@@ -91,6 +92,9 @@ Commands:
   activate       Activate a share code
   deactivate     Deactivate a share code
   clone          Create a clone of a client
+  aliases        Get dataport aliases from a CIK
+  dump           Write a zip file with all of a client's data
+  keys           Get keys from ~/.exolinerc
   makeShortcuts  Build a list of shortcuts from a client
   ndup           Duplicate a value in a dataport
   model          Manage client models for a subdomain (alpha)
@@ -98,12 +102,13 @@ Commands:
   content        Manage content, e.g. firmware images, for a model (alpha)
   search         Search resource names, aliases, serial numbers, and script content
   spec           Determine whether a client matches a specification (beta)
+  switches       Get switches for a command from its documentation
   transform      Transform data on in a dataport by mapping all values (alpha)
 
 Options:
   --host=<host>          OneP host. Default is $EXO_HOST or m2.exosite.com
   --port=<port>          OneP port. Default is $EXO_PORT or 443
-  -c --config=<file>     Config file [default: ~/.exoline]
+  -c --config=<file>     Config file Default is $EXO_CONFIG or ~/.exoline
   --httptimeout=<sec>    HTTP timeout [default: 60] (default for copy is 480)
   --https                Enable HTTPS (deprecated, HTTPS is default)
   --http                 Disable HTTPS
@@ -116,7 +121,7 @@ Options:
   --portals=<server>     Portals server [default: https://portals.exosite.com]
   -t --vendortoken=<vt>  Vendor token (/admin/home in Portals)
   -n --vendor=<vendor>   Vendor identifier (/admin/managemodels in Portals)
-             (See http://github.com/exosite/exoline#provisioning)
+                         (See http://github.com/exosite/exoline#provisioning)
   -h --help              Show this screen
   -v --version           Show version
 
