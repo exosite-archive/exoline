@@ -7,6 +7,7 @@ date:   2015-07-15 15:22:07
 Here's a roundup of features that have been added to Exoline over the past few months. Special thanks to [Andrew Solz](https://github.com/asolz) and [Mike Tilstra](https://github.com/tadpol) for working on many of these features.
 
 - support for [tab completion](https://github.com/exosite/exoline#tab-completion)
+![exoline tab completion]({{ site.url }}/images/exo-tab-completion.png)
 - `spec` command supports [non-script datarules](https://github.com/exosite/exoline/blob/master/test/files/spec_datarule.yaml), [dispatches](https://github.com/exosite/exoline/blob/master/test/files/spec_dispatch.yaml), [client limits](https://github.com/exosite/exoline/blob/master/test/files/spec_client_limits.yaml), [loading from a URL](https://github.com/exosite/exoline#tab-completion), and [embedding Lua scripts](https://github.com/exosite/exoline/blob/master/test/files/spec_script_embedded.yaml)
 - better support for [working on multiple Portals domains](https://github.com/exosite/exoline#multiple-projects)
 - `dump` command for archiving catalog and time series data
