@@ -4,40 +4,15 @@ title:  "Exoline 0.9.18: tab completion, spec improvements, multiple project sup
 date:   2015-07-15 15:22:07
 ---
 
-Anyone who's been watching the Exoline [HISTORY file](https://github.com/exosite/exoline/blob/master/HISTORY.md) knows there have been a lot of new features added over the past 8 months, but not a lot of official update notifications. Consider this your catch-up.
+Here's a roundup of features that have been added to Exoline over the past few months:
 
-
-## Tab Completion 
-
-This has been the #1 most requested feature since the first release. Thanks to a script by [Andrew Solz](https://github.com/asolz), if you run bash you can set up your environment to tab-complete commands, keys, and even options:
-
-[https://github.com/exosite/exoline#tab-completion](https://github.com/exosite/exoline#tab-completion)
-
-
-## Spec Improvements
-
-Spec files describe in text the way a One Platform client should look. Using the Exoline spec command you can find devices that are out of date, as well as modify those devices to bring them up to date. The spec file may be checked in to git so that you have a record of changes over time.
-
-Here's what's new with spec:
-- supports [non-script datarules](https://github.com/exosite/exoline/blob/master/test/files/spec_datarule.yaml), [dispatches](https://github.com/exosite/exoline/blob/master/test/files/spec_dispatch.yaml), and [client limits](https://github.com/exosite/exoline/blob/master/test/files/spec_client_limits.yaml)
-- may be loaded from a URL ([usage example](https://github.com/exosite/exoline#spec))
-- supports putting Lua [directly in spec file](https://github.com/exosite/exoline/blob/master/test/files/spec_script_embedded.yaml) for extra succinctness
-
-General documentation about spec files is available [here](https://github.com/exosite/exoline#spec).
-
-
-## Multiple Project Support
-
-Most of us work on multiple Portals domains. Previously in order to do this you combined all keys into one .exoline file. [Mike Tilstra](https://github.com/tadpol) added several features that make it possible to make Exoline use different settings for different projects.
-
-https://github.com/exosite/exoline#multiple-projects
-
-## ...and many other new commands:
-
-- dump command (for archiving catalog and time series data)
-- --follow option for script command (for script development)
-- find command (for finding resources, currently just inside a direct parent)
-- search command (for searching resources, including script content)
+- support for [tab completion](https://github.com/exosite/exoline#tab-completion) - thanks [Andrew Solz](https://github.com/asolz)!
+- spec command supports [non-script datarules](https://github.com/exosite/exoline/blob/master/test/files/spec_datarule.yaml), [dispatches](https://github.com/exosite/exoline/blob/master/test/files/spec_dispatch.yaml), [client limits](https://github.com/exosite/exoline/blob/master/test/files/spec_client_limits.yaml), [loading from a URL](https://github.com/exosite/exoline#tab-completion), and [embedding Lua scripts](https://github.com/exosite/exoline/blob/master/test/files/spec_script_embedded.yaml)
+- better support for [working on multiple Portals domains](https://github.com/exosite/exoline#multiple-projects) - thanks [Mike Tilstra](https://github.com/tadpol)!
+- dump command for archiving catalog and time series data
+- script --follow option (for script development)
+- find command for finding resources, currently just inside a direct parent
+- search command for searching resources, including script content
 
 
 Note: Due to a dependency conflict if you installed 0.9.17 yesterday, you'll need to do this to make 0.9.18 work:

@@ -2,8 +2,7 @@
 title: Exoline
 email: danweaver@exosite.com
 description:
-  Exoline is a command line interface for
-  the Exosite Internet of Things platform.
+  Exoline is a command line interface for Exosite
 baseurl: "/exoline" # the subpath of your site, e.g. /blog/
 url: "http://exosite.github.io"
 twitter_username: exosite
