@@ -13,5 +13,6 @@ if exist "E:\exoline_builds" (
     @echo Installer is here: 
     @echo Output\exoline-%exoline_version%-setup.exe
 )
+del Output\setup.exe
 @echo Now would be a good time to push any changes to innosetup.iss:
 git diff
