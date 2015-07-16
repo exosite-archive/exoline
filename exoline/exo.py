@@ -558,6 +558,32 @@ else:
         plugins.append(p)
         cmd_doc[p.command()] = dump.__doc__
 
+        # keys plugin
+        try:
+            from ..exoline.plugins import keys
+        except:
+            from exoline.plugins import keys
+        p = keys.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = keys.__doc__
+
+        # switches plugin
+        try:
+            from ..exoline.plugins import switches
+        except:
+            from exoline.plugins import switches
+        p = switches.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = switches.__doc__
+
+        # aliases plugin
+        try:
+            from ..exoline.plugins import aliases
+        except:
+            from exoline.plugins import aliases
+        p = aliases.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = aliases.__doc__
 
     except Exception as ex:
         import traceback
