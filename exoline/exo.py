@@ -1405,28 +1405,36 @@ class ExoRPC():
         if day_diff < 0:
             return ''
 
+        def plural(v):
+            return 's' if v > 1 else ''
+
         if day_diff == 0:
             if second_diff < 10:
-                return "just now"
+                return 'just now'
             if second_diff < 60:
-                return str(second_diff) + " seconds ago"
+                return str(second_diff) + ' seconds ago'
             if second_diff < 120:
-                return "a minute ago"
+                return 'a minute ago'
             if second_diff < 3600:
-                return str(second_diff / 60) + " minutes ago"
+                minutes = second_diff / 60
+                return str(minutes) + ' minute{0} ago'.format(plural(minutes))
             if second_diff < 7200:
-                return "an hour ago"
+                return 'an hour ago'
             if second_diff < 86400:
-                return str(second_diff / 3600) + " hours ago"
+                hours = second_diff / 3600
+                return str(hours) + ' hour{0} ago'.format(plural(hours))
         if day_diff == 1:
-            return "Yesterday"
+            return 'Yesterday'
         if day_diff < 7:
-            return str(day_diff) + " days ago"
+            return str(day_diff) + ' day{0} ago'.format(plural(day_diff))
         if day_diff < 31:
-            return str(day_diff / 7) + " weeks ago"
+            weeks = day_diff / 7
+            return str(weeks) + ' week{0} ago'.format(plural(weeks))
         if day_diff < 365:
-            return str(day_diff / 30) + " months ago"
-        return str(day_diff / 365) + " years ago"
+            months = day_diff / 30
+            return str(months) + ' month{0} ago'.format(plural(months))
+        years = day_diff / 365
+        return str(years) + ' year{0} ago'.format(plural(years))
 
     def _format_timestamp(self, values):
         '''format tree latest point timestamp

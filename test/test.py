@@ -577,10 +577,12 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 re.search('(cik:|rid\.)', r.stdout) is None,
                 'look for things that shouldn\'t be in --rids output')
 
+    @attr('tree')
     def tree_test(self):
         '''Tree command'''
         self.run_tree_tsts('tree')
 
+    @attr('tree')
     def twee_test(self):
         '''Twee command'''
         self.run_tree_tsts('twee', ['--nocolor'])
