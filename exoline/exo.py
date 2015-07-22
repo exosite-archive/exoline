@@ -74,6 +74,7 @@ from dotenv import Dotenv
 import requests
 import yaml
 import importlib
+import humanize
 
 from pyonep import onep
 from pyonep import provision
@@ -1383,15 +1384,10 @@ class ExoRPC():
         else:
             print(line)
 
-    def _pretty_date(self, time=False):
-        """
-        Get a datetime object or a int() Epoch timestamp and return a
+    def humanize_date(self, time=False):
+        '''Get a datetime object or a int() Epoch timestamp and return a
         pretty string like 'an hour ago', 'Yesterday', '3 months ago',
-        'just now', etc
-
-        http://stackoverflow.com/a/1551394/81346
-        """
-        from datetime import datetime
+        'just now', etc.'''
         now = datetime.now()
         if type(time) is int:
             diff = now - datetime.fromtimestamp(time)
@@ -1399,42 +1395,7 @@ class ExoRPC():
             diff = now - time
         elif not time:
             diff = now - now
-        second_diff = diff.seconds
-        day_diff = diff.days
-
-        if day_diff < 0:
-            return ''
-
-        def plural(v):
-            return 's' if v > 1 else ''
-
-        if day_diff == 0:
-            if second_diff < 10:
-                return 'just now'
-            if second_diff < 60:
-                return str(second_diff) + ' seconds ago'
-            if second_diff < 120:
-                return 'a minute ago'
-            if second_diff < 3600:
-                minutes = second_diff / 60
-                return str(minutes) + ' minute{0} ago'.format(plural(minutes))
-            if second_diff < 7200:
-                return 'an hour ago'
-            if second_diff < 86400:
-                hours = second_diff / 3600
-                return str(hours) + ' hour{0} ago'.format(plural(hours))
-        if day_diff == 1:
-            return 'Yesterday'
-        if day_diff < 7:
-            return str(day_diff) + ' day{0} ago'.format(plural(day_diff))
-        if day_diff < 31:
-            weeks = day_diff / 7
-            return str(weeks) + ' week{0} ago'.format(plural(weeks))
-        if day_diff < 365:
-            months = day_diff / 30
-            return str(months) + ' month{0} ago'.format(plural(months))
-        years = day_diff / 365
-        return str(years) + ' year{0} ago'.format(plural(years))
+        return humanize.naturaltime(diff)
 
     def _format_timestamp(self, values):
         '''format tree latest point timestamp
@@ -1445,7 +1406,7 @@ class ExoRPC():
             return None
         if len(values) == 0:
             return ''
-        return self._pretty_date(values[0][0])
+        return self.humanize_date(values[0][0])
 
     def _format_value_with_previous(self, v, prev, maxlen):
         '''Return a string representing the string v, w/maximum length
