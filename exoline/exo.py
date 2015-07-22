@@ -1597,7 +1597,13 @@ class ExoRPC():
             maxlen['name'] = len(name)
             maxlen['format'] = 0 if 'format' not in info['description'] else len(info['description']['format'])
 
-        val = self._format_values(values, sizex)
+        try:
+            terminal_width, terminal_height = exocommon.get_terminal_size()
+        except:
+            # Default to 80 chars
+            terminal_width = 80
+
+        val = self._format_values(values, terminal_width)
         timestamp = self._format_timestamp(values)
         add_opt(values is not None, 'value', None if (val is None or timestamp is None) else val + '/' + timestamp)
 
@@ -1646,12 +1652,6 @@ class ExoRPC():
 
     
             if val:
-                try:
-                    terminal_width, terminal_height = exocommon.get_terminal_size()
-                except:
-                    # Default to 80 chars
-                    sizex = 80
-
                 twee_line = "".join([spacer, displayname, ' '*( maxlen['name']+1- len(name)), displaytype, tweeid, (' (share)' if 'listing_option' in info and info['listing_option'] == 'activated' else ''), 
                                     ('' if typ == 'client' else ': '), ('' if timestamp is None or len(timestamp) == 0 else ' (' + timestamp + ')'), displaymodel])
                 val_size = len(val)
