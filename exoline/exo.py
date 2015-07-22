@@ -58,7 +58,6 @@ import six
 from six import StringIO
 from six import iteritems
 from six import string_types
-
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -89,7 +88,6 @@ except:
     from exoline.exocommon import ExoException
     from exoline import exocommon
     from exoline import serieswriter
-
 
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
@@ -1589,9 +1587,6 @@ class ExoRPC():
                 ridopt = True
         add_opt(ridopt, 'rid', rid)
         add_opt('--verbose', 'unit', units)
-        val = self._format_values(values, 50 if twee else 20)
-        timestamp = self._format_timestamp(values)
-        add_opt(values is not None, 'value', None if (val is None or timestamp is None) else val + '/' + timestamp)
 
         if 'listing_option' in info and info['listing_option'] == 'activated':
             add_opt(True, 'share', True)
@@ -1601,6 +1596,10 @@ class ExoRPC():
             maxlen['type'] = len(typ)
             maxlen['name'] = len(name)
             maxlen['format'] = 0 if 'format' not in info['description'] else len(info['description']['format'])
+
+        val = self._format_values(values, sizex)
+        timestamp = self._format_timestamp(values)
+        add_opt(values is not None, 'value', None if (val is None or timestamp is None) else val + '/' + timestamp)
 
         if twee:
             # colors, of course
@@ -1644,6 +1643,23 @@ class ExoRPC():
             displaymodel = ''
             if 'sn' in opt and 'model' in opt:
                 displaymodel = ' (' + opt['model'] + '#' + opt['sn'] + ')'
+
+    
+            if val:
+                try:
+                    terminal_width, terminal_height = exocommon.get_terminal_size()
+                except:
+                    # Default to 80 chars
+                    sizex = 80
+
+                twee_line = "".join([spacer, displayname, ' '*( maxlen['name']+1- len(name)), displaytype, tweeid, (' (share)' if 'listing_option' in info and info['listing_option'] == 'activated' else ''), 
+                                    ('' if typ == 'client' else ': '), ('' if timestamp is None or len(timestamp) == 0 else ' (' + timestamp + ')'), displaymodel])
+                val_size = len(val)
+                displayed_chars = len(twee_line)
+                allowed_size = terminal_width-displayed_chars
+                if val_size > allowed_size:
+                    allowed_size -= 3
+                    val = val[:allowed_size] + "..."
 
             self._print_tree_line(
                 bcolors.SPACER +
@@ -2527,7 +2543,6 @@ probably not valid.".format(cik))
                 options[key] = True
 
         return options
-
 
 class ExoData():
     '''Implements the Data Interface API
