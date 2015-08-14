@@ -68,19 +68,19 @@ class Plugin():
                     # http://developers.exosite.com/display/POR/Developing+for+Portals
                     if len(node['info']['description']['meta']) > 0:
                         meta = json.loads(node['info']['description']['meta'])
-                        print('here???')
-                        device = meta['device']
-                        if device['type'] == 'vendor':
-                            sn = device['model'] + '#' + device['sn']
-                            m = re.search(query, sn, flags=reflags)
-                            if m is not None:
-                                if not args['--nocolor']:
-                                    sn = re.sub('(' + query + ')', matchColor + r'\1' + resetColor, sn, flags=reflags)
-                            else:
-                                sn = None
+                        if 'device' in meta:
+                            device = meta['device']
+                            if device['type'] == 'vendor':
+                                sn = device['model'] + '#' + device['sn']
+                                m = re.search(query, sn, flags=reflags)
+                                if m is not None:
+                                    if not args['--nocolor']:
+                                        sn = re.sub('(' + query + ')', matchColor + r'\1' + resetColor, sn, flags=reflags)
+                                else:
+                                    sn = None
 
                 except Exception as ex:
-                    print(str(ex))
+                    # ignore bad meta
                     pass
 
             # search script content

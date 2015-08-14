@@ -58,7 +58,6 @@ import six
 from six import StringIO
 from six import iteritems
 from six import string_types
-
 # python 2.6 support
 try:
     from collections import OrderedDict
@@ -74,6 +73,7 @@ from dotenv import Dotenv
 import requests
 import yaml
 import importlib
+import humanize
 
 from pyonep import onep
 from pyonep import provision
@@ -89,7 +89,6 @@ except:
     from exoline.exocommon import ExoException
     from exoline import exocommon
     from exoline import serieswriter
-
 
 DEFAULT_HOST = 'm2.exosite.com'
 DEFAULT_PORT = '80'
@@ -558,6 +557,32 @@ else:
         plugins.append(p)
         cmd_doc[p.command()] = dump.__doc__
 
+        # keys plugin
+        try:
+            from ..exoline.plugins import keys
+        except:
+            from exoline.plugins import keys
+        p = keys.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = keys.__doc__
+
+        # switches plugin
+        try:
+            from ..exoline.plugins import switches
+        except:
+            from exoline.plugins import switches
+        p = switches.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = switches.__doc__
+
+        # aliases plugin
+        try:
+            from ..exoline.plugins import aliases
+        except:
+            from exoline.plugins import aliases
+        p = aliases.Plugin()
+        plugins.append(p)
+        cmd_doc[p.command()] = aliases.__doc__
 
     except Exception as ex:
         import traceback
@@ -1357,15 +1382,10 @@ class ExoRPC():
         else:
             print(line)
 
-    def _pretty_date(self, time=False):
-        """
-        Get a datetime object or a int() Epoch timestamp and return a
+    def humanize_date(self, time=False):
+        '''Get a datetime object or a int() Epoch timestamp and return a
         pretty string like 'an hour ago', 'Yesterday', '3 months ago',
-        'just now', etc
-
-        http://stackoverflow.com/a/1551394/81346
-        """
-        from datetime import datetime
+        'just now', etc.'''
         now = datetime.now()
         if type(time) is int:
             diff = now - datetime.fromtimestamp(time)
@@ -1373,34 +1393,7 @@ class ExoRPC():
             diff = now - time
         elif not time:
             diff = now - now
-        second_diff = diff.seconds
-        day_diff = diff.days
-
-        if day_diff < 0:
-            return ''
-
-        if day_diff == 0:
-            if second_diff < 10:
-                return "just now"
-            if second_diff < 60:
-                return str(second_diff) + " seconds ago"
-            if second_diff < 120:
-                return "a minute ago"
-            if second_diff < 3600:
-                return str(second_diff / 60) + " minutes ago"
-            if second_diff < 7200:
-                return "an hour ago"
-            if second_diff < 86400:
-                return str(second_diff / 3600) + " hours ago"
-        if day_diff == 1:
-            return "Yesterday"
-        if day_diff < 7:
-            return str(day_diff) + " days ago"
-        if day_diff < 31:
-            return str(day_diff / 7) + " weeks ago"
-        if day_diff < 365:
-            return str(day_diff / 30) + " months ago"
-        return str(day_diff / 365) + " years ago"
+        return humanize.naturaltime(diff)
 
     def _format_timestamp(self, values):
         '''format tree latest point timestamp
@@ -1411,7 +1404,7 @@ class ExoRPC():
             return None
         if len(values) == 0:
             return ''
-        return self._pretty_date(values[0][0])
+        return self.humanize_date(values[0][0])
 
     def _format_value_with_previous(self, v, prev, maxlen):
         '''Return a string representing the string v, w/maximum length
@@ -1555,9 +1548,6 @@ class ExoRPC():
                 ridopt = True
         add_opt(ridopt, 'rid', rid)
         add_opt('--verbose', 'unit', units)
-        val = self._format_values(values, 50 if twee else 20)
-        timestamp = self._format_timestamp(values)
-        add_opt(values is not None, 'value', None if (val is None or timestamp is None) else val + '/' + timestamp)
 
         if 'listing_option' in info and info['listing_option'] == 'activated':
             add_opt(True, 'share', True)
@@ -1567,6 +1557,16 @@ class ExoRPC():
             maxlen['type'] = len(typ)
             maxlen['name'] = len(name)
             maxlen['format'] = 0 if 'format' not in info['description'] else len(info['description']['format'])
+
+        try:
+            terminal_width, terminal_height = exocommon.get_terminal_size()
+        except:
+            # Default to 80 chars
+            terminal_width = 80
+
+        val = self._format_values(values, terminal_width)
+        timestamp = self._format_timestamp(values)
+        add_opt(values is not None, 'value', None if (val is None or timestamp is None) else val + '/' + timestamp)
 
         if twee:
             # colors, of course
@@ -1610,6 +1610,17 @@ class ExoRPC():
             displaymodel = ''
             if 'sn' in opt and 'model' in opt:
                 displaymodel = ' (' + opt['model'] + '#' + opt['sn'] + ')'
+
+    
+            if val:
+                twee_line = "".join([spacer, displayname, ' '*( maxlen['name']+1- len(name)), displaytype, tweeid, (' (share)' if 'listing_option' in info and info['listing_option'] == 'activated' else ''), 
+                                    ('' if typ == 'client' else ': '), ('' if timestamp is None or len(timestamp) == 0 else ' (' + timestamp + ')'), displaymodel])
+                val_size = len(val)
+                displayed_chars = len(twee_line)
+                allowed_size = terminal_width-displayed_chars
+                if val_size > allowed_size:
+                    allowed_size -= 3
+                    val = val[:allowed_size] + "..."
 
             self._print_tree_line(
                 bcolors.SPACER +
@@ -2493,7 +2504,6 @@ probably not valid.".format(cik))
                 options[key] = True
 
         return options
-
 
 class ExoData():
     '''Implements the Data Interface API
