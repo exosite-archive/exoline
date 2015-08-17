@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-'''
+'''Easily get and set the meta on an object in 1P.
+
+This assumes the meta string is valid JSON, unless you pass --raw.
 
 Usage:
     exo [options] meta <cik> [<rid>]
+    exo [options] meta <cik> [<rid>] --value=<value>
+    exo [options] meta <cik> [<rid>] -
 
 Command Options:
 {{ helpoption }}
@@ -31,10 +35,15 @@ class Plugin():
 
         info = rpc.info(cik, rid)
 
-        if args['--value'] is not None:
-            print('tock')
+        if args['--value'] is not None or args['-']:
             try:
-                meta = args['--value']
+                if args['-']:
+                    meta = sys.stdin.read()
+                    # remove extra newline
+                    if meta[-1] == '\n':
+                        meta = meta[:-1]
+                else:
+                    meta = args['--value']
                 if not args['--raw']:
                     js = json.loads(meta)
                     meta = json.dumps(meta,separators=(',', ':'))
