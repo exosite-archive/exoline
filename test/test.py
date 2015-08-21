@@ -2544,11 +2544,38 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         dp = self._createDataports(cik)
         rid = dp['string'].rid
 
+        # Start with calls raw.  There is no meta
         r = rpc('meta', cik, '--raw')
         self.ok(r, "read client meta")
 
         r = rpc('meta', cik, rid, '--raw')
         self.ok(r, "read dataport meta")
+
+        # Reading no meta without --raw should work.
+        r = rpc('meta', cik)
+        self.ok(r, "read client meta")
+
+        r = rpc('meta', cik, rid)
+        self.ok(r, "read dataport meta")
+
+        # Write some meta; raw
+        r = rpc('meta', cik, rid, '--value=TEST')
+        self.notok(r, "Write dataport meta, not json")
+        r = rpc('meta', cik, rid, '--value=TEST', '--raw')
+        self.ok(r, "Write dataport meta, not json")
+        r = rpc('meta', cik, rid)
+        self.notok(r, "Not JSON.")
+        r = rpc('meta', cik, rid, '--raw')
+        self.ok(r, "is JSON.", match='TEST')
+
+        # Write some meta; JSON
+        r = rpc('meta', cik, rid, '--value={"a":12}')
+        self.ok(r, "Write dataport meta, not json")
+        r = rpc('meta', cik, rid)
+        self.ok(r, "read json", match='"{\\"a\\":12}"')
+
+
+        # Now work on the client
 
 
 def tearDownModule(self):

@@ -58,10 +58,13 @@ class Plugin():
 
         else:
             try:
-                if args['--raw']:
-                    print(info['description']['meta'])
+                rawmeta = info['description']['meta']
+                if len(rawmeta) == 0:
+                    print()
+                elif args['--raw']:
+                    print(rawmeta)
                 else:
-                    meta = json.loads(info['description']['meta'])
+                    meta = json.loads(rawmeta)
                     print(json.dumps(meta,separators=(',', ':')))           
             except Exception as ex:
                 raise ExoException("Error parsing JSON in meta: {0}".format(ex))
