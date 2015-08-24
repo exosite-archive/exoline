@@ -2558,7 +2558,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('meta', cik, rid)
         self.ok(r, "read dataport meta")
 
-        # Write some meta; raw
+        # Write some dataport meta; raw
         r = rpc('meta', cik, rid, '--value=TEST')
         self.notok(r, "Write dataport meta, not json")
         r = rpc('meta', cik, rid, '--value=TEST', '--raw')
@@ -2568,14 +2568,11 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('meta', cik, rid, '--raw')
         self.ok(r, "is JSON.", match='TEST')
 
-        # Write some meta; JSON
+        # Write some dataport meta; JSON
         r = rpc('meta', cik, rid, '--value={"a":12}')
-        self.ok(r, "Write dataport meta, not json")
+        self.ok(r, "Write dataport meta, json")
         r = rpc('meta', cik, rid)
-        self.ok(r, "read json", match='"{\\"a\\":12}"')
-
-
-        # Now work on the client
+        self.ok(r, "read json", match='"{"a":12}"')
 
 
 def tearDownModule(self):

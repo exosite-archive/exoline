@@ -52,6 +52,7 @@ class Plugin():
                 # do I need anything else for just updating meta?
                 desc = {'meta': meta}
                 rpc.update(cik, rid, desc)
+                # XXX Need cik of parent and rid of client to modify meta.
 
             except Exception as ex:
                 raise ExoException("Error updating meta: {0}".format(ex))
