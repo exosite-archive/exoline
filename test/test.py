@@ -2538,6 +2538,42 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         testChildResource(childit, rid=ridInteger, name='integer_port', vals=valsInteger, alias='int3ger_alias')
         testChildResource(childit, rid=ridScript, name='script_port', vals=[])
 
+    def meta_test(self):
+        '''Meta command'''
+        cik = self.client.cik()
+        dp = self._createDataports(cik)
+        rid = dp['string'].rid
+
+        # Start with calls raw.  There is no meta
+        r = rpc('meta', cik, '--raw')
+        self.ok(r, "read client meta")
+
+        r = rpc('meta', cik, rid, '--raw')
+        self.ok(r, "read dataport meta")
+
+        # Reading no meta without --raw should work.
+        r = rpc('meta', cik)
+        self.ok(r, "read client meta")
+
+        r = rpc('meta', cik, rid)
+        self.ok(r, "read dataport meta")
+
+        # Write some dataport meta; raw
+        r = rpc('meta', cik, rid, '--value=TEST')
+        self.notok(r, "Write dataport meta, not json")
+        r = rpc('meta', cik, rid, '--value=TEST', '--raw')
+        self.ok(r, "Write dataport meta, not json")
+        r = rpc('meta', cik, rid)
+        self.notok(r, "Not JSON.")
+        r = rpc('meta', cik, rid, '--raw')
+        self.ok(r, "is JSON.", match='TEST')
+
+        # Write some dataport meta; JSON
+        r = rpc('meta', cik, rid, '--value={"a":12}')
+        self.ok(r, "Write dataport meta, json")
+        r = rpc('meta', cik, rid)
+        self.ok(r, "read json", match='"{"a":12}"')
+
 
 def tearDownModule(self):
     '''Do final things'''
@@ -2553,3 +2589,6 @@ def tearDownModule(self):
                     response = pop.model_remove(config['vendortoken'], model)
         # drop all test clients
         rpc('drop', config['portalcik'], '--all-children')
+
+
+#  vim: set ai et sw=4 ts=4 :
