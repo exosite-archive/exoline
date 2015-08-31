@@ -308,19 +308,24 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def setUp(self):
         '''Create some devices in the portal to test'''
         self.log = logging.getLogger('TestRPC')
-        self.portalcik = config['portalcik']
+        self.root_rsc = self._create(Resource(
+            config['portalcik'],
+            'client',
+            {},
+        ))
+        self.rootcik = self.root_rsc.cik()
         self.client = Resource(
-            self.portalcik,
+            self.rootcik,
             'client',
             {'writeinterval': 'inherit',
             'name': 'test測試',
             'visibility': 'parent'})
-        self._createMultiple(self.portalcik, [self.client])
+        self._createMultiple(self.rootcik, [self.client])
 
     def tearDown(self):
         '''Clean up any test client'''
         if not NOTEARDOWN:
-            rpc('drop', self.portalcik, self.client.rid)
+            rpc('drop', config['portalcik'], self.root_rsc.rid)
 
     @attr('auth')
     def auth_cik_clientid_test(self):
@@ -609,7 +614,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def create_test(self):
         '''Create/drop commands'''
         client = Resource(
-            self.portalcik,
+            self.rootcik,
             'client',
             {'limits': {'dataport': 'inherit',
                         'datarule': 'inherit',
@@ -654,9 +659,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'drop --all-children succeeded')
         r = rpc('listing', client.cik(), '--types=dataport', '--plain')
         self.ok(r, 'no dataports after drop --all-children', match='')
-        r = rpc('drop', self.portalcik, client.rid)
+        r = rpc('drop', self.rootcik, client.rid)
         self.ok(r, 'drop client succeeded')
-        r = rpc('info', self.portalcik, client.rid)
+        r = rpc('info', self.rootcik, client.rid)
         self.notok(r, 'client gone after drop', match='.*restricted')
 
     #these fail occasionally due to some timing thing. Need to figure out why.
@@ -918,7 +923,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 return copyrid
 
         # clone client
-        copyrid, copycik = clone_helper(self.portalcik, self.client.rid)
+        copyrid, copycik = clone_helper(self.rootcik, self.client.rid)
 
         r = rpc('diff', cik, copycik)
         if sys.version_info < (2, 7):
@@ -929,7 +934,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', copycik, 'foo', '--format=raw')
         self.ok(r, 'time series data was copied', match='testvalue')
 
-        copyrid, copycik = clone_helper(self.portalcik, self.client.rid, nohistorical=True)
+        copyrid, copycik = clone_helper(self.rootcik, self.client.rid, nohistorical=True)
 
         r = rpc('diff', cik, copycik)
         if sys.version_info < (2, 7):
@@ -951,7 +956,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         else:
             self.ok(r, 'diff with itself, no differences', match='')
 
-        r = rpc('copy', cik, self.portalcik, '--cikonly')
+        r = rpc('copy', cik, self.rootcik, '--cikonly')
         self.ok(r, 'copy test client', match=self.RE_RID)
         copycik = r.stdout
 
