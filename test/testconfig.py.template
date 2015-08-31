@@ -5,5 +5,5 @@ config = {
     'https': True,
     'port': 443,
     'vendortoken': '<vendor token (from <subdomain>.exosite.com/admin/home)>',
-    'vendor': '<vendor name (from <subdomain>.exosite.com/admin/managemodels)>'
+    'vendor': '<vendor name (from <subdomain>.exosite.com/admin/managemodels)>',
 }
