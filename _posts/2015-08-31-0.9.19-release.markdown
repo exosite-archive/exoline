@@ -1,0 +1,12 @@
+---
+layout: post
+title:  "Exoline 0.9.19: meta command, twee double wide"
+date:   2015-08-31 15:22:07
+---
+
+0.9.19 features:
+
+- meta command to set metadata on a One Platform resource
+- twee latest values output now fills available terminal space
+- add [plugin example](https://github.com/exosite/exoline#plugin-development)
+- run tests in a client inside test portal
