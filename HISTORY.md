@@ -7,6 +7,7 @@ History
 
 - add meta command for setting resource meta
 - allow twee values to take entire terminal width
+- add plugin example
 - run tests in a client inside test portal
 
 0.9.18 (2015-07-15)
