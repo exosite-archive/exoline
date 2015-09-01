@@ -2,11 +2,12 @@ History
 =======
 
 
-0.9.19 (2015-08-28)
+0.9.19 (2015-08-31)
 -------------------
 
 - add meta command for setting resource meta
 - allow twee values to take entire terminal width
+- run tests in a client inside test portal
 
 0.9.18 (2015-07-15)
 -------------------

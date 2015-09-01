@@ -2577,7 +2577,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('meta', cik, rid, '--value={"a":12}')
         self.ok(r, "Write dataport meta, json")
         r = rpc('meta', cik, rid)
-        self.ok(r, "read json", match='"{"a":12}"')
+        self.ok(r, "read json", match='{"a":12}')
 
 
 def tearDownModule(self):

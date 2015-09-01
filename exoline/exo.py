@@ -489,9 +489,9 @@ if platform.system() != 'Windows':
             try:
                 plugin = importlib.import_module('plugins.' + module_name)
             except Exception as ex:
-		# TODO: only catch the not found exception, for plugin
-		# debugging
-		#print(ex)
+                # TODO: only catch the not found exception, for plugin
+                # debugging
+                print(ex)
                 try:
                     plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
                 except Exception as ex:
@@ -583,6 +583,15 @@ else:
         p = aliases.Plugin()
         plugins.append(p)
         cmd_doc[p.command()] = aliases.__doc__
+
+        # meta plugin
+        try:
+            from ..exoline.plugins import meta
+        except:
+            from exoline.plugins import meta
+        p = meta.Plugin()
+        meta.append(p)
+        cmd_doc[p.command()] = meta.__doc__
 
     except Exception as ex:
         import traceback
@@ -1611,9 +1620,9 @@ class ExoRPC():
             if 'sn' in opt and 'model' in opt:
                 displaymodel = ' (' + opt['model'] + '#' + opt['sn'] + ')'
 
-    
+
             if val:
-                twee_line = "".join([spacer, displayname, ' '*( maxlen['name']+1- len(name)), displaytype, tweeid, (' (share)' if 'listing_option' in info and info['listing_option'] == 'activated' else ''), 
+                twee_line = "".join([spacer, displayname, ' '*( maxlen['name']+1- len(name)), displaytype, tweeid, (' (share)' if 'listing_option' in info and info['listing_option'] == 'activated' else ''),
                                     ('' if typ == 'client' else ': '), ('' if timestamp is None or len(timestamp) == 0 else ' (' + timestamp + ')'), displaymodel])
                 val_size = len(val)
                 displayed_chars = len(twee_line)

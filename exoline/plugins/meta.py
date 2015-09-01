@@ -10,7 +10,7 @@ Usage:
 
 Command Options:
 {{ helpoption }}
-    --raw               Don't try to parse the meta
+    --raw               Don't try to parse the meta as JSON
     --value=<value>     String to save into meta
 
 '''
@@ -46,10 +46,9 @@ class Plugin():
                     meta = args['--value']
                 if not args['--raw']:
                     js = json.loads(meta)
-                    meta = json.dumps(meta,separators=(',', ':'))
+                    meta = json.dumps(js)
                 # write meta. update.
 
-                # do I need anything else for just updating meta?
                 desc = {'meta': meta}
                 rpc.update(cik, rid, desc)
                 # XXX Need cik of parent and rid of client to modify meta.
@@ -66,7 +65,7 @@ class Plugin():
                     print(rawmeta)
                 else:
                     meta = json.loads(rawmeta)
-                    print(json.dumps(meta,separators=(',', ':')))           
+                    print(json.dumps(meta,separators=(',', ':')))
             except Exception as ex:
                 raise ExoException("Error parsing JSON in meta: {0}".format(ex))
 
