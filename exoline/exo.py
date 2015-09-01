@@ -491,7 +491,7 @@ if platform.system() != 'Windows':
             except Exception as ex:
                 # TODO: only catch the not found exception, for plugin
                 # debugging
-                print(ex)
+                #print(ex)
                 try:
                     plugin = importlib.import_module('exoline.plugins.' + module_name, package='test')
                 except Exception as ex:
