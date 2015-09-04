@@ -2628,8 +2628,8 @@ class ExoUtilities():
     def format_time(cls, sec):
         '''Formats a time interval for human consumption'''
         intervals = [[60 * 60 * 24, 'd'],
-                        [60 * 60, 'h'],
-                        [60, 'm']]
+                     [60 * 60, 'h'],
+                     [60, 'm']]
         text = ""
         for s, label in intervals:
             if sec >= s and sec // s > 0:
@@ -2641,11 +2641,12 @@ class ExoUtilities():
 
     @classmethod
     def handleSystemExit(cls, ex):
-        # Handle SystemExit per https://docs.python.org/2/library/exceptions.html#exceptions.SystemExit
+        # Handle SystemExit per
+        # https://docs.python.org/2/library/exceptions.html#exceptions.SystemExit
         if ex.code is None:
             return 0
         elif isinstance(ex.code, six.string_types):
-            sys.stderr.write(ex.code)
+            sys.stderr.write(ex.code + '\n')
             return 1
         elif type(ex.code is int):
             return ex.code

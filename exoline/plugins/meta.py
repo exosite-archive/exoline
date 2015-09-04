@@ -9,10 +9,9 @@ Usage:
     exo [options] meta <cik> [<rid>] -
 
 Command Options:
+    --raw            Don't try to parse the meta as JSON
+    --value=<value>  String to save into meta
 {{ helpoption }}
-    --raw               Don't try to parse the meta as JSON
-    --value=<value>     String to save into meta
-
 '''
 
 from __future__ import unicode_literals
