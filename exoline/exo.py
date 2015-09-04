@@ -924,6 +924,19 @@ class ExoRPC():
         self._raise_for_response(isok, response)
         return response
 
+    def move(self,
+             cik,
+             rid,
+             destinationrid,
+             options={"aliases": True}):
+        isok, response = self.exo.move(
+            cik,
+            rid,
+            destinationrid,
+            options)
+        self._raise_for_response(isok, response)
+        return response
+
     def find(self, cik, matches, shows, verbose=False):
         showcik = False
         if "cik" in shows:
