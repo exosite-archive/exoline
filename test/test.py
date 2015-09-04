@@ -2579,6 +2579,34 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('meta', cik, rid)
         self.ok(r, "read json", match='{"a":12}')
 
+    def move_test(self):
+        '''Move command'''
+        cik = self.client.cik()
+
+        desc = json.dumps({'limits': {'client': 5,
+          'dataport': 'inherit',
+          'datarule': 'inherit',
+          'dispatch': 'inherit',
+          'disk': 'inherit',
+          'io': 'inherit'},
+          'writeinterval': 'inherit',
+          'name': 'test測試',
+          'visibility': 'parent'})
+
+        r = rpc('create', cik, '--type=client', '--name=origin_client')
+        self.ok(r, 'create origin client')
+        originrid, origincik = self._ridcik(r.stdout)
+
+        r = rpc('create', cik, '--type=client', '--name=destination_client')
+        self.ok(r, 'create destination client')
+        destinationrid, destinationcik = self._ridcik(r.stdout)
+
+        r = rpc('create', cik, '--type=client', '--name=mover')
+        self.ok(r, 'create mover dataport')
+        moverrid, movercik = self._ridcik(r.stdout)
+
+        r = rpc('move', cik, originrid, destinationrid)
+        self.ok(r, 'Moved mover dataport')
 
 def tearDownModule(self):
     '''Do final things'''
