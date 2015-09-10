@@ -753,7 +753,20 @@ class ExoRPC():
     regex_tweeid = re.compile("rid\.[0-9a-fA-F]{5}")
 
     class RPCException(Exception):
-        pass
+        def __init__(self, *args):
+            try:
+                err, conditions = args[0].split(" ", 1)
+                if err == "invalid":
+                    url = "https://pyonep.readthedocs.org/errors/invalid.html"
+                elif err == "auth":
+                    url = "https://pyonep.readthedocs.org/errors/auth.html"
+                else:
+                    url = "https://pyonep.readthedocs.org/errors/general.html"
+                self.message = "Error: %s\n\tArguments: %s\n\tFor more information, visit: %s"%(err, conditions, url)    
+            except:
+                self.message = args[0]
+        def __str__(self):
+            return self.message
 
     def __init__(self,
                  host=DEFAULT_HOST,
