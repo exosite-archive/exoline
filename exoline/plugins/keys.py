@@ -5,6 +5,7 @@ Usage:
     exo [options] keys
     exo [options] keys add <new_cik> <new_name>
     exo [options] keys rm <name>
+    exo [options] keys show <name>
     exo [options] keys wipe
 
 Command Options:
@@ -57,6 +58,9 @@ class Plugin():
                 return
 
             del config['keys'][name]
+        elif subcommand == "show":
+            name = args["<name>"]
+            print("{}: {}".format(name, config['keys'][name]))
         elif subcommand == "wipe":
             del config['keys']
         else:
