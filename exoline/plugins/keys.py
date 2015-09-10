@@ -5,6 +5,7 @@ Usage:
     exo [options] keys
     exo [options] keys add <new_cik> <new_name>
     exo [options] keys rm <name>
+    exo [options] keys wipe
 
 Command Options:
     --hack                 This option hacks the gibson.
@@ -56,6 +57,8 @@ class Plugin():
                 return
 
             del config['keys'][name]
+        elif subcommand == "wipe":
+            del config['keys']
         else:
             print(" ".join(map(str, config.get("keys", {}).keys())))
         
