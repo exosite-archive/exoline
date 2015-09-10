@@ -757,11 +757,11 @@ class ExoRPC():
             try:
                 err, conditions = args[0].split(" ", 1)
                 if err == "invalid":
-                    url = "https://pyonep.readthedocs.org/errors/invalid.html"
+                    url = "https://pyonep.readthedocs.org/en/latest/errors/invalid.html"
                 elif err == "auth":
-                    url = "https://pyonep.readthedocs.org/errors/auth.html"
+                    url = "https://pyonep.readthedocs.org/en/latest/errors/auth.html"
                 else:
-                    url = "https://pyonep.readthedocs.org/errors/general.html"
+                    url = "https://pyonep.readthedocs.org/en/latest/errors/general.html"
                 self.message = "Error: %s\n\tArguments: %s\n\tFor more information, visit: %s"%(err, conditions, url)    
             except:
                 self.message = args[0]
