@@ -74,6 +74,7 @@ import requests
 import yaml
 import importlib
 import humanize
+import blessings
 
 from pyonep import onep
 from pyonep import provision
@@ -97,6 +98,8 @@ DEFAULT_CONFIG = '~/.exoline'
 SCRIPT_LIMIT_BYTES = 16 * 1024
 
 PERF_DATA = []
+
+colored_terminal = blessings.Terminal()
 
 cmd_doc = OrderedDict([
     ('read',
@@ -476,8 +479,13 @@ plugins = []
 if platform.system() != 'Windows':
     # load plugins. use timezone because this file may be running
     # as a script in some other location.
-    default_plugin_path = os.path.join(os.path.dirname(exocommon.__file__), 'plugins')
-
+    if os.path.isdir(os.path.join(os.path.dirname(__file__), "plugins")):
+        default_plugin_path = os.path.join(os.path.dirname(__file__), 'plugins')
+    elif os.path.isdir(os.path.join(os.path.dirname(__file__), "..", "..", "exoline/plugins")):
+        default_plugin_path = os.path.join(os.path.dirname(__file__), "..", "..", "exoline/plugins")
+    else:
+        default_plugin_path = "./"
+    #print("Using plugin path as: ", default_plugin_path)
     plugin_paths = os.getenv('EXO_PLUGIN_PATH', default_plugin_path).split(':')
 
     for plugin_path in [i for i in plugin_paths if len(i) > 0]:
@@ -486,8 +494,9 @@ if platform.system() != 'Windows':
             if not os.path.basename(f).startswith('_')]
 
         for module_name in plugin_names:
+            #print("Trying to load ", plugin_path, module_name)
             try:
-                plugin = importlib.import_module('plugins.' + module_name)
+                plugin = importlib.import_module(plugin_path + module_name)
             except Exception as ex:
                 # TODO: only catch the not found exception, for plugin
                 # debugging
@@ -744,7 +753,20 @@ class ExoRPC():
     regex_tweeid = re.compile("rid\.[0-9a-fA-F]{5}")
 
     class RPCException(Exception):
-        pass
+        def __init__(self, *args):
+            try:
+                err, conditions = args[0].split(" ", 1)
+                if err == "invalid":
+                    url = "https://pyonep.readthedocs.org/en/latest/errors/invalid.html"
+                elif err == "auth":
+                    url = "https://pyonep.readthedocs.org/en/latest/errors/auth.html"
+                else:
+                    url = "https://pyonep.readthedocs.org/en/latest/errors/general.html"
+                self.message = "Error: %s\n\tArguments: %s\n\tFor more information, visit: %s"%(err, conditions, url)    
+            except:
+                self.message = args[0]
+        def __str__(self):
+            return self.message
 
     def __init__(self,
                  host=DEFAULT_HOST,
@@ -1592,37 +1614,53 @@ class ExoRPC():
 
         if twee:
             # colors, of course
-            class bcolors:
-                SPACER = '' if cli_args['--nocolor'] else '\033[0m'
-                NAME = '' if cli_args['--nocolor'] else '\033[0m'
-                TYPE = '' if cli_args['--nocolor'] else '\033[35m'
-                ID = '' if cli_args['--nocolor'] else '\033[32m'
-                VALUE = '' if cli_args['--nocolor'] else '\033[33m'
-                TIMESTAMP = '' if cli_args['--nocolor'] else '\033[34m'
-                PINK = '' if cli_args['--nocolor'] else '\033[35m'
-                MODEL = '' if cli_args['--nocolor'] else '\033[36m'
-                ENDC = '' if cli_args['--nocolor'] else '\033[0m'
+            default = colored_terminal.normal
+            
+            if cli_args['--nocolor']:
+                SPACER = default
+                NAME = default
+                TYPE = default
+                ID = default
+                VALUE = default
+                TIMESTAMP = default
+                PINK = default
+                MODEL = default
+                ENDC = default
+            else:
+                SPACER = default
+                NAME = default
+                TYPE = colored_terminal.magenta
+                ID = colored_terminal.green
+                TIMESTAMP = colored_terminal.blue
+                VALUE = colored_terminal.yellow
+                PINK = colored_terminal.magenta
+                MODEL = colored_terminal.cyan
+                ENDC = colored_terminal.normal
 
             # the goal here is to make the line short to provide more room for the value
             # so if there's an alias, just use that, since it's
             # if no alias, then the first ten of the RID and the name
             # if multiple alias, then the first alias
+
             if typ == 'client':
                 if cli_args['--rids']:
-                    tweeid = bcolors.SPACER + 'rid: ' + bcolors.ID + rid
+                    tweeid = SPACER + 'rid: ' + ID + rid
                 else:
-                    tweeid = bcolors.SPACER + 'cik: ' + bcolors.ID + id[5:]
+                    tweeid = SPACER + 'cik: ' + ID + id[5:]
             else:
                 if cli_args['--rids']:
-                    tweeid = bcolors.SPACER + 'rid: ' + bcolors.ID + rid
+                    tweeid = SPACER + 'rid: ' + ID + rid
                 else:
                     if aliases is not None and len(aliases) > 0:
                         tweeid = aliases[0]
                     else:
                         tweeid = 'rid.' + rid[:5]
 
-            displayname = ((name + bcolors.SPACER + ' ') if len(name) > 0 else ' ')
+            displayname = ((name + SPACER + ' ') if len(name) > 0 else ' ')
+            
             displaytype = {'dataport': 'dp', 'client': 'cl', 'datarule': 'dr', 'dispatch': 'ds'}[typ]
+            if displaytype == "cl":
+                NAME = colored_terminal.underline
             if 'format' in info['description']:
                 displaytype += '.' + {'binary': 'b', 'string': 's', 'float': 'f', 'integer': 'i'}[info['description']['format']]
             else:
@@ -1645,25 +1683,19 @@ class ExoRPC():
                     val = val[:allowed_size] + "..."
 
             self._print_tree_line(
-                bcolors.SPACER +
-                spacer +
-                bcolors.NAME +
-                displayname +
-                ' ' * (maxlen['name'] + 1 - len(name)) +
-                bcolors.TYPE +
-                displaytype + ' ' +
-                bcolors.ID +
-                tweeid +
-                bcolors.SPACER +
-                (' (share)' if 'listing_option' in info and info['listing_option'] == 'activated' else '') +
+                SPACER + spacer +
+                NAME + displayname +
+                ' '*(maxlen['name']-len(name)) +
+                TYPE + displaytype +
+                ' ' +
+                ID + tweeid +
+                SPACER + (' (share)' if 'listing_option' in info and info['listing_option'] == 'activated' else '') +
                 ('' if typ == 'client' else ': ') +
-                bcolors.VALUE +
-                ('' if val is None else val) +
-                bcolors.TIMESTAMP +
-                ('' if timestamp is None or len(timestamp) == 0 else ' (' + timestamp + ')') +
-                bcolors.MODEL +
-                displaymodel +
-                bcolors.ENDC)
+                VALUE + ('' if val is None else val) +
+                TIMESTAMP + ('' if timestamp is None or len(timestamp) == 0 else ' (' + timestamp + ')') +
+                MODEL + displaymodel +
+                ENDC
+                )
         else:
             # standard tree
             if 'format' in info['description']:
@@ -1990,13 +2022,19 @@ probably not valid.".format(cik))
                     uploaded = False
                     nocolor = platform.system() == 'Windows'
                     class colors:
-                        PINK = '' if nocolor else '\033[35m'
-                        CYAN = '' if nocolor else '\033[36m'
-                        YELLOW = '' if nocolor else '\033[33m'
-                        GREEN = '' if nocolor else '\033[32m'
-                        RED = '' if nocolor else '\033[31m'
-                        GRAY = '' if nocolor else '\033[1;30m'
-                        ENDC = '' if nocolor else '\033[0m'
+                        SPACER = colored_terminal.normal
+                        NAME = colored_terminal.normal
+                        TYPE = colored_terminal.magenta
+                        ID = colored_terminal.green
+                        TIMESTAMP = colored_terminal.blue
+                        VALUE = colored_terminal.yellow
+                        PINK = colored_terminal.magenta
+                        MODEL = colored_terminal.cyan
+                        ENDC = colored_terminal.normal
+                        GRAY = colored_terminal.gray
+                        GREEN = colored_terminal.green
+                        RED = colored_terminal.red
+
                     def status_color(status):
                         return colors.RED if status == 'error' else colors.GREEN
                     # loop forever
