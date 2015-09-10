@@ -6,6 +6,7 @@ Usage:
     exo [options] keys add <new_cik> <new_name>
     exo [options] keys rm <name>
     exo [options] keys show <name>
+    exo [options] keys clean
     exo [options] keys wipe
 
 Command Options:
@@ -16,6 +17,7 @@ Command Options:
 
 import ruamel.yaml
 import os, re
+from pyonep.exceptions import OnePlatformException
 
 class Plugin():
     regex_rid = re.compile("[0-9a-fA-F]{40}$")
@@ -24,6 +26,7 @@ class Plugin():
         return 'keys'
 
     def run(self, cmd, args, options):
+        rpc = options['rpc']
         configfile = self.realConfigFile(os.getenv('EXO_CONFIG', '~/.exoline'))
         try:
             with open(configfile) as f:
@@ -63,6 +66,20 @@ class Plugin():
             print("{}: {}".format(name, config['keys'][name]))
         elif subcommand == "wipe":
             del config['keys']
+        elif subcommand == "clean":
+            to_trim = []
+            for name in config['keys']:
+                try:
+                    print("Checking {}...".format(name)),
+                    rpc.info(config['keys'][name])
+                    print("OK")
+                except OnePlatformException as e:
+                    to_trim.append(name)
+                    print("ERR (Removing)")
+
+            if len(to_trim) > 0:
+                for name in to_trim:
+                    del config['keys'][name]
         else:
             print(" ".join(map(str, config.get("keys", {}).keys())))
         
