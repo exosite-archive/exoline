@@ -479,8 +479,13 @@ plugins = []
 if platform.system() != 'Windows':
     # load plugins. use timezone because this file may be running
     # as a script in some other location.
-    default_plugin_path = os.path.join(os.path.dirname(exocommon.__file__), 'plugins')
-
+    if os.path.isdir(os.path.join(os.path.dirname(__file__), "plugins")):
+        default_plugin_path = os.path.join(os.path.dirname(__file__), 'plugins')
+    elif os.path.isdir(os.path.join(os.path.dirname(__file__), "..", "..", "exoline/plugins")):
+        default_plugin_path = os.path.join(os.path.dirname(__file__), "..", "..", "exoline/plugins")
+    else:
+        default_plugin_path = "./"
+    #print("Using plugin path as: ", default_plugin_path)
     plugin_paths = os.getenv('EXO_PLUGIN_PATH', default_plugin_path).split(':')
 
     for plugin_path in [i for i in plugin_paths if len(i) > 0]:
@@ -489,8 +494,9 @@ if platform.system() != 'Windows':
             if not os.path.basename(f).startswith('_')]
 
         for module_name in plugin_names:
+            #print("Trying to load ", plugin_path, module_name)
             try:
-                plugin = importlib.import_module('plugins.' + module_name)
+                plugin = importlib.import_module(plugin_path + module_name)
             except Exception as ex:
                 # TODO: only catch the not found exception, for plugin
                 # debugging
