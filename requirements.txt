@@ -10,3 +10,4 @@ jsonschema==2.3.0
 ordereddict>=1.1
 dotenv==0.0.5
 humanize==0.5.1
+blessings==1.6
