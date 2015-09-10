@@ -4,6 +4,7 @@
 Usage:
     exo [options] keys
     exo [options] keys add <new_cik> <new_name>
+    exo [options] keys rm <name>
 
 Command Options:
     --hack                 This option hacks the gibson.
@@ -47,6 +48,14 @@ class Plugin():
                 config['keys'].yaml_add_eol_comment(args['--comment'], name)
 
             print("Added `{}: {}` to {}".format(name, cik, configfile))
+        elif subcommand == "rm":
+            name = args["<name>"]
+
+            if config['keys'].get(name, None) == None:
+                print("That key does not exist.")
+                return
+
+            del config['keys'][name]
         else:
             print(" ".join(map(str, config.get("keys", {}).keys())))
         
