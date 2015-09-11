@@ -756,7 +756,7 @@ class ExoRPC():
                     url = "https://pyonep.readthedocs.org/en/latest/errors/auth.html"
                 else:
                     url = "https://pyonep.readthedocs.org/en/latest/errors/general.html"
-                self.message = "Error: %s\n\tArguments: %s\n\tFor more information, visit: %s"%(err, conditions, url)    
+                self.message = "Error: %s\n\tArguments: %s\n\tFor more information, visit: %s"%(err, conditions, url)
             except:
                 self.message = args[0]
         def __str__(self):
@@ -1609,7 +1609,7 @@ class ExoRPC():
         if twee:
             # colors, of course
             default = colored_terminal.normal
-            
+
             if cli_args['--nocolor']:
                 SPACER = default
                 NAME = default
@@ -1651,9 +1651,9 @@ class ExoRPC():
                         tweeid = 'rid.' + rid[:5]
 
             displayname = ((name + SPACER + ' ') if len(name) > 0 else ' ')
-            
+
             displaytype = {'dataport': 'dp', 'client': 'cl', 'datarule': 'dr', 'dispatch': 'ds'}[typ]
-            if displaytype == "cl":
+            if not cli_args['--nocolor'] and displaytype == "cl":
                 NAME = colored_terminal.underline
             if 'format' in info['description']:
                 displaytype += '.' + {'binary': 'b', 'string': 's', 'float': 'f', 'integer': 'i'}[info['description']['format']]
@@ -2015,19 +2015,21 @@ probably not valid.".format(cik))
                     last_status = ''
                     uploaded = False
                     nocolor = platform.system() == 'Windows'
+                    def ifcolor(c):
+                        return colored_terminal.normal if nocolor else c
                     class colors:
-                        SPACER = colored_terminal.normal
-                        NAME = colored_terminal.normal
-                        TYPE = colored_terminal.magenta
-                        ID = colored_terminal.green
-                        TIMESTAMP = colored_terminal.blue
-                        VALUE = colored_terminal.yellow
-                        PINK = colored_terminal.magenta
-                        MODEL = colored_terminal.cyan
-                        ENDC = colored_terminal.normal
-                        GRAY = colored_terminal.gray
-                        GREEN = colored_terminal.green
-                        RED = colored_terminal.red
+                        SPACER = ifcolor(colored_terminal.normal)
+                        NAME = ifcolor(colored_terminal.normal)
+                        TYPE = ifcolor(colored_terminal.magenta)
+                        ID = ifcolor(colored_terminal.green)
+                        TIMESTAMP = ifcolor(colored_terminal.blue)
+                        VALUE = ifcolor(colored_terminal.yellow)
+                        PINK = ifcolor(colored_terminal.magenta)
+                        MODEL = ifcolor(colored_terminal.cyan)
+                        ENDC = ifcolor(colored_terminal.normal)
+                        GRAY = ifcolor(colored_terminal.gray)
+                        GREEN = ifcolor(colored_terminal.green)
+                        RED = ifcolor(colored_terminal.red)
 
                     def status_color(status):
                         return colors.RED if status == 'error' else colors.GREEN
