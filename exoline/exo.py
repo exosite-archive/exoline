@@ -1283,7 +1283,7 @@ class ExoRPC():
         return response
 
     def listing(self, cik, types, options={}, rid=None):
-        isok, response = self.exo.listing(cik, types, options=options, rid=rid)
+        isok, response = self.exo.listing(cik, types, options=options, resource=rid)
         self._raise_for_response(isok, response)
         return response
 
@@ -1837,7 +1837,7 @@ probably not valid.".format(cik))
             cik,
             types=['client', 'dataport', 'datarule', 'dispatch'],
             options={},
-            rid={'alias': ''})
+            resource={'alias': ''})
         self._raise_for_response(isok, listing)
         rids = itertools.chain(*[listing[t] for t in listing.keys()])
         self._exomult(cik, [['drop', rid] for rid in rids])
@@ -2117,7 +2117,7 @@ probably not valid.".format(cik))
                     upl()
 
     def lookup_rid(self, cik, cik_to_find):
-        isok, listing = self.exo.listing(cik, types=['client'], options={}, rid={'alias': ''})
+        isok, listing = self.exo.listing(cik, types=['client'], options={}, resource={'alias': ''})
         self._raise_for_response(isok, listing)
 
         for rid in listing['client']:
