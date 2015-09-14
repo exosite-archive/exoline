@@ -856,6 +856,25 @@ Google Docs:
 
 ![Google Docs time series graph example](images/docs_chart.png)
 
+Plugin Development
+------------------
+
+Most new features of Exoline may be developed as plugins. Plugins are
+located in [exoline/plugins/](exoline/plugins/) and there's an example
+[here](exoline/plugins/_example.py). Here's how to make one.
+
+```
+$ git clone git@github.com:exosite/exoline.git
+$ cd exoline
+$ export EXO_PLUGIN_PATH=`pwd`/exoline/plugins
+$ cp exoline/plugins/_example.py exoline/plugins/hello.py
+$ exoline/exo.py hello coffee status
+Hello, New Brew!!
+```
+
+To enable a plugin in the next Windows executable build you must add 
+it to exoline/exo.py in the section with the heading:
+"plugin support for Windows executable build"
 
 Issues/Feature Requests
 -----------------------

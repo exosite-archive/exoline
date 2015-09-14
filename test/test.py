@@ -308,19 +308,24 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def setUp(self):
         '''Create some devices in the portal to test'''
         self.log = logging.getLogger('TestRPC')
-        self.portalcik = config['portalcik']
+        self.root_rsc = self._create(Resource(
+            config['portalcik'],
+            'client',
+            {},
+        ))
+        self.rootcik = self.root_rsc.cik()
         self.client = Resource(
-            self.portalcik,
+            self.rootcik,
             'client',
             {'writeinterval': 'inherit',
             'name': 'test測試',
             'visibility': 'parent'})
-        self._createMultiple(self.portalcik, [self.client])
+        self._createMultiple(self.rootcik, [self.client])
 
     def tearDown(self):
         '''Clean up any test client'''
         if not NOTEARDOWN:
-            rpc('drop', self.portalcik, self.client.rid)
+            rpc('drop', config['portalcik'], self.root_rsc.rid)
 
     @attr('auth')
     def auth_cik_clientid_test(self):
@@ -609,7 +614,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
     def create_test(self):
         '''Create/drop commands'''
         client = Resource(
-            self.portalcik,
+            self.rootcik,
             'client',
             {'limits': {'dataport': 'inherit',
                         'datarule': 'inherit',
@@ -654,9 +659,9 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         self.ok(r, 'drop --all-children succeeded')
         r = rpc('listing', client.cik(), '--types=dataport', '--plain')
         self.ok(r, 'no dataports after drop --all-children', match='')
-        r = rpc('drop', self.portalcik, client.rid)
+        r = rpc('drop', self.rootcik, client.rid)
         self.ok(r, 'drop client succeeded')
-        r = rpc('info', self.portalcik, client.rid)
+        r = rpc('info', self.rootcik, client.rid)
         self.notok(r, 'client gone after drop', match='.*restricted')
 
     #these fail occasionally due to some timing thing. Need to figure out why.
@@ -918,7 +923,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
                 return copyrid
 
         # clone client
-        copyrid, copycik = clone_helper(self.portalcik, self.client.rid)
+        copyrid, copycik = clone_helper(self.rootcik, self.client.rid)
 
         r = rpc('diff', cik, copycik)
         if sys.version_info < (2, 7):
@@ -929,7 +934,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         r = rpc('read', copycik, 'foo', '--format=raw')
         self.ok(r, 'time series data was copied', match='testvalue')
 
-        copyrid, copycik = clone_helper(self.portalcik, self.client.rid, nohistorical=True)
+        copyrid, copycik = clone_helper(self.rootcik, self.client.rid, nohistorical=True)
 
         r = rpc('diff', cik, copycik)
         if sys.version_info < (2, 7):
@@ -951,7 +956,7 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         else:
             self.ok(r, 'diff with itself, no differences', match='')
 
-        r = rpc('copy', cik, self.portalcik, '--cikonly')
+        r = rpc('copy', cik, self.rootcik, '--cikonly')
         self.ok(r, 'copy test client', match=self.RE_RID)
         copycik = r.stdout
 
@@ -2538,6 +2543,70 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         testChildResource(childit, rid=ridInteger, name='integer_port', vals=valsInteger, alias='int3ger_alias')
         testChildResource(childit, rid=ridScript, name='script_port', vals=[])
 
+    def meta_test(self):
+        '''Meta command'''
+        cik = self.client.cik()
+        dp = self._createDataports(cik)
+        rid = dp['string'].rid
+
+        # Start with calls raw.  There is no meta
+        r = rpc('meta', cik, '--raw')
+        self.ok(r, "read client meta")
+
+        r = rpc('meta', cik, rid, '--raw')
+        self.ok(r, "read dataport meta")
+
+        # Reading no meta without --raw should work.
+        r = rpc('meta', cik)
+        self.ok(r, "read client meta")
+
+        r = rpc('meta', cik, rid)
+        self.ok(r, "read dataport meta")
+
+        # Write some dataport meta; raw
+        r = rpc('meta', cik, rid, '--value=TEST')
+        self.notok(r, "Write dataport meta, not json")
+        r = rpc('meta', cik, rid, '--value=TEST', '--raw')
+        self.ok(r, "Write dataport meta, not json")
+        r = rpc('meta', cik, rid)
+        self.notok(r, "Not JSON.")
+        r = rpc('meta', cik, rid, '--raw')
+        self.ok(r, "is JSON.", match='TEST')
+
+        # Write some dataport meta; JSON
+        r = rpc('meta', cik, rid, '--value={"a":12}')
+        self.ok(r, "Write dataport meta, json")
+        r = rpc('meta', cik, rid)
+        self.ok(r, "read json", match='{"a":12}')
+
+    def move_test(self):
+        '''Move command'''
+        cik = self.client.cik()
+
+        # Create client where the client to be moved will be under
+        r = rpc('create', cik, '--type=client', '--name=origin_client')
+        self.ok(r, 'create origin client')
+        originrid, origincik = self._ridcik(r.stdout)
+
+        # Create client where the client to be moved will be moved to
+        r = rpc('create', cik, '--type=client', '--name=destination_client')
+        self.ok(r, 'create destination client')
+        destinationrid, destinationcik = self._ridcik(r.stdout)
+
+        # Create client to be moved
+        r = rpc('create', origincik, '--type=client', '--name=mover')
+        self.ok(r, 'create mover dataport')
+        moverrid, movercik = self._ridcik(r.stdout)
+        print("moverrid: " + moverrid)
+
+        # Move the client to be moved
+        r = rpc('move', cik, moverrid, destinationrid)
+        self.ok(r, 'Moved mover dataport')
+
+        # Use listing to see if the client was moved
+        r = rpc('listing', destinationcik, destinationrid)
+        listing = json.loads(r.stdout)
+        self.assertEqual(listing['client'][0], moverrid)
 
 def tearDownModule(self):
     '''Do final things'''
@@ -2553,3 +2622,5 @@ def tearDownModule(self):
                     response = pop.model_remove(config['vendortoken'], model)
         # drop all test clients
         rpc('drop', config['portalcik'], '--all-children')
+
+#  vim: set ai et sw=4 ts=4 :

@@ -1,6 +1,26 @@
 History
 =======
 
+0.9.21 (2015-09-02)
+-------------------
+
+- add links for invalid / auth errors
+- better support for piping colored output 
+- use pyonep 0.13.4
+
+0.9.20 (2015-09-01)
+-------------------
+
+- remove extraneous debug output
+
+0.9.19 (2015-08-31)
+-------------------
+
+- add meta command for setting resource meta
+- allow twee values to take entire terminal width
+- add plugin example
+- run tests in a client inside test portal
+
 0.9.18 (2015-07-15)
 -------------------
 
