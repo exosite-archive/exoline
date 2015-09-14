@@ -2594,13 +2594,19 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         destinationrid, destinationcik = self._ridcik(r.stdout)
 
         # Create client to be moved
-        r = rpc('create', cik, '--type=client', '--name=mover')
+        r = rpc('create', origincik, '--type=client', '--name=mover')
         self.ok(r, 'create mover dataport')
         moverrid, movercik = self._ridcik(r.stdout)
+        print("moverrid: " + moverrid)
 
         # Move the client to be moved
-        r = rpc('move', cik, originrid, destinationrid)
+        r = rpc('move', cik, moverrid, destinationrid)
         self.ok(r, 'Moved mover dataport')
+
+        # Use listing to see if the client was moved
+        r = rpc('listing', destinationcik, destinationrid)
+        listing = json.loads(r.stdout)
+        self.assertEqual(listing['client'][0], moverrid)
 
 def tearDownModule(self):
     '''Do final things'''
