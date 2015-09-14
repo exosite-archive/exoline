@@ -261,7 +261,8 @@ Usage:
 					sys.stdout.write(mlist.body)
 				else:
 					with open(args['<file>'], 'wb') as f:
-						f.write(mlist.body)
+						#print('debug', mlist.response.content)
+						f.write(mlist.response.content)
 			except IOError as ex:
 				raise ExoException("Could not write {0}".format(args['<file>']))
 

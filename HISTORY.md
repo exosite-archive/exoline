@@ -1,6 +1,13 @@
 History
 =======
 
+0.9.21 (2015-09-02)
+-------------------
+
+- add links for invalid / auth errors
+- better support for piping colored output 
+- use pyonep 0.13.4
+
 0.9.20 (2015-09-01)
 -------------------
 
