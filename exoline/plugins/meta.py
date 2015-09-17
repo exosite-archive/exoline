@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-'''Easily get and set the meta on an object in 1P.
+'''Get and set the meta on an object in 1P.
 
 This assumes the meta string is valid JSON, unless you pass --raw.
+<cik> is the CIK of the owner of the resource to get or set.
 
 Usage:
     exo [options] meta <cik> [<rid>]

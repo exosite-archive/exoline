@@ -71,7 +71,7 @@ from docopt import docopt
 from dateutil import parser
 from dotenv import Dotenv
 import requests
-import yaml
+import ruamel.yaml as yaml
 import importlib
 import humanize
 import blessings
@@ -614,8 +614,11 @@ class ExoConfig:
     regex_rid = re.compile("[0-9a-fA-F]{40}")
 
     def __init__(self, configfile='~/.exoline'):
-        configfile = self.realConfigFile(configfile)
-        self.loadConfig(configfile)
+        # remember the config file requested
+        self.askedconfigfile = configfile
+        # look in some by-convention locations
+        self.configfile = self.realConfigFile(configfile)
+        self.loadConfig(self.configfile)
 
     def realConfigFile(self, configfile):
         '''Find real path for a config file'''
@@ -646,7 +649,7 @@ class ExoConfig:
         else:
             try:
                 with open(configfile) as f:
-                    self.config = yaml.safe_load(f)
+                    self.config = yaml.load(f, yaml.RoundTripLoader)
             except IOError as ex:
                 self.config = {}
 
@@ -718,7 +721,6 @@ class ExoConfig:
 
 
 exoconfig = ExoConfig(os.getenv('EXO_CONFIG', DEFAULT_CONFIG))
-
 class ExolineOnepV1(onep.OnepV1):
     '''Subclass that re-adds deprecated commands needed for devices created
     in Portals before the commands were deprecated.'''

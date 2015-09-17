@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-'''Update shortcut keys in .exoline
+'''Read and write CIK shortcuts in .exoline config
 
 Usage:
     exo [options] keys
@@ -15,7 +15,7 @@ Command Options:
 {{ helpoption }}
 '''
 
-import ruamel.yaml
+import ruamel.yaml as yaml
 import os, re
 from pyonep.exceptions import OnePlatformException
 
@@ -27,10 +27,18 @@ class Plugin():
 
     def run(self, cmd, args, options):
         rpc = options['rpc']
-        configfile = self.realConfigFile(os.getenv('EXO_CONFIG', '~/.exoline'))
+        config_option = options['config']
+        ExoException = options['exception']
+        if config_option.configfile is None:
+            # normally we don't mention this, but the keys command
+            # needs a config file.
+            raise ExoException('config file was not found: {0}'.format(
+                config_option.askedconfigfile))
         try:
-            with open(configfile) as f:
-                config = ruamel.yaml.load(f, ruamel.yaml.RoundTripLoader)
+            with open(config_option.configfile) as f:
+                config = yaml.load(f, yaml.RoundTripLoader)
+                if config['keys'] is None:
+                    config['keys'] = {}
         except IOError as ex:
             config = {'keys': {}}
 
@@ -44,7 +52,7 @@ class Plugin():
             name = args["<new_name>"]
 
             if self.regex_rid.match(cik) is None:
-                print("{} is not a valid cik".format(cik))
+                print("{0} is not a valid cik".format(cik))
                 return
 
             config['keys'][name] = cik
@@ -52,7 +60,7 @@ class Plugin():
             if args.get('--comment', False):
                 config['keys'].yaml_add_eol_comment(args['--comment'], name)
 
-            print("Added `{}: {}` to {}".format(name, cik, configfile))
+            print("Added `{0}: {1}` to {2}".format(name, cik, config_option.configfile))
         elif subcommand == "rm":
             name = args["<name>"]
 
@@ -63,15 +71,16 @@ class Plugin():
             del config['keys'][name]
         elif subcommand == "show":
             name = args["<name>"]
-            print("{}: {}".format(name, config['keys'][name]))
+            print("{0}: {1}".format(name, config['keys'][name]))
         elif subcommand == "wipe":
             del config['keys']
+            config['keys'] = {}
         elif subcommand == "clean":
             to_trim = []
             for name in config['keys']:
                 try:
-                    print("Checking {}...".format(name)),
-                    rpc.info(config['keys'][name])
+                    print("Checking {0}...".format(name)),
+                    rpc.info(config['keys'][name], {'alias': ''}, {'basic': True})
                     print("OK")
                 except OnePlatformException as e:
                     to_trim.append(name)
@@ -81,30 +90,8 @@ class Plugin():
                 for name in to_trim:
                     del config['keys'][name]
         else:
-            print(" ".join(map(str, config.get("keys", {}).keys())))
-        
-        with open(configfile, 'w') as f:
-            f.write(ruamel.yaml.dump(config, Dumper=ruamel.yaml.RoundTripDumper))
+            if len(config.get("keys", {})) > 0:
+                print(" ".join(map(str, config.get("keys", {}).keys())))
 
-    def realConfigFile(self, configfile):
-        '''Find real path for a config file'''
-        # Does the file as passed exist?
-        cfgf = os.path.expanduser(configfile)
-
-        if os.path.exists(cfgf):
-            return cfgf
-
-        # Is it in the exoline folder?
-        cfgf = os.path.join('~/.exoline', configfile)
-        cfgf = os.path.expanduser(cfgf)
-        if os.path.exists(cfgf):
-            return cfgf
-
-        # Or is it a dashed file?
-        cfgf = '~/.exoline-' + configfile
-        cfgf = os.path.expanduser(cfgf)
-        if os.path.exists(cfgf):
-            return cfgf
-
-        # No such file to load.
-        return None
+        with open(config_option.configfile, 'w') as f:
+            f.write(yaml.dump(config, Dumper=yaml.RoundTripDumper))

@@ -38,7 +38,7 @@ import sys
 import pyonep
 import ast
 
-import yaml
+import ruamel.yaml as yaml
 import jsonschema
 import requests
 import six

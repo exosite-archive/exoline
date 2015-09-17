@@ -29,6 +29,10 @@ except ImportError:
 if sys.version_info < (3, 0):
     required.append('unicodecsv==0.9.4')
 
+if sys.version_info < (2, 7, 9):
+    # https://urllib3.readthedocs.org/en/latest/security.html#insecureplatformwarning
+    required = required + ['pyopenssl', 'ndg-httpsclient', 'pyasn1']
+
 import os
 long_description = open('README.md').read() + '\n\n' + open('HISTORY.md').read()
 if os.path.exists('README.txt'):
