@@ -888,6 +888,19 @@ Test
 To run Exoline's integration tests, see [test/README.md](test/README.md).
 
 
+Release Process
+---------------
+
+To release a new version of Exoline:
+
+- run tests for all supported versions of Python [tests](/test/README.md)
+- update [HISTORY.md](HISTORY.md) and [exoline/\_\_init\_\_.py](exoline/__init__.py) with information about new version
+- commit and push in git
+- tag release in git: `git tag <version>` and `git push origin <version>`
+- release to PyPI: `python setup.py sdist upload`
+- for major releases add release announcement to [docs site](https://github.com/exosite/exoline/tree/gh-pages)
+
+
 Building for Windows
 --------------------
 
