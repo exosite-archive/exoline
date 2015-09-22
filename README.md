@@ -898,6 +898,7 @@ To release a new version of Exoline:
 - commit and push in git
 - tag release in git: `git tag <version>` and `git push origin <version>`
 - release to PyPI: `python setup.py sdist upload`
+- [build Windows installer](#building-for-windows) and make a release for that installer. For example, see [this release](https://github.com/exosite/exoline/releases/tag/0.9.18)
 - for major releases add release announcement to [docs site](https://github.com/exosite/exoline/tree/gh-pages)
 
 
