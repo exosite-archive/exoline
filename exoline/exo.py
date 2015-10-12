@@ -2943,22 +2943,24 @@ def handle_args(cmd, args):
     if port is None:
         port = DEFAULT_PORT_HTTPS if use_https else DEFAULT_PORT
 
-    er = ExoRPC(host=args['--host'],
-                port=port,
-                https=use_https,
-                httptimeout=args['--httptimeout'],
-                logrequests=args['--clearcache'],
-                user_agent=args['--useragent'],
-		curldebug=args['--curl'])
+    er = ExoRPC(
+        host=args['--host'],
+        port=port,
+        https=use_https,
+        httptimeout=args['--httptimeout'],
+        logrequests=args['--clearcache'],
+        user_agent=args['--useragent'],
+        curldebug=args['--curl'])
 
     pop = provision.Provision(
-	host=args['--host'],
-	manage_by_cik=False,
-	port=port,
-	verbose=True,
-	https=use_https,
-	raise_api_exceptions=True,
-	curldebug=args['--curl'])
+        host=args['--host'],
+        manage_by_cik=False,
+        port=port,
+        verbose=True,
+        httptimeout=args['--httptimeout'],
+        https=use_https,
+        raise_api_exceptions=True,
+        curldebug=args['--curl'])
 
     if cmd in ['ip', 'data']:
         if args['--https'] is True or args['--port'] is not None or args['--debughttp'] is True or args['--curl'] is True:
