@@ -1,6 +1,11 @@
 History
 =======
 
+0.9.24 (2015-10-13)
+-------------------
+
+- support httptimeout for provision commands
+
 0.9.23 (2015-09-17)
 -------------------
 
