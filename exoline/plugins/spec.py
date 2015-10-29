@@ -650,6 +650,7 @@ datarules:
                             desc = myinfo['description']
                             is_script = desc['format'] == 'string' and 'rule' in desc and 'script' in desc['rule']
                             if is_script:
+                                os.makedirs(script_dir)
                                 filename = os.path.join(script_dir, info['aliases'][rid][0])
                                 spec.setdefault('scripts', []).append({'file': filename})
                                 with open(filename, 'w') as f:
