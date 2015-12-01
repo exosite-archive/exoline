@@ -1,6 +1,12 @@
 History
 =======
 
+0.9.25 (2015-12-01)
+-------------------
+
+- fix install issue on El Capitan
+- fix IOError with spec --generate when there is no scripts folder
+
 0.9.24 (2015-10-13)
 -------------------
 
