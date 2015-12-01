@@ -2,7 +2,7 @@ Exoline
 =======
 [![PyPI version](https://badge.fury.io/py/exoline.svg)](http://badge.fury.io/py/exoline) [![PyPI](https://img.shields.io/pypi/dm/exoline.svg)]() [![Join the chat at https://gitter.im/exosite/exoline](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/exosite/exoline?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Exoline is a command line interface for the Exosite [One Platform](http://exosite.com/products/onep). 
+Exoline is a command line interface for the Exosite [One Platform](http://exosite.com/products/onep). Here's a [video introduction](http://docs.exosite.com/videos/#using-exoline).
 
 ![Command line usage of Exoline tree feature](images/twee_example.png)
 
@@ -886,6 +886,20 @@ Test
 ----
 
 To run Exoline's integration tests, see [test/README.md](test/README.md).
+
+
+Release Process
+---------------
+
+To release a new version of Exoline:
+
+- run tests for all supported versions of Python [tests](/test/README.md)
+- update [HISTORY.md](HISTORY.md) and [exoline/\_\_init\_\_.py](exoline/__init__.py) with information about new version
+- commit and push in git
+- tag release in git: `git tag <version>` and `git push origin <version>`
+- release to PyPI: `python setup.py sdist upload`
+- [build Windows installer](#building-for-windows) and make a release for that installer. For example, see [this release](https://github.com/exosite/exoline/releases/tag/0.9.18)
+- for major releases add release announcement to [docs site](https://github.com/exosite/exoline/tree/gh-pages)
 
 
 Building for Windows

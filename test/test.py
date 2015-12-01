@@ -22,7 +22,7 @@ import filecmp
 import tempfile
 import zipfile
 
-import yaml
+import ruamel.yaml as yaml
 from six import iteritems
 from dateutil import parser
 from nose.plugins.attrib import attr
@@ -261,8 +261,8 @@ class TestRPC(TestCase):
         res.created(rid, info)
 
         # test that description contains what we asked for
-        self.l('''Comparing keys.
-Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
+        #self.l('''Comparing keys.
+        #Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         for k, v in iteritems(res.desc):
             if k != 'limits':
                 self.assertTrue(
@@ -2608,8 +2608,67 @@ Asked for desc: {0}\ngot desc: {1}'''.format(res.desc, res.info['description']))
         listing = json.loads(r.stdout)
         self.assertEqual(listing['client'][0], moverrid)
 
+    def keys_test(self):
+        '''Keys command'''
+        cik = self.client.cik()
+        cwd = os.getcwd()
+        file = os.path.join(cwd, basedir + '/files/keys_test_conf')
+        confparam = '--config=' + file
+        # list
+        try:
+            os.remove(file)
+        except:
+            # that's fine
+            pass
+        r = rpc(confparam, 'keys')
+        self.notok(r, 'list keys when there is no conf file')
+        # list
+        with open(file, 'w') as f:
+            f.write('# Exoline Test Configuration\nkeys: {}\n')
+        self.assertTrue(os.path.exists(file), 'just created file exists')
+        r = rpc(confparam, 'keys')
+        self.ok(r, 'list keys when conf file is empty', match='')
+        # add
+        shortcut = 'my_shortcut'
+        r = rpc(confparam, 'keys', 'add', cik, shortcut)
+        self.ok(r, 'add a key to list and use', match='')
+        r = rpc(confparam, 'keys')
+        self.ok(r, 'list key', match=shortcut)
+        r = rpc(confparam, 'lookup', shortcut)
+        self.ok(r, 'can do a lookup on shortcut', match=self.client.rid)
+        # list
+        r = rpc(confparam, 'keys')
+        self.ok(r, 'list includes shortcut', match=shortcut)
+        # show
+        r = rpc(confparam, 'keys', 'show', shortcut)
+        self.ok(r, 'show CIK for shortcut', match=shortcut + ': ' + cik)
+        # rm
+        r = rpc(confparam, 'keys', 'rm', shortcut)
+        self.ok(r, 'can remove CIK', match='')
+        # clean
+        badshortcut = 'my_bad_shortcut'
+        r = rpc(confparam, 'keys', 'add', cik[:-10] + '0' * 10, badshortcut)
+        self.ok(r, 'can add bad shortcut', match='')
+        r = rpc(confparam, 'keys', 'clean')
+        self.ok(r, 'bad key claimed to be cleaned', search='ERR')
+        r = rpc(confparam, 'keys')
+        self.ok(r, 'bad key was really cleaned', match='')
+        # wipe
+        r = rpc(confparam, 'keys', 'add', cik, shortcut)
+        self.ok(r, 'add a key to wipe', match='')
+        r = rpc(confparam, 'keys', 'wipe')
+        self.ok(r, 'wipe keys', match='')
+        r = rpc(confparam, 'keys')
+        self.ok(r, 'shortcuts were wiped', match='')
+
+        # TODO: test --comment
+
+        # clean up test config
+        os.remove(file)
+
+
 def tearDownModule(self):
-    '''Do final things'''
+    '''Do some clean up after all tests are run'''
     if not NOTEARDOWN:
         with open('test/testperf.json', 'w') as f:
             f.write(json.dumps(exo.PERF_DATA))

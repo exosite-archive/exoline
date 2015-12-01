@@ -1,6 +1,22 @@
 History
 =======
 
+0.9.24 (2015-10-13)
+-------------------
+
+- support httptimeout for provision commands
+
+0.9.23 (2015-09-17)
+-------------------
+
+- upgrade ruamel.yaml to 0.10.11 to fix build issue
+
+
+0.9.22 (2015-09-16)
+-------------------
+
+- add keys command shortcut management
+
 0.9.21 (2015-09-02)
 -------------------
 
