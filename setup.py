@@ -15,7 +15,7 @@ with open('requirements.txt') as f:
     required = f.read().splitlines()
 
 import platform
-if platform.system() != "Darwin":
+if platform.system() == "Windows":
     data_files = [("Microsoft.VC90.CRT", glob(r'C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC90.CRT\*.*'))]
 else:
     data_files = []
