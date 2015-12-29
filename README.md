@@ -226,7 +226,7 @@ Archive:  clientdump.zip
 
 
 
-Make a clone of device with RID ed6c3f... into portal with CIK e469e3...
+Make a clone of device with RID ed6c3f... within portal with CIK e469e3...
 
 ```
 $ exo clone e469e336ff9c8ed9176bc05ed7fa40daaaaaaaaa --rid=ed6c3facb6a3ac68c4de9a6996a89594aaaaaaaa
