@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
-'''Move a resource from one parent client to another. The <cik> is the parent of both <rid> and <destinationrid>.
+'''Move a resource from one parent client to another. 
+
+The <cik> is the parent of both <rid> and <destinationrid>.
 
             <cik>                                        <cik>
               |                                            |
-             / \                                          / \
-            /   \                                        /   \
-           /     \                                      /     \
-      <child1>  <destinationrid>  ...becomes...    <child1>  <destinationrid> 
-        /                                                       \
-       /                                                         \
+             / \                                          / \\
+            /   \                                        /   \\
+           /     \                                      /     \\
+      <child1>  <destinationrid>   ...becomes...   <child1>  <destinationrid> 
+        /                                                       \\
+       /                                                         \\
      <rid>                                                      <rid>
 
 Usage:
