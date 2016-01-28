@@ -1,0 +1,100 @@
+#compdef exo
+#
+# Zsh completion script for exoline.
+
+__subcommands() {
+	local -a commands
+	commands=( $(python -c'from exoline import exo; print(" ".join(exo.cmd_doc.keys()))') )
+	_values Commands $commands
+}
+
+__exoconfigs() {
+	local -a cfgs
+	cfgs=( $HOME/.exoline-*(N) )
+	cfgs+=( $HOME/.exoline/*(N) )
+	cfgs=( ${cfgs##*-} )
+	_values Configs $cfgs
+}
+
+__findcmd() {
+	local -a args
+	args=( "$@" )
+	args=( ${args//#-*/} )
+	echo ${args[2]}
+}
+
+_exo() {
+	typeset -A opt_args
+	local ret=1
+	local context state state_descr line
+	local -a args
+	local configfile=""
+
+	# Build up options
+	args=(
+		'--host=-::OneP host. Default is $EXO_HOST or m2.exosite.com:_hosts'
+		'--port=-::OneP port. Default is $EXO_PORT or 443:( )' 
+		{-c-,--config=-}'::Config file Default is $EXO_CONFIG or ~/.exoline:__exoconfigs' 
+		'--httptimeout=::HTTP timeout:( )'
+		'--https::Enable HTTPS (deprecated, HTTPS is default)'
+		'--http::Disable HTTPS'
+		'--useragent=-::Set User-Agent Header for outgoing requests:( )'
+		'--debug::Show debug info (stack traces on exceptions)'
+		{-d,--debughttp}'::Turn on debug level logging in pyonep'
+		'--curl::Show curl calls for requests. Implies --debughttp'
+		'--discreet::Obfuscate RIDs in stdout and stderr'
+		{-e,--clearcache}'::Invalidate Portals cache after running command'
+		'--portals=-::Portals server:_hosts'
+		{-t-,--vendortoken=-}'::Vendor token (/admin/home in Portals):( )'
+		{-n-,--vendor=-}'::Vendor identifier (/admin/managemodels in Portals):( )'
+		{-h,--help}'::Show this screen'
+		{-v,--version}'::Show version'
+	)
+
+	args+=(
+		': :__subcommands'
+		': :->ciks'
+	)
+
+	# Commands with dataports.
+	# This kind of works. Feels like there is a better way though
+	local subcmd=$( __findcmd $words )
+	local -a wDP
+	wDP=( 'read' 'record' 'listing' 'info' 'drop' 'flush' 'usage' 'script' 'spark' )
+	if [[ -z ${subcmd:|wDP} ]]; then
+		args+=(': :->dataports')
+	fi
+
+	# Sub-Command specific switches
+	args+=('*:: :->switches')
+
+	_arguments "$args[@]" && ret=0
+
+	(( $+opt_args[-c] )) && configfile="--config=$opt_args[-c]"
+	(( $+opt_args[--config] )) && configfile="--config=$opt_args[--config]"
+
+	case $state in
+		(ciks)
+			local -a ciks
+			ciks=( $(exo $configfile keys) )
+			_values CIKS $ciks
+			;;
+		(dataports) # May or maynot exist based on subcommand
+			local -a al
+			# This hits the network. Will it need --host and --port?
+			al=( $(exo $configfile aliases $line[2]) )
+			_values Aliases $al && ret=0
+			;;
+
+		(switches)
+			# FIXME Switches plugin to exo needs to be fixed.
+			# It needs to give more info than it does
+			local -a bob
+			bob=( $(exo switches $line[1]) )
+			_describe -o "$line[1] Options" bob && ret=0
+			;;
+	esac
+
+	return ret
+}
+
