@@ -462,7 +462,7 @@ Usage:
 
 			if args['--file'] is None:
 				mlist = pop.serialnumber_remove_batch(key, args['<model>'], args['<sn>'])
-				print(mlist.body.strip)
+				print(mlist.body.strip())
 			else:
 				# ??? should this raise or trim columns beyond the first???
 				# This should chunk the file from disk to socket.
