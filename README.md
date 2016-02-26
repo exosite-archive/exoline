@@ -511,7 +511,7 @@ Once you do this, provisioning commands `model`, `sn`, and `content` work:
 ```
 $ exo model list
 testmodel
-PetFoodDispenser
+PetFoodDispenserModel
 ```
 
 There is a limit of one `vendor` and `vendortoken` per config file. If you're working with multiple subdomains, you'll need to create multiple Exoline config files and pass them in at the command line. For example:
