@@ -656,7 +656,7 @@ datarules:
                                 spec.setdefault('scripts', []).append({'file': filename})
                                 with open(filename, 'w') as f:
                                     print('Writing {0}...'.format(filename))
-                                    f.write(desc['rule']['script'])
+                                    f.write(desc['rule']['script'].encode('utf8'))
                             else:
                                 res = {
                                     'rule': desc['rule']
