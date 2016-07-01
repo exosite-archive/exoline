@@ -2,7 +2,7 @@
 '''Duplicate a value in a dataport
 
 Usage:
-    exo [options] ndup <cik> <rid> [<depth>]
+    exo [options] ndup <auth> <rid> [<depth>]
 
 Command Options:
 {{ helpoption }}
@@ -25,7 +25,7 @@ class Plugin():
 
     def run(self, cmd, args, options):
 
-        cik = options['cik']
+        auth = options['auth']
         rid = options['rids'][0]
         rpc = options['rpc']
         ExoException = options['exception']
@@ -33,14 +33,14 @@ class Plugin():
         depth = args['<depth>']
         depth = 2 if depth is None else int(depth)
 
-        response = rpc.read(cik, rid, depth, 'desc')
+        response = rpc.read(auth, rid, depth, 'desc')
         # response is array of arrays
 
         if len(response) < depth:
             raise ExoException('No value at that depth')
 
         value = response[-1]
-        rpc.write(cik, rid, value[1])
+        rpc.write(auth, rid, value[1])
 
 
 # vim: set ai et sw=4 ts=4 :

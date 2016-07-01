@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-'''Get dataport aliases from a CIK
+'''Get dataport aliases from a client
 
 Usage:
-    exo aliases <cik>
+    exo aliases <auth>
 '''
-import re
+
 
 class Plugin():
     def command(self):
@@ -12,6 +12,6 @@ class Plugin():
 
     def run(self, cmd, args, options):
         rpc = options['rpc']
-        cik = options['cik']
-        aliases = rpc.info(cik, options={'aliases': True})['aliases']
+        auth = options['auth']
+        aliases = rpc.info(auth, options={'aliases': True})['aliases']
         print(" ".join(map(lambda x: str(x[0]), aliases.values())))

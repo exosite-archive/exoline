@@ -733,7 +733,6 @@ http://docs.exosite.com/provision/device/#provisionactivate'''
 		return None
 
 	def run(self, cmd, args, options):
-		cik = options['cik']
 		rpc = options['rpc']
 		ProvisionException = options['provision-exception']
 		ExoException = options['exception']

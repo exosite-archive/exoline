@@ -2,12 +2,12 @@
 '''Determine whether a client matches a specification (beta)
 
 Usage:
-    exo [options] spec <cik> <spec-yaml> [--ids=<id1,id2,idN>] [--portal|--domain] [-f]
-    exo [options] spec <cik> --generate=<filename> [--scripts=<dir>] [--asrid]
+    exo [options] spec <auth> <spec-yaml> [--ids=<id1,id2,idN>] [--portal|--domain] [-f]
+    exo [options] spec <auth> --generate=<filename> [--scripts=<dir>] [--asrid]
     exo [options] spec <spec-yaml> --check
     exo [options] spec --example
 
-The --generate form creates spec YAML and scripts from a CIK.
+The --generate form creates spec YAML and scripts from an RPC auth (e.g. CIK).
 <spec-yaml> may be a filesystem path, - to read the spec from stdin,
   or a URL to get.
 
@@ -243,10 +243,10 @@ datarules:
             return
 
         reid = re.compile('<% *id *%>')
-        def infoval(input_cik, alias):
+        def infoval(input_auth, alias):
             '''Get info and latest value for a resource'''
             return rpc._exomult(
-                input_cik,
+                input_auth,
                 [['info', {'alias': alias}, {'description': True, 'basic': True}],
                 ['read', {'alias': alias}, {'limit': 1}]])
 
@@ -551,7 +551,7 @@ datarules:
             check_or_create_common(auth, res, info, alias, aliases)
 
 
-        input_cik = options['cik']
+        input_auth = options['auth']
         rpc = options['rpc']
         asrid = args['--asrid']
 
@@ -563,12 +563,12 @@ datarules:
                     script_dir = args['--scripts']
                 else:
                     script_dir = 'scripts'
-                print('Generating spec for {0}.'.format(input_cik))
+                print('Generating spec for {0}.'.format(input_auth))
                 print('spec file: {0}, scripts directory: {1}'.format(spec_file, script_dir))
 
                 # generate spec file, download scripts
                 spec = {}
-                info, listing = rpc._exomult(input_cik,
+                info, listing = rpc._exomult(input_auth,
                     [['info', {'alias': ''}, {'basic': True,
                                               'description': True,
                                               'aliases': True}],
@@ -576,7 +576,7 @@ datarules:
                 rids = listing['dataport'] + listing['datarule'] + listing['dispatch']
 
                 if len(rids) > 0:
-                    child_info = rpc._exomult(input_cik, [['info', rid, {'basic': True, 'description': True}] for rid in rids])
+                    child_info = rpc._exomult(input_auth, [['info', rid, {'basic': True, 'description': True}] for rid in rids])
                     for idx, rid in enumerate(rids):
                         myinfo = child_info[idx]
                         name = myinfo['description']['name']
@@ -750,7 +750,7 @@ datarules:
                     return auth
 
             if args['--portal'] == True:
-                portal_ciks.append((input_cik,''))
+                portal_ciks.append((input_auth,''))
                 iterate_portals = True
 
             if args['--domain'] == True:
@@ -758,7 +758,7 @@ datarules:
                 iterate_portals = True
                 # Get list of users under a domain
                 user_keys = []
-                clients = rpc._listing_with_info(input_cik,['client'])
+                clients = rpc._listing_with_info(input_auth,['client'])
 
                 email_regex = re.compile(r'[^@]+@[^@]+\.[^@]+')
 
@@ -831,7 +831,7 @@ datarules:
                                             print('  found: {0} {1}'.format(v['description']['name'], auth_string(auth)))
             else:
                 # only for single client
-                device_auths.append(input_cik)
+                device_auths.append(input_auth)
 
             # Make sure user knows they are about to update multiple devices
             # unless the `-f` flag is passed

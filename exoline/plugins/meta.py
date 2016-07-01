@@ -2,12 +2,12 @@
 '''Get and set the meta on an object in 1P.
 
 This assumes the meta string is valid JSON, unless you pass --raw.
-<cik> is the CIK of the owner of the resource to get or set.
+<auth> identifies the client of the owner of the resource to get or set.
 
 Usage:
-    exo [options] meta <cik> [<rid>]
-    exo [options] meta <cik> [<rid>] --value=<value>
-    exo [options] meta <cik> [<rid>] -
+    exo [options] meta <auth> [<rid>]
+    exo [options] meta <auth> [<rid>] --value=<value>
+    exo [options] meta <auth> [<rid>] -
 
 Command Options:
     --raw            Don't try to parse the meta as JSON
@@ -27,13 +27,13 @@ class Plugin():
 
     def run(self, cmd, args, options):
 
-        cik = options['cik']
+        auth = options['auth']
         rid = options['rids'][0]
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
 
-        info = rpc.info(cik, rid)
+        info = rpc.info(auth, rid)
 
         if args['--value'] is not None or args['-']:
             try:
@@ -50,8 +50,8 @@ class Plugin():
                 # write meta. update.
 
                 desc = {'meta': meta}
-                rpc.update(cik, rid, desc)
-                # XXX Need cik of parent and rid of client to modify meta.
+                rpc.update(auth, rid, desc)
+                # XXX Need auth/cik of parent and rid of client to modify meta.
 
             except Exception as ex:
                 raise ExoException("Error updating meta: {0}".format(ex))

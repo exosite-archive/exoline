@@ -2,17 +2,17 @@
 '''Build a list of shortcuts from a client
 
 Usage:
-    exo [options] makeShortcuts <cik>
+    exo [options] makeShortcuts <auth>
 
 Command Options:
     --level=n   Maximum number of level to dig [default: None]
     --sep=c     Seperator to use between levels [default: :]
     --space=s   What to do with whitespace. camel, snake, remove. [default: camel]
 
-    This plugin will build a list of shortcuts from a CIK and all of its
-    children clients.
+    This plugin will build a list of shortcuts from a client and all of its
+    child clients.
 
-    This list is suitable to be added to a .exoline file and used as future 
+    This list is suitable to be added to a .exoline file and used as future
     shortcuts.
 
 '''
@@ -28,7 +28,7 @@ class Plugin():
         return 'makeShortcuts'
 
     def run(self, cmd, args, options):
-        cik = options['cik']
+        auth = options['auth']
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
@@ -79,14 +79,16 @@ class Plugin():
                         alias = child['info']['description']['name']
                     p = path[:]
                     p.append(alias)
-                    printnodes(child, p )
+                    printnodes(child, p)
 
         # This craps out too easily.
         # TODO: Need to switch to using the nodeidfn
-        tree = rpc._infotree(cik, level=level)
-        tree['info']['key'] = cik
-        if rpc.regex_rid.match(args['<cik>']) is None:
-            alias = args['<cik>']
+        tree = rpc._infotree(auth, level=level)
+        # TODO: this looks suspect in the cik -> auth naming change
+        # Should there be a check that auth is a string?
+        tree['info']['key'] = auth
+        if rpc.regex_rid.match(args['<auth>']) is None:
+            alias = args['<auth>']
         else:
             alias = tree['rid'][:6]
         printnodes(tree, [alias])

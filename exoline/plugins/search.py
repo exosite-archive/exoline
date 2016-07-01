@@ -2,7 +2,7 @@
 '''Search resource names, aliases, serial numbers, and script content
 
 Usage:
-    exo [options] search <cik> <query-regex>
+    exo [options] search <auth> <query-regex>
 
 Command Options:
     --matchcase   Match case when searching
@@ -22,7 +22,7 @@ class Plugin():
         return 'search'
 
     def run(self, cmd, args, options):
-        cik = options['cik']
+        auth = options['auth']
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
@@ -133,7 +133,7 @@ class Plugin():
         #counts = info['counts']
         #total = counts['client'] + counts['dispatch'] + counts['dataport'] + counts['datarule']
         tree = rpc._infotree(
-            cik,
+            auth,
             options={"description": True, "key": True, "basic": True, "aliases": True},
             nodeidfn=progress if not args['--silent'] else lambda rid, info: rid,
             level=None,
@@ -143,5 +143,5 @@ class Plugin():
         if 'exception' in tree:
             print('Exception was: ' + str(tree))
         else:
-            tree['info']['key'] = cik
+            tree['info']['key'] = auth
             searchnodes(tree, [], [])
