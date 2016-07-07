@@ -1160,8 +1160,13 @@ class ExoRPC():
                 while True:
                     chunkOpt = options.copy()
                     chunkOpt['endtime'] = nextStart
-                    chunkOpt['limit'] = chunksize
+                    if maxLimit > chunksize:
+                        chunkOpt['limit'] = chunksize
+                    else:
+                        chunkOpt['limit'] = maxLimit
                     res = _read(cik, rids, chunkOpt);
+                    for r in res:
+                        yield r
                     if len(res) == 0:
                         break
                     maxLimit = maxLimit - len(res)
@@ -1169,8 +1174,6 @@ class ExoRPC():
                         break;
                     #save oldest
                     nextStart = res[-1][0] - 1
-                    for r in res:
-                        yield r
             else:
                 # ascending
                 if 'starttime' in options:
@@ -1180,8 +1183,13 @@ class ExoRPC():
                 while True:
                     chunkOpt = options.copy()
                     chunkOpt['starttime'] = nextStart
-                    chunkOpt['limit'] = chunksize
+                    if maxLimit > chunksize:
+                        chunkOpt['limit'] = chunksize
+                    else:
+                        chunkOpt['limit'] = maxLimit
                     res = _read(cik, rids, chunkOpt);
+                    for r in res:
+                        yield r
                     if len(res) == 0:
                         break
                     maxLimit = maxLimit - len(res)
@@ -1189,8 +1197,6 @@ class ExoRPC():
                         break
                     #save oldest
                     nextStart = res[-1][0] + 1
-                    for r in res:
-                        yield r
 
     def write(self, cik, rid, value):
         isok, response = self.exo.write(cik, rid, value)
