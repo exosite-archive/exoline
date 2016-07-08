@@ -104,7 +104,7 @@ colored_terminal = blessings.Terminal()
 cmd_doc = OrderedDict([
     ('read',
         '''Read data from a resource.\n\nUsage:
-    exo [options] read <cik> [<rid> ...]
+    exo [options] read <auth> [<rid> ...]
 
 Command options:
     --follow                 continue reading (ignores --end)
@@ -123,23 +123,23 @@ Command options:
                              length <size>, printing data as it is received.
     {{ helpoption }}
 
-    If <rid> is omitted, reads all datasources and datarules under <cik>.
+    If <rid> is omitted, reads all datasources and datarules under <auth>.
     All output is in UTC.
 
     {{ startend }}'''),
     ('write',
         '''Write data at the current time.\n\nUsage:
-    exo [options] write <cik> [<rid>] --value=<value>
-    exo [options] write <cik> [<rid>] -
+    exo [options] write <auth> [<rid>] --value=<value>
+    exo [options] write <auth> [<rid>] -
 
 The - form takes the value to write from stdin. For example:
 
     $ echo '42' | exo write 8f21f0189b9acdc82f7ec28dc0c54ccdf8bc5ade myDataport -'''),
     ('record',
         '''Write data at a specified time.\n\nUsage:
-    exo [options] record <cik> [<rid>...] [-]
-    exo [options] record <cik> [<rid>] (--value=<timestamp,value> ...)
-    exo [options] record <cik> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
+    exo [options] record <auth> [<rid>...] [-]
+    exo [options] record <auth> [<rid>] (--value=<timestamp,value> ...)
+    exo [options] record <auth> [<rid>] --interval=<seconds> ((--value=<value> ...) | -)
 
     Can take a CSV file on STDIN and record the values to dataports.  The file must have the
     first column to be unix timestamps for each row.  The remaining columns are data to be
@@ -161,9 +161,9 @@ Command options:
     ('create',
         '''Create a resource from a json description passed on stdin (with -),
     or using command line shorthand (other variants).\n\nUsage:
-    exo [options] create <cik> (--type=client|clone|dataport|datarule|dispatch) -
-    exo [options] create <cik> --type=client
-    exo [options] create <cik> --type=dataport (--format=float|integer|string)
+    exo [options] create <auth> (--type=client|clone|dataport|datarule|dispatch) -
+    exo [options] create <auth> --type=client
+    exo [options] create <auth> --type=dataport (--format=float|integer|string)
 
 Command options:
     --name=<name     set a resource name (overwriting the one in stdin if present)
@@ -182,7 +182,7 @@ Details:
     If - is not present, creates a resource with common defaults.'''),
     ('listing',
         '''List the RIDs of a client's children.\n\nUsage:
-    exo [options] listing <cik> [<rid>]
+    exo [options] listing <auth> [<rid>]
 
 Command options:
     --types=<type1>,...  which resource types to list
@@ -190,20 +190,20 @@ Command options:
     --filters=<f1>,...   criteria for which resources to include
                          [default: owned]
                          activated  resources shared with and activated
-                                    by client (<cik>)
-                         aliased    resources aliased by client (<cik>)
-                         owned      resources owned by client (<cik>)
+                                    by client (<auth>)
+                         aliased    resources aliased by client (<auth>)
+                         owned      resources owned by client (<auth>)
                          public     public resources
     --tagged=<tag1>,...  resources that have been tagged by any client, and
-                         that the client (<cik>) has read access to.
+                         that the client (<auth>) has read access to.
     --plain              show only the child RIDs
     --pretty             pretty print output'''),
 #    ('whee',
 #        '''Super-fast info tree.\n\nUsage:
-#    exo [options] whee <cik>'''),
+#    exo [options] whee <auth>'''),
     ('info',
         '''Get metadata for a resource in json format.\n\nUsage:
-    exo [options] info <cik> [<rid>]
+    exo [options] info <auth> [<rid>]
 
 Command options:
     --cikonly      print CIK by itself
@@ -218,24 +218,24 @@ Command options:
                    all available keys are returned.'''),
     ('update',
         '''Update a resource from a json description passed on stdin.\n\nUsage:
-    exo [options] update <cik> <rid> -
+    exo [options] update <auth> <rid> -
 
     For details see https://github.com/exosite/docs/tree/master/rpc#update'''),
     ('map',
         '''Add an alias to a resource.\n\nUsage:
-    exo [options] map <cik> <rid> <alias>'''),
+    exo [options] map <auth> <rid> <alias>'''),
     ('unmap',
         '''Remove an alias from a resource.\n\nUsage:
-    exo [options] unmap <cik> <alias>'''),
+    exo [options] unmap <auth> <alias>'''),
     ('lookup',
         '''Look up a resource's RID based on its alias cik.\n\nUsage:
-    exo [options] lookup <cik> [<alias>]
-    exo [options] lookup <cik> --owner-of=<rid>
-    exo [options] lookup <cik> --share=<code>
-    exo [options] lookup <cik> --cik=<cik-to-find>
+    exo [options] lookup <auth> [<alias>]
+    exo [options] lookup <auth> --owner-of=<rid>
+    exo [options] lookup <auth> --share=<code>
+    exo [options] lookup <auth> --cik=<cik-to-find>
 
-    If <alias> is omitted, the rid for <cik> is returned. This is equivalent to:
-    exo lookup <cik> ""
+    If <alias> is omitted, the rid for <auth> is returned. This is equivalent to:
+    exo lookup <auth> ""
 
     The --owner-of variant returns the RID of the immediate parent (owner)
     of <rid>.
@@ -243,7 +243,7 @@ Command options:
     The --share variant returns the RID associated with a share code'''),
     ('drop',
         '''Drop (permanently delete) a resource.\n\nUsage:
-    exo [options] drop <cik> [<rid> ...]
+    exo [options] drop <auth> [<rid> ...]
 
 Command options:
     --all-children  drop all children of the resource.
@@ -253,7 +253,7 @@ Warning: if the resource is a client with a serial number
 associated with it, the serial number is not released.'''),
     ('flush',
         '''Remove time series data from a resource.\n\nUsage:
-    exo [options] flush <cik> [<rid>]
+    exo [options] flush <auth> [<rid>]
 
 Command options:
     --start=<time>  flush all points newer than <time> (exclusive)
@@ -262,16 +262,16 @@ Command options:
     If --start and --end are both omitted, all points are flushed.'''),
     ('usage',
         '''Display usage of One Platform resources over a time period.\n\nUsage:
-    exo [options] usage <cik> [<rid>] --start=<time> [--end=<time>]
+    exo [options] usage <auth> [<rid>] --start=<time> [--end=<time>]
 
     {{ startend }}'''),
     ('tree', '''Display a resource's descendants.\n\nUsage:
-    exo [options] tree [--verbose] [--values] <cik>
+    exo [options] tree [--verbose] [--values] <auth>
 
 Command options:
     --level=<num>  depth to traverse, omit or -1 for no limit [default: -1]'''),
     ('twee', '''Display a resource's descendants. Like tree, but more wuvable.\n\nUsage:
-    exo [options] twee <cik>
+    exo [options] twee <auth>
 
 Command options:
     --nocolor      don't use color in output (color is always off in Windows)
@@ -315,7 +315,7 @@ Example:
     }
     '''),
 ('find', '''Search resource's descendants for matches.\n\nUsage:
-    exo find <cik> --match <matches> [--show <shows>]
+    exo find <auth> --match <matches> [--show <shows>]
 
 Command options:
     --show=<shows>           Things to show on match (default: cik)
@@ -355,8 +355,8 @@ Example:
 
     '''),
     ('script', '''Upload a Lua script\n\nUsage:
-    exo [options] script <cik> [<rid>] --file=<script-file>
-    exo [options] script <script-file> <cik> ...
+    exo [options] script <auth> [<rid>] --file=<script-file>
+    exo [options] script <script-file> <auth> ...
 
     Both forms do the same thing, but --file is the recommended one.
     If <rid> is omitted, the file name part of <script-file> is used
@@ -372,24 +372,24 @@ Command options:
     --follow       monitor the script's debug log
     --setversion=<vn> set a version number on the script meta'''),
     ('spark', '''Show distribution of intervals between points.\n\nUsage:
-    exo [options] spark <cik> [<rid>] --days=<days>
+    exo [options] spark <auth> [<rid>] --days=<days>
 
 Command options:
     --stddev=<num>  exclude intervals more than num standard deviations from mean
     {{ helpoption }}'''),
     ('copy', '''Make a copy of a client.\n\nUsage:
-    exo [options] copy <cik> <destination-cik>
+    exo [options] copy <auth> <destination-cik>
 
-    Copies <cik> and all its non-client children to <destination-cik>.
+    Copies <auth> and all its non-client children to <destination-cik>.
     Returns CIK of the copy. NOTE: copy excludes all data in dataports.
 
 Command options:
     --cikonly  show unlabeled CIK by itself
     {{ helpoption }}'''),
     ('diff', '''Show differences between two clients.\n\nUsage:
-    exo [options] diff <cik> <cik2>
+    exo [options] diff <auth> <cik2>
 
-    Displays differences between <cik> and <cik2>, including all non-client
+    Displays differences between <auth> and <cik2>, including all non-client
     children. If clients are identical, nothing is output. For best results,
     all children should have unique names.
 
@@ -400,15 +400,15 @@ Command options:
     ('ip', '''Get IP address of the server.\n\nUsage:
     exo [options] ip'''),
     ('data', '''Read or write with the HTTP Data API.\n\nUsage:
-    exo [options] data <cik> [--write=<alias,value> ...] [--read=<alias> ...]
+    exo [options] data <auth> [--write=<alias,value> ...] [--read=<alias> ...]
 
     If only --write arguments are specified, the call is a write.
     If only --read arguments are specified, the call is a read.
     If both --write and --read arguments are specified, the hybrid
         write/read API is used. Writes are executed before reads.'''),
     ('portals', '''Invalidate the Portals cache for a CIK by telling Portals
-    a particular procedure was taken on client identified by <cik>.\n\nUsage:
-    exo [options] portals clearcache <cik> [<procedure> ...]
+    a particular procedure was taken on client identified by <auth>.\n\nUsage:
+    exo [options] portals clearcache <auth> [<procedure> ...]
 
     <procedure> may be any of:
     activate, create, deactivate, drop, map, revoke, share, unmap, update
@@ -419,21 +419,21 @@ Command options:
     Warning: drop does not invalidate the cache correctly. Instead, use create.
     '''),
     ('share', '''Generate a code that allows non-owners to access resources\n\nUsage:
-    exo [options] share <cik> <rid> [--meta=<string> [--share=<code-to-update>]]
+    exo [options] share <auth> <rid> [--meta=<string> [--share=<code-to-update>]]
 
     Pass --meta to associate a metadata string with the share.
     Pass --share to update metadata for an existing share.'''),
     ('revoke', '''Revoke a share code\n\nUsage:
-    exo [options] revoke <cik> --share=<code>'''),
+    exo [options] revoke <auth> --share=<code>'''),
     ('activate', '''Activate a share code\n\nUsage:
-    exo [options] activate <cik> --share=<code>
+    exo [options] activate <auth> --share=<code>
 
 If you want to activate a *device*, use the "sn activate"
      command instead'''),
     ('deactivate', '''Deactivate a share code\n\nUsage:
-    exo [options] deactivate <cik> --share=<code>'''),
+    exo [options] deactivate <auth> --share=<code>'''),
     ('clone', '''Create a clone of a client\n\nUsage:
-    exo [options] clone <cik> (--rid=<rid> | --share=<code>)
+    exo [options] clone <auth> (--rid=<rid> | --share=<code>)
 
 Command options:
      --noaliases     don't copy aliases
@@ -441,11 +441,11 @@ Command options:
      --noactivate    don't activate CIK of clone (client only)
 
      The clone command copies the client resource specified by --rid or --share
-     into the client specified by <cik>.
+     into the client specified by <auth>.
 
-     For example, to clone a portals device, pass the portal CIK as <cik> and
+     For example, to clone a portals device, pass the portal CIK as <auth> and
      the device RID as <rid>. The portal CIK can be found in Portals
-     https://<yourdomain>.exosite.com/account/portals, where it says Key: <cik>.
+     https://<yourdomain>.exosite.com/account/portals, where it says Key: <auth>.
      A device's RID can be obtained using exo lookup <device-cik>.
 
      The clone and copy commands do similar things, but clone uses the RPC's
@@ -653,46 +653,63 @@ class ExoConfig:
             except IOError as ex:
                 self.config = {}
 
-    def lookup_shortcut(self, cik):
-        '''If a CIK has client/resource parts, seperate and look thouse up'''
-        if ':c' in cik:
+    def authparts(self, auth_str, authtype_default):
+        '''Returns a tuple of auth type ('token' or 'cik') and the 40
+        character token/CIK from an auth string'''
+        match = re.match('^(token|cik):(.*)', auth_str)
+        if match is not None:
+            return match.groups()
+        else:
+            return authtype_default, auth_str
+
+    def lookup_shortcut(self, auth):
+        '''If a CIK has client/resource parts, separate and look those up'''
+        # default to CIK type auth, for backward compatibility
+        authtype, detypedauth = self.authparts(auth, 'cik')
+
+        if ':c' in detypedauth:
             # break into parts, then lookup each.
-            c,g,r = cik.partition(':c')
-            cik = { 'cik': self._lookup_shortcut(c),
-                    'client_id': self._lookup_shortcut(r) }
-        elif ':r' in cik:
-            c,g,r = cik.partition(':r')
-            cik = { 'cik': self._lookup_shortcut(c),
-                    'resource_id': self._lookup_shortcut(r) }
+            c,g,r = auth.partition(':c')
+            auth = { authtype: self._lookup_shortcut(c),
+                     'client_id': self._lookup_shortcut(r) }
+        elif ':r' in detypedauth:
+            c,g,r = auth.partition(':r')
+            auth = { authtype: self._lookup_shortcut(c),
+                     'resource_id': self._lookup_shortcut(r) }
         else:
             # look it up, then check again for parts.
-            cik = self._lookup_shortcut(cik)
-            if ':c' in cik:
-                c,g,r = cik.partition(':c')
-                cik = {'cik': c, 'client_id': r}
-            elif ':r' in cik:
-                c,g,r = cik.partition(':r')
-                cik = {'cik': c, 'resource_id': r}
+            auth = self._lookup_shortcut(detypedauth)
+            authtype, detypedauth = self.authparts(auth, authtype)
+            if ':c' in auth:
+                c,g,r = auth.partition(':c')
+                auth = { authtype: c,
+                         'client_id': r }
+            elif ':r' in auth:
+                c,g,r = auth.partition(':r')
+                auth = { authtype: c,
+                         'resource_id': r }
+            else:
+                auth = { authtype: detypedauth }
 
-        return cik
+        return auth
 
 
-    def _lookup_shortcut(self, cik):
+    def _lookup_shortcut(self, auth):
         '''Look up what was passed for cik in config file
             if it doesn't look like a CIK.'''
-        if self.regex_rid.match(cik) is None:
+        if self.regex_rid.match(auth) is None:
             if 'keys' in self.config:
-                if cik in self.config['keys']:
-                    return self.config['keys'][cik].strip()
-                elif cik.isdigit() and int(cik) in self.config['keys']:
-                    return self.config['keys'][int(cik)].strip()
+                if auth in self.config['keys']:
+                    return self.config['keys'][auth].strip()
+                elif auth.isdigit() and int(auth) in self.config['keys']:
+                    return self.config['keys'][int(auth)].strip()
                 else:
                     raise ExoException('No CIK shortcut {0}\n{1}'.format(
-                        cik, '\n'.join(sorted(map(str, self.config['keys'])))))
+                        auth, '\n'.join(sorted(map(str, self.config['keys'])))))
             else:
-                raise ExoException('Tried a CIK shortcut {0}, but found no keys'.format(cik))
+                raise ExoException('Tried a CIK shortcut {0}, but found no keys'.format(auth))
         else:
-            return cik
+            return auth
 
     def mingleArguments(self, args):
         '''This mixes the settings applied from the configfile, the command line and the ENV.
@@ -725,21 +742,21 @@ class ExolineOnepV1(onep.OnepV1):
     '''Subclass that re-adds deprecated commands needed for devices created
     in Portals before the commands were deprecated.'''
 
-    def _callJsonRPC(self, cik, callrequests, returnreq=False, notimeout=False):
+    def _callJsonRPC(self, auth, callrequests, returnreq=False, notimeout=False):
         '''Time all calls to _callJsonRPC'''
         try:
             ts = time.time()
             procedures = [cr['procedure'] for cr in callrequests]
-            r = onep.OnepV1._callJsonRPC(self, cik, callrequests, returnreq, notimeout=notimeout)
+            r = onep.OnepV1._callJsonRPC(self, auth, callrequests, returnreq, notimeout=notimeout)
         except:
             raise
         finally:
             te = time.time()
-            PERF_DATA.append({'cik': cik, 'procedures': procedures, 'seconds': te-ts})
+            PERF_DATA.append({'cik': auth, 'procedures': procedures, 'seconds': te-ts})
         return r
 
-    def comment(self, cik, rid, visibility, comment, defer=False):
-        return self._call('comment', cik, [rid, visibility, comment], defer)
+    def comment(self, auth, rid, visibility, comment, defer=False):
+        return self._call('comment', auth, [rid, visibility, comment], defer)
 
 
 class ExoRPC():
@@ -811,8 +828,8 @@ class ExoRPC():
             r.append(response)
         return r
 
-    def mult(self, cik, commands):
-        return self._exomult(cik, commands)
+    def mult(self, auth, commands):
+        return self._exomult(auth, commands)
 
     def _check_exomult(self, auth):
         if not (isinstance(auth, six.string_types) or type(auth) is dict):
@@ -820,7 +837,7 @@ class ExoRPC():
         assert(not self.exo.has_deferred(auth))
 
     def _exomult(self, auth, commands):
-        '''Takes a list of onep commands with cik omitted, e.g.:
+        '''Takes a list of onep commands with auth omitted, e.g.:
             [['info', {alias: ""}], ['listing', ['dataport'], {}, {'alias': ''}]'''
         if len(commands) == 0:
             return []
@@ -927,7 +944,7 @@ class ExoRPC():
         return options
 
     def read(self,
-             cik,
+             auth,
              rid,
              limit,
              sort='asc',
@@ -936,26 +953,26 @@ class ExoRPC():
              selection='all'):
         options = self._readoptions(limit, sort, starttime, endtime, selection)
         isok, response = self.exo.read(
-            cik,
+            auth,
             rid,
             options)
         self._raise_for_response(isok, response)
         return response
 
     def move(self,
-             cik,
+             auth,
              rid,
              destinationrid,
              options={"aliases": True}):
         isok, response = self.exo.move(
-            cik,
+            auth,
             rid,
             destinationrid,
             options)
         self._raise_for_response(isok, response)
         return response
 
-    def find(self, cik, matches, shows, verbose=False):
+    def find(self, auth, matches, shows, verbose=False):
         showcik = False
         if "cik" in shows:
             shows = shows.replace("cik", "key")
@@ -973,7 +990,7 @@ class ExoRPC():
             print("Showing: {0}".format(shows))
             print("Matching: {0}".format(matchers))
 
-        data = self._infotree_fast(cik)
+        data = self._infotree_fast(auth)
 
         display_data = []
 
@@ -1122,7 +1139,7 @@ class ExoRPC():
             return combined
 
     def readmult(self,
-                 cik,
+                 auth,
                  rids,
                  limit,
                  sort='asc',
@@ -1139,24 +1156,26 @@ class ExoRPC():
         options = self._readoptions(limit, sort, starttime, endtime, selection)
 
         count = [0]
-        def _read(cik, rids, options):
-            responses = self._exomult(cik, [['read', rid, options] for rid in rids])
+        def _read(auth, rids, options):
+            responses = self._exomult(auth, [['read', rid, options] for rid in rids])
             count[0] += len(responses)
             progress(count[0])
             return self._combinereads(responses, options['sort'])
 
         if limit <= chunksize :
-            for r in _read(cik, rids, options):
+            for r in _read(auth, rids, options):
                 yield r
         else:
             # Read chunks by limit.
             maxLimit = options['limit']
+
             if 'sort' in options and options['sort'] == 'desc':
                 # descending
                 if 'endtime' in options:
                     nextStart = options['endtime']
                 else:
                     nextStart = ExoUtilities.parse_ts_tuple(datetime.now().timetuple())
+
                 while True:
                     chunkOpt = options.copy()
                     chunkOpt['endtime'] = nextStart
@@ -1169,9 +1188,10 @@ class ExoRPC():
                         yield r
                     if len(res) == 0:
                         break
+
                     maxLimit = maxLimit - len(res)
                     if maxLimit <= 0:
-                        break;
+                        break
                     #save oldest
                     nextStart = res[-1][0] - 1
             else:
@@ -1187,7 +1207,7 @@ class ExoRPC():
                         chunkOpt['limit'] = chunksize
                     else:
                         chunkOpt['limit'] = maxLimit
-                    res = _read(cik, rids, chunkOpt);
+                    res = _read(cik, rids, chunkOpt)
                     for r in res:
                         yield r
                     if len(res) == 0:
@@ -1198,28 +1218,28 @@ class ExoRPC():
                     #save oldest
                     nextStart = res[-1][0] + 1
 
-    def write(self, cik, rid, value):
-        isok, response = self.exo.write(cik, rid, value)
+    def write(self, auth, rid, value):
+        isok, response = self.exo.write(auth, rid, value)
         self._raise_for_response(isok, response)
 
-    def record(self, cik, rid, entries):
-        isok, response = self.exo.record(cik, rid, entries, {})
+    def record(self, auth, rid, entries):
+        isok, response = self.exo.record(auth, rid, entries, {})
         self._raise_for_response_record(isok, response)
 
-    def create(self, cik, type, desc, name=None):
+    def create(self, auth, type, desc, name=None):
         if name is not None:
             desc['name'] = name
-        isok, response = self.exo.create(cik, type, desc)
+        isok, response = self.exo.create(auth, type, desc)
         self._raise_for_response(isok, response)
         return response
 
-    def update(self, cik, rid, desc):
-        isok, response = self.exo.update(cik, rid, desc)
+    def update(self, auth, rid, desc):
+        isok, response = self.exo.update(auth, rid, desc)
         self._raise_for_response(isok, response)
         return response
 
-    def create_dataport(self, cik, format, name=None):
-        '''Create a dataport child of cik with common defaults.
+    def create_dataport(self, auth, format, name=None):
+        '''Create a dataport child of auth with common defaults.
            (retention count duration set to "infinity"). Returns
            RID string of the created dataport.'''
         desc = {"format": format,
@@ -1229,10 +1249,10 @@ class ExoRPC():
                 }
         if name is not None:
             desc['name'] = name
-        return self.create(cik, 'dataport', desc)
+        return self.create(auth, 'dataport', desc)
 
-    def create_client(self, cik, name=None, desc=None):
-        '''Create a client child of cik with common defaults.
+    def create_client(self, auth, name=None, desc=None):
+        '''Create a client child of auth with common defaults.
         ('inherit' set for all limits). Returns RID string
         of the created client.'''
         if desc is None:
@@ -1254,44 +1274,44 @@ class ExoRPC():
             }
         if name is not None:
             desc['name'] = name
-        return self.create(cik, 'client', desc)
+        return self.create(auth, 'client', desc)
 
-    def drop(self, cik, rids):
+    def drop(self, auth, rids):
         for rid in rids:
-            self.exo.drop(cik, rid, defer=True)
+            self.exo.drop(auth, rid, defer=True)
 
-        if self.exo.has_deferred(cik):
-            self._raise_for_deferred(self.exo.send_deferred(cik))
+        if self.exo.has_deferred(auth):
+            self._raise_for_deferred(self.exo.send_deferred(auth))
 
-    def map(self, cik, rid, alias):
+    def map(self, auth, rid, alias):
         '''Creates an alias for rid. '''
-        isok, response = self.exo.map(cik, rid, alias)
+        isok, response = self.exo.map(auth, rid, alias)
         self._raise_for_response(isok, response)
         return response
 
-    def unmap(self, cik, alias):
+    def unmap(self, auth, alias):
         '''Removes an alias a child of calling client.'''
-        isok, response = self.exo.unmap(cik, alias)
+        isok, response = self.exo.unmap(auth, alias)
         self._raise_for_response(isok, response)
         return response
 
-    def lookup(self, cik, alias):
-        isok, response = self.exo.lookup(cik, 'alias', alias)
+    def lookup(self, auth, alias):
+        isok, response = self.exo.lookup(auth, 'alias', alias)
         self._raise_for_response(isok, response)
         return response
 
-    def lookup_owner(self, cik, rid):
-        isok, response = self.exo.lookup(cik, 'owner', rid)
+    def lookup_owner(self, auth, rid):
+        isok, response = self.exo.lookup(auth, 'owner', rid)
         self._raise_for_response(isok, response)
         return response
 
-    def lookup_shared(self, cik, code):
-        isok, response = self.exo.lookup(cik, 'shared', code)
+    def lookup_shared(self, auth, code):
+        isok, response = self.exo.lookup(auth, 'shared', code)
         self._raise_for_response(isok, response)
         return response
 
-    def listing(self, cik, types, options={}, rid=None):
-        isok, response = self.exo.listing(cik, types, options=options, resource=rid)
+    def listing(self, auth, types, options={}, rid=None):
+        isok, response = self.exo.listing(auth, types, options=options, resource=rid)
         self._raise_for_response(isok, response)
         return response
 
@@ -1348,7 +1368,7 @@ class ExoRPC():
         return listing_with_info
 
     def info(self,
-             cik,
+             auth,
              rid={'alias': ''},
              options={},
              cikonly=False,
@@ -1359,12 +1379,12 @@ class ExoRPC():
             options = {'key': True}
         if recursive:
             rid = None if type(rid) is dict else rid
-            response = self._infotree(cik,
+            response = self._infotree(auth,
                                       rid=rid,
                                       options=options,
                                       level=level)
         else:
-            isok, response = self.exo.info(cik, rid, options)
+            isok, response = self.exo.info(auth, rid, options)
             self._raise_for_response(isok, response)
         if cikonly:
             if not 'key' in response:
@@ -1373,7 +1393,7 @@ class ExoRPC():
         else:
             return response
 
-    def flush(self, cik, rids, newerthan=None, olderthan=None):
+    def flush(self, auth, rids, newerthan=None, olderthan=None):
         args=[]
         options = {}
         if newerthan is not None: options['newerthan'] = newerthan
@@ -1381,44 +1401,44 @@ class ExoRPC():
         if len(options) > 0:
             args.append(options)
         cmds = [['flush', rid] + args for rid in rids]
-        self._exomult(cik, cmds)
+        self._exomult(auth, cmds)
 
-    def usage(self, cik, rid, metrics, start, end):
+    def usage(self, auth, rid, metrics, start, end):
         for metric in metrics:
-            self.exo.usage(cik, rid, metric, start, end, defer=True)
+            self.exo.usage(auth, rid, metric, start, end, defer=True)
         responses = []
-        if self.exo.has_deferred(cik):
-            responses = self._raise_for_deferred(self.exo.send_deferred(cik))
+        if self.exo.has_deferred(auth):
+            responses = self._raise_for_deferred(self.exo.send_deferred(auth))
         # show report
         maxlen = max([len(m) for m in metrics])
         for i, r in enumerate(responses):
             print("{0}:{1} {2}".format(
                   metrics[i], ' ' * (maxlen - len(metrics[i])), r))
 
-    def share(self, cik, rid, options):
-        isok, response = self.exo.share(cik,
+    def share(self, auth, rid, options):
+        isok, response = self.exo.share(auth,
                                         rid,
                                         options)
         self._raise_for_response(isok, response)
         return response
 
-    def revoke(self, cik, codetype, code):
-        isok, response = self.exo.revoke(cik, codetype, code)
+    def revoke(self, auth, codetype, code):
+        isok, response = self.exo.revoke(auth, codetype, code)
         self._raise_for_response(isok, response)
         return response
 
-    def activate(self, cik, codetype, code):
-        isok, response = self.exo.activate(cik, codetype, code)
+    def activate(self, auth, codetype, code):
+        isok, response = self.exo.activate(auth, codetype, code)
         self._raise_for_response(isok, response)
         return response
 
-    def deactivate(self, cik, codetype, code):
-        isok, response = self.exo.deactivate(cik, codetype, code)
+    def deactivate(self, auth, codetype, code):
+        isok, response = self.exo.deactivate(auth, codetype, code)
         self._raise_for_response(isok, response)
         return response
 
-    def clone(self, cik, options):
-        isok, response = self.exo.create(cik, 'clone', options)
+    def clone(self, auth, options):
+        isok, response = self.exo.create(auth, 'clone', options)
         self._raise_for_response(isok, response)
         return response
 
@@ -1538,11 +1558,11 @@ class ExoRPC():
             #v = values[0][1]
             #return self._format_value_with_previous(v, prev, maxlen)
 
-    def _print_node(self, rid, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
+    def _print_node(self, rid, auth_type, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
         twee = cli_args['<command>'] == 'twee'
         typ = info['basic']['type']
         if typ == 'client':
-            id = 'cik: ' + info['key']
+            id = auth_type + ': ' + info['key']
         else:
             id = 'rid: ' + rid
         name = info['description']['name']
@@ -1717,30 +1737,41 @@ class ExoRPC():
                 '' if len(opt) == 0 else '({0})'.format(', '.join(
                     ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
 
+    def auth_dict_parts(self, auth_dict):
+        '''Return tuple of auth_type ('cik' or 'token'),
+           auth_str from an auth dictionary'''
+        return ('cik' if 'cik' in auth_dict else 'token',
+            auth_dict['cik'] if 'cik' in auth_dict else auth_dict['token'])
+
     def tree(self, auth, aliases=None, cli_args={}, spacer='', level=0, info_options={}):
         '''Print a tree of entities in OneP'''
         max_level = int(cli_args['--level'])
         # print root node
         isroot = len(spacer) == 0
         if isinstance(auth, six.string_types):
-            cik = auth
+            auth_type = 'cik'
+            auth_str = auth
         elif type(auth) is dict:
-            cik = auth['cik']
-            rid = auth['client_id']
+            auth_type, auth_str = self.auth_dict_parts(auth)
+            rid = auth.get('client_id', None)
         else:
             raise ExoException('Unexpected auth type ' + str(type(auth)))
         if isroot:
             # usage and counts are slow, so omit them if we don't need them
             exclude = ['usage', 'counts']
+            #if auth_type == 'token':
+            #    exclude.append('key')
+            #    exclude.append('subscribers')
             info_options = self.make_info_options(exclude=exclude)
             rid, info = self._exomult(auth,
                                       [['lookup', 'alias', ''],
                                        ['info', {'alias': ''}, info_options]])
             # info doesn't contain key
-            info['key'] = cik
+            info['key'] = auth_str
             aliases = info['aliases']
             root_aliases = 'see parent'
             self._print_node(rid,
+                             auth_type,
                              info,
                              root_aliases,
                              cli_args,
@@ -1783,7 +1814,7 @@ class ExoRPC():
             self._print_tree_line(
                 spacer +
                 "  └─listing for {0} failed. info['basic']['status'] is \
-probably not valid.".format(cik))
+probably not valid.".format(auth_str))
         except ExoRPC.RPCException as ex:
             if str(ex).startswith('locked ('):
                 self._print_tree_line(
@@ -1834,29 +1865,29 @@ probably not valid.".format(cik))
                             own_spacer   = spacer + '  +-'
 
                     if t == 'client':
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen)
+                        self._print_node(rid, auth_type, info, aliases, cli_args, own_spacer, islast, maxlen)
                         if max_level == -1 or level < max_level:
-                            self.tree({'cik': cik, 'client_id': rid}, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
+                            self.tree({auth_type: auth_str, 'client_id': rid}, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
                     else:
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen, values=info['read'] if 'read' in info else None)
+                        self._print_node(rid, auth_type, info, aliases, cli_args, own_spacer, islast, maxlen, values=info['read'] if 'read' in info else None)
 
-    def drop_all_children(self, cik):
+    def drop_all_children(self, auth):
         isok, listing = self.exo.listing(
-            cik,
+            auth,
             types=['client', 'dataport', 'datarule', 'dispatch'],
             options={},
             resource={'alias': ''})
         self._raise_for_response(isok, listing)
         rids = itertools.chain(*[listing[t] for t in listing.keys()])
-        self._exomult(cik, [['drop', rid] for rid in rids])
+        self._exomult(auth, [['drop', rid] for rid in rids])
 
-    def _lookup_rid_by_name(self, cik, name, types=['datarule']):
+    def _lookup_rid_by_name(self, auth, name, types=['datarule']):
         '''Look up RID by name. We use name rather than alias to identify
         scripts created in Portals because it only displays names to the
         user, not aliases. Note that if multiple scripts have the same
         name the first one in the listing is returned.'''
         found_rid = None
-        listing = self._listing_with_info(cik, types)
+        listing = self._listing_with_info(auth, types)
         for typ in listing:
             for rid in listing[typ]:
                 if listing[typ][rid]['description']['name'] == name:
@@ -1864,7 +1895,7 @@ probably not valid.".format(cik))
                     return rid
         return None
 
-    def _upload_script(self, cik, name, content, rid=None, alias=None, version='0.0.0'):
+    def _upload_script(self, auth, name, content, rid=None, alias=None, version='0.0.0'):
         '''Upload a lua script, either creating one or updating the existing one'''
         desc = {
             'format': 'string',
@@ -1893,21 +1924,20 @@ probably not valid.".format(cik))
         desc['meta'] = json.dumps(meta)
 
         if rid is None:
-            success, rid = self.exo.create(cik, 'datarule', desc)
+            success, rid = self.exo.create(auth, 'datarule', desc)
             if success:
                 print("New script RID: {0}".format(rid))
             else:
-                #print('cik: {0} desc: {1}'.format(cik, json.dumps(desc)))
                 raise ExoException("Error creating datarule: {0}".format(rid))
             if alias is None:
                 alias = name
-            success, rid = self.exo.map(cik, rid, alias)
+            success, rid = self.exo.map(auth, rid, alias)
             if success:
                 print("Aliased script to: {0}".format(alias))
             else:
                 raise ExoException("Error aliasing script")
         else:
-            isok, olddesc = self.exo.info(cik, rid)
+            isok, olddesc = self.exo.info(auth, rid)
             if isok:
                 try:
                     oldmetajs = olddesc['description']['meta']
@@ -1920,16 +1950,16 @@ probably not valid.".format(cik))
                     pass
                     # if none of that works, go with the default above.
 
-            isok, response = self.exo.update(cik, rid, desc)
+            isok, response = self.exo.update(auth, rid, desc)
             if isok:
                 print ("Updated script RID: {0}".format(rid))
             else:
                 raise ExoException("Error updating datarule: {0}".format(response))
 
-    def cik_recursive(self, cik, fn):
-        '''Run fn on cik and all its client children'''
-        fn(cik)
-        lwi = self._listing_with_info(cik,
+    def cik_recursive(self, auth, fn):
+        '''Run fn on client and all its client children'''
+        fn(auth)
+        lwi = self._listing_with_info(auth,
                                       ['client'],
                                       info_options={'key': True})
         # {'client': {'<rid0>':<info0>, '<rid1>':<info1>}]
@@ -1937,7 +1967,7 @@ probably not valid.".format(cik))
             self.cik_recursive(lwi['client'][rid]['key'], fn)
 
     def upload_script_content(self,
-                              ciks,
+                              auths,
                               content,
                               name,
                               recursive=False,
@@ -1945,8 +1975,8 @@ probably not valid.".format(cik))
                               filterfn=lambda script: script,
                               rid=None,
                               version='0.0.0'):
-        for cik in ciks:
-            def up(cik, rid):
+        for auth in auths:
+            def up(auth, rid):
                 if rid is not None:
                     alias = None
                     if create:
@@ -1956,25 +1986,25 @@ probably not valid.".format(cik))
                             raise ExoException('<rid> must be an alias when passing --create')
                         alias = rid['alias']
                         rid = None
-                    self._upload_script(cik, name, content, rid=rid, alias=alias, version=version)
+                    self._upload_script(auth, name, content, rid=rid, alias=alias, version=version)
                 else:
-                    rid = self._lookup_rid_by_name(cik, name)
+                    rid = self._lookup_rid_by_name(auth, name)
                     if rid is not None or create:
-                        self._upload_script(cik, name, content, rid=rid, version=version)
+                        self._upload_script(auth, name, content, rid=rid, version=version)
                     else:
                         # TODO: move this to spec plugin
-                        print("Skipping CIK: {0} -- {1} not found".format(cik, name))
+                        print("Skipping CIK: {0} -- {1} not found".format(auth, name))
                         if not create:
                             print('Pass --create to create it')
 
             if recursive:
-                self.cik_recursive(cik, lambda cik: up(cik, rid))
+                self.cik_recursive(auth, lambda auth: up(auth, rid))
             else:
-                up(cik, rid)
+                up(auth, rid)
 
 
     def upload_script(self,
-                      ciks,
+                      auths,
                       filename,
                       name=None,
                       recursive=False,
@@ -1999,7 +2029,7 @@ probably not valid.".format(cik))
                     name = os.path.basename(filename)
                 def upl():
                     self.upload_script_content(
-                        ciks,
+                        auths,
                         content,
                         name=name,
                         recursive=recursive,
@@ -2008,11 +2038,11 @@ probably not valid.".format(cik))
                         rid=rid,
                         version=version)
                 if follow:
-                    if len(ciks) > 1:
+                    if len(auths) > 1:
                         raise Exception('following more than one CIK is not supported')
                     lines = followSeries(
                         self,
-                        ciks[0],
+                        auths[0],
                         {'alias': name},
                         timeout_milliseconds=3000,
                         printFirst=True)
@@ -2044,7 +2074,7 @@ probably not valid.".format(cik))
                     # loop forever
                     for timestamp, vals in lines:
                         towrite = []
-                        info = self._exomult(ciks[0], [
+                        info = self._exomult(auths[0], [
                             ['info', {'alias': name}, {'basic': True, 'description': True}]])[0]
                         code = info['description']['rule']['script']
                         if timestamp is not None and vals is not None:
@@ -2124,15 +2154,15 @@ probably not valid.".format(cik))
                 else:
                     upl()
 
-    def lookup_rid(self, cik, cik_to_find):
-        isok, listing = self.exo.listing(cik, types=['client'], options={}, resource={'alias': ''})
+    def lookup_rid(self, auth, cik_to_find):
+        isok, listing = self.exo.listing(auth, types=['client'], options={}, resource={'alias': ''})
         self._raise_for_response(isok, listing)
 
         for rid in listing['client']:
-            self.exo.info(cik, rid, {'key': True}, defer=True)
+            self.exo.info(auth, rid, {'key': True}, defer=True)
 
-        if self.exo.has_deferred(cik):
-            responses = self.exo.send_deferred(cik)
+        if self.exo.has_deferred(auth):
+            responses = self.exo.send_deferred(auth)
             for idx, r in enumerate(responses):
                 call, isok, response = r
                 self._raise_for_response(isok, response)
@@ -2140,7 +2170,7 @@ probably not valid.".format(cik))
                 if response['key'] == cik_to_find:
                     return listing['client'][idx]
 
-    def record_backdate(self, cik, rid, interval_seconds, values):
+    def record_backdate(self, auth, rid, interval_seconds, values):
         '''Record a list of values and record them as if they happened in
         the past interval_seconds apart. For example, if values
             ['a', 'b', 'c']
@@ -2154,7 +2184,7 @@ probably not valid.".format(cik))
         for v in values:
             tvalues.append([timestamp, v])
             timestamp -= interval_seconds
-        return self.record(cik, rid, tvalues)
+        return self.record(auth, rid, tvalues)
 
 
     def _create_from_infotree(self, parentcik, infotree):
@@ -2477,12 +2507,12 @@ probably not valid.".format(cik))
         d = re.sub(plusa + minusa, r' \1<<RID>>\2\n', d, flags=re.MULTILINE)
         d = re.sub(minusa + plusa, r' \1<<RID>>\2\n', d, flags=re.MULTILINE)
 
-        # replace differing cik lines with a single <<cik>> placeholder
+        # replace differing cik lines with a single <<auth>> placeholder
         a = '(.*"key"\: ")[a-f0-9]{40}(",.*)\n'
         plusa = '^\+' + a
         minusa = '^\-' + a
-        d = re.sub(plusa + minusa, r' \1<<CIK>>\2\n', d, flags=re.MULTILINE)
-        d = re.sub(minusa + plusa, r' \1<<CIK>>\2\n', d, flags=re.MULTILINE)
+        d = re.sub(plusa + minusa, r' \1<<auth>>\2\n', d, flags=re.MULTILINE)
+        d = re.sub(minusa + plusa, r' \1<<auth>>\2\n', d, flags=re.MULTILINE)
 
         return d
 
@@ -2657,6 +2687,16 @@ class ExoUtilities():
         return int(time.mktime(t))
 
     @classmethod
+    def get_cik(cls, auth, allow_only_cik=True):
+        '''Get the 40 character CIK from auth dict, or raise
+           an error that CIK type auth is required.'''
+        if 'cik' not in auth:
+            raise ExoException('This operation requires a CIK')
+        if allow_only_cik and len(auth.keys()) > 1:
+            raise ExoException('This operation does not support client_id and resource_id access')
+        return auth['cik']
+
+    @classmethod
     def get_startend(cls, args):
         '''Get start and end timestamps based on standard arguments'''
         start = args.get('--start', None)
@@ -2766,9 +2806,9 @@ def meanstdv(l):
     return mean, std
 
 
-def show_intervals(er, cik, rid, start, end, limit, numstd=None):
+def show_intervals(er, auth, rid, start, end, limit, numstd=None):
     # show a distribution of intervals between data
-    data = er.read(cik,
+    data = er.read(auth,
                    rid,
                    limit,
                    sort='desc',
@@ -2820,10 +2860,10 @@ def show_intervals(er, cik, rid, start, end, limit, numstd=None):
 # return a generator that reads rid forever and yields either:
 # A. timestamp, value pair (on data)
 # B. None, None (on timeout)
-def followSeries(er, cik, rid, timeout_milliseconds, printFirst=True):
+def followSeries(er, auth, rid, timeout_milliseconds, printFirst=True):
     # do an initial read
     results = er.readmult(
-        cik,
+        auth,
         [rid],
         limit=1,
         selection='all',
@@ -2838,7 +2878,7 @@ def followSeries(er, cik, rid, timeout_milliseconds, printFirst=True):
 
     while True:
         timedout, point = er.wait(
-            cik,
+            auth,
             rid,
             since=last_t + 1,
             timeout=timeout_milliseconds)
@@ -2852,14 +2892,14 @@ def followSeries(er, cik, rid, timeout_milliseconds, printFirst=True):
             yield(None, None)
 
 
-def read_cmd(er, cik, rids, args):
+def read_cmd(er, auth, rids, args):
     '''Read command'''
     if len(rids) == 0:
         # if only a CIK was passed, include all dataports and datarules
         # by default.
-        listing = er.listing(cik, ['dataport', 'datarule'], options={}, rid={'alias': ''})
+        listing = er.listing(auth, ['dataport', 'datarule'], options={}, rid={'alias': ''})
         rids = listing['dataport'] + listing['datarule']
-        aliases = er.info(cik, options={'aliases': True})['aliases']
+        aliases = er.info(auth, options={'aliases': True})['aliases']
         # look up aliases for column headers
         cmdline_rids = [aliases[rid][0] if rid in aliases else rid for rid in rids]
 
@@ -2878,7 +2918,7 @@ def read_cmd(er, cik, rids, args):
     timeformat = args['--timeformat']
     if headertype == 'name':
         # look up names of rids
-        infos = er._exomult(cik,
+        infos = er._exomult(auth,
                             [['info', r, {'description': True}] for r in rids])
         headers = ['timestamp'] + [i['description']['name'] for i in infos]
     else:
@@ -2907,7 +2947,7 @@ def read_cmd(er, cik, rids, args):
 
         lines = followSeries(
             er,
-            cik,
+            auth,
             rids[0],
             timeout_milliseconds=timeout_milliseconds,
             printFirst=True)
@@ -2917,7 +2957,7 @@ def read_cmd(er, cik, rids, args):
                 lw.write(ts, v)
     else:
         chunksize = int(args['--chunksize'])
-        result = er.readmult(cik,
+        result = er.readmult(auth,
                              rids,
                              sort=args['--sort'],
                              starttime=start,
@@ -2977,16 +3017,16 @@ def handle_args(cmd, args):
     if cmd in ['portals'] or args['--clearcache']:
         portals = ExoPortals(args['--portals'])
 
-    if '<cik>' in args and args['<cik>'] is not None:
-        cik = args['<cik>']
-        if type(cik) is list:
-            cik = [exoconfig.lookup_shortcut(c) for c in cik]
+    if '<auth>' in args and args['<auth>'] is not None:
+        auth = args['<auth>']
+        if type(auth) is list:
+            auth = [exoconfig.lookup_shortcut(a) for a in auth]
         else:
-            cik = exoconfig.lookup_shortcut(cik)
+            auth = exoconfig.lookup_shortcut(auth)
     else:
         # for data ip command
-        cik = None
-    def rid_or_alias(rid, cik=None):
+        auth = None
+    def rid_or_alias(rid, auth=None):
         '''Translate what was passed for <rid> to an alias object if
            it doesn't look like a RID.'''
         if er.regex_rid.match(rid) is None:
@@ -2995,7 +3035,7 @@ def handle_args(cmd, args):
             else:
                 # look up full RID based on short version
                 tweetype, ridfrag = rid.split('.')
-                listing = er.listing(cik, ['client', 'dataport', 'datarule', 'dispatch'], options={}, rid={'alias': ''})
+                listing = er.listing(auth, ['client', 'dataport', 'datarule', 'dispatch'], options={}, rid={'alias': ''})
                 candidates = []
                 for typ in listing:
                     for fullrid in listing[typ]:
@@ -3006,7 +3046,7 @@ def handle_args(cmd, args):
                 elif len(candidates) > 1:
                     raise ExoException('More than one RID starts with ' + ridfrag + '. Better use the full RID.')
                 else:
-                    raise ExoException('No RID found that starts with ' + ridfrag + '. Is it an immediate child of ' + cik + '?')
+                    raise ExoException('No RID found that starts with ' + ridfrag + '. Is it an immediate child of ' + auth + '?')
         else:
             return rid
 
@@ -3014,12 +3054,12 @@ def handle_args(cmd, args):
     if '<rid>' in args:
         if type(args['<rid>']) is list:
             for rid in args['<rid>']:
-                rids.append(rid_or_alias(rid, cik))
+                rids.append(rid_or_alias(rid, auth))
         else:
             if args['<rid>'] is None:
                 rids.append({"alias": ""})
             else:
-                rids.append(rid_or_alias(args['<rid>'], cik))
+                rids.append(rid_or_alias(args['<rid>'], auth))
 
     if args.get('--pretty', False):
         pr = pretty_print
@@ -3028,16 +3068,16 @@ def handle_args(cmd, args):
 
     try:
         if cmd == 'read':
-            read_cmd(er, cik, rids, args)
+            read_cmd(er, auth, rids, args)
         elif cmd == 'write':
             if args['-']:
                 val = sys.stdin.read()
                 # remove extra newline
                 if val[-1] == '\n':
                     val = val[:-1]
-                er.write(cik, rids[0], val)
+                er.write(auth, rids[0], val)
             else:
-                er.write(cik, rids[0], args['--value'])
+                er.write(auth, rids[0], args['--value'])
         elif cmd == 'record':
             interval = args['--interval']
             if interval is None:
@@ -3066,13 +3106,13 @@ def handle_args(cmd, args):
                         chunkcnt += 1
                         if chunkcnt > int(args['--chunksize']):
                             for idx in range(0,len(rids)):
-                                er.record(cik, rids[idx], entries[idx])
+                                er.record(auth, rids[idx], entries[idx])
                             chunkcnt = 0
                             entries=[[] for x in range(0,len(rids))]
 
                     for idx in range(0,len(rids)):
                         if len(entries[idx]) > 0:
-                            er.record(cik, rids[idx], entries[idx])
+                            er.record(auth, rids[idx], entries[idx])
 
                 else:
                     entries = []
@@ -3105,7 +3145,7 @@ def handle_args(cmd, args):
                     if has_errors or len(entries) == 0:
                         raise ExoException("Problems with input.")
                     else:
-                        er.record(cik, rids[0], entries)
+                        er.record(auth, rids[0], entries)
             else:
                 if args['-']:
                     values = [v.strip() for v in sys.stdin.readlines()]
@@ -3114,7 +3154,7 @@ def handle_args(cmd, args):
                 interval = int(interval)
                 if interval <= 0:
                     raise ExoException("--interval must be positive")
-                er.record_backdate(cik, rids[0], interval, values)
+                er.record_backdate(auth, rids[0], interval, values)
         elif cmd == 'create':
             typ = args['--type']
             ridonly = args['--ridonly']
@@ -3127,15 +3167,15 @@ def handle_args(cmd, args):
                     desc = json.loads(s)
                 except Exception as ex:
                     raise ExoException(ex)
-                rid = er.create(cik,
+                rid = er.create(auth,
                                 type=typ,
                                 desc=desc,
                                 name=args['--name'])
             elif typ == 'client':
-                rid = er.create_client(cik,
+                rid = er.create_client(auth,
                                     name=args['--name'])
             elif typ == 'dataport':
-                rid = er.create_dataport(cik,
+                rid = er.create_dataport(auth,
                                         args['--format'],
                                         name=args['--name'])
             else:
@@ -3143,14 +3183,14 @@ def handle_args(cmd, args):
             if ridonly:
                 pr(rid)
             elif cikonly:
-                print(er.info(cik, rid, cikonly=True))
+                print(er.info(auth, rid, cikonly=True))
             else:
                 pr('rid: {0}'.format(rid))
                 if typ == 'client':
                     # for convenience, look up the cik
-                    print('cik: {0}'.format(er.info(cik, rid, cikonly=True)))
+                    print('cik: {0}'.format(er.info(auth, rid, cikonly=True)))
             if args['--alias'] is not None:
-                er.map(cik, rid, args['--alias'])
+                er.map(auth, rid, args['--alias'])
                 if not ridonly:
                     print("alias: {0}".format(args['--alias']))
         elif cmd == 'update':
@@ -3159,11 +3199,11 @@ def handle_args(cmd, args):
                 desc = json.loads(s)
             except Exception as ex:
                 raise ExoException(ex)
-            pr(er.update(cik, rids[0], desc=desc))
+            pr(er.update(auth, rids[0], desc=desc))
         elif cmd == 'map':
-            er.map(cik, rids[0], args['<alias>'])
+            er.map(auth, rids[0], args['<alias>'])
         elif cmd == 'unmap':
-            er.unmap(cik, args['<alias>'])
+            er.unmap(auth, args['<alias>'])
         elif cmd == 'lookup':
             # look up by cik or alias
             cik_to_find = args['--cik']
@@ -3171,29 +3211,29 @@ def handle_args(cmd, args):
             share = args['--share']
             if cik_to_find is not None:
                 cik_to_find = exoconfig.lookup_shortcut(cik_to_find)
-                rid = er.lookup_rid(cik, cik_to_find)
+                rid = er.lookup_rid(auth, cik_to_find)
                 if rid is not None:
                     pr(rid)
             elif owner_of is not None:
-                rid = er.lookup_owner(cik, owner_of)
+                rid = er.lookup_owner(auth, owner_of)
                 if rid is not None:
                     pr(rid)
             elif share is not None:
-                rid = er.lookup_shared(cik, share)
+                rid = er.lookup_shared(auth, share)
                 if rid is not None:
                     pr(rid)
             else:
                 alias = args['<alias>']
                 if alias is None:
                     alias = ""
-                pr(er.lookup(cik, alias))
+                pr(er.lookup(auth, alias))
         elif cmd == 'drop':
             if args['--all-children']:
-                er.drop_all_children(cik)
+                er.drop_all_children(auth)
             else:
                 if len(rids) == 0:
                     raise ExoException("<rid> is required")
-                er.drop(cik, rids)
+                er.drop(auth, rids)
         elif cmd == 'listing':
             types = args['--types'].split(',')
 
@@ -3205,7 +3245,7 @@ def handle_args(cmd, args):
             if filters is not None:
                 for f in filters.split(','):
                     options[f] = True
-                listing = er.listing(cik, types, options=options, rid=rids[0])
+                listing = er.listing(auth, types, options=options, rid=rids[0])
             if args['--plain']:
                 for t in types:
                     for rid in listing[t]:
@@ -3213,7 +3253,7 @@ def handle_args(cmd, args):
             else:
                 pr(json.dumps(listing))
         elif cmd == 'whee':
-            tree = er._infotree_fast(cik, options={'basic': True})
+            tree = er._infotree_fast(auth, options={'basic': True})
             pr(json.dumps(tree))
         elif cmd == 'info':
             include = args['--include']
@@ -3226,7 +3266,7 @@ def handle_args(cmd, args):
             options = er.make_info_options(include, exclude)
             level = args['--level']
             level = None if level is None or args['--recursive'] is False else int(level)
-            info = er.info(cik,
+            info = er.info(auth,
                         rids[0],
                         options=options,
                         cikonly=args['--cikonly'],
@@ -3242,7 +3282,7 @@ def handle_args(cmd, args):
                     pr(json.dumps(info))
         elif cmd == 'flush':
             start, end = ExoUtilities.get_startend(args)
-            er.flush(cik, rids, newerthan=start, olderthan=end)
+            er.flush(auth, rids, newerthan=start, olderthan=end)
         elif cmd == 'usage':
             allmetrics = ['client',
                         'dataport',
@@ -3254,27 +3294,31 @@ def handle_args(cmd, args):
                         'xmpp']
 
             start, end = ExoUtilities.get_startend(args)
-            er.usage(cik, rids[0], allmetrics, start, end)
+            er.usage(auth, rids[0], allmetrics, start, end)
         # special commands
         elif cmd == 'tree':
-            er.tree(cik, cli_args=args)
+            if 'token' in auth:
+                raise Exception('tree and twee are not yet supported with tokens')
+            er.tree(auth, cli_args=args)
         elif cmd == 'find':
             shows = args['--show'] if args['--show'] else "cik"
-            er.find(cik, args['--match'], shows)
+            er.find(auth, args['--match'], shows)
         elif cmd == 'twee':
+            if 'token' in auth:
+                raise Exception('tree and twee are not yet supported with tokens')
             args['--values'] = True
             if platform.system() == 'Windows':
                 args['--nocolor'] = True
-            er.tree(cik, cli_args=args)
+            er.tree(auth, cli_args=args)
         elif cmd == 'script':
-            # cik is a list of ciks
+            # auth is a list of auths
             if args['--file']:
                 filename = args['--file']
             else:
                 filename = args['<script-file>']
             rid = None if args['<rid>'] is None else rids[0]
             svers = None if not '--setversion' in args else args['--setversion']
-            er.upload_script(cik,
+            er.upload_script(auth,
                 filename,
                 name=args['--name'],
                 recursive=args['--recursive'],
@@ -3289,10 +3333,10 @@ def handle_args(cmd, args):
             start = ExoUtilities.parse_ts_tuple((datetime.now() - timedelta(days=days)).timetuple())
             numstd = args['--stddev']
             numstd = int(numstd) if numstd is not None else None
-            show_intervals(er, cik, rids[0], start, end, limit=1000000, numstd=numstd)
+            show_intervals(er, auth, rids[0], start, end, limit=1000000, numstd=numstd)
         elif cmd == 'copy':
             destcik = args['<destination-cik>']
-            newrid, newcik = er.copy(cik, destcik)
+            newrid, newcik = er.copy(auth, destcik)
             if args['--cikonly']:
                 pr(newcik)
             else:
@@ -3301,7 +3345,7 @@ def handle_args(cmd, args):
             if sys.version_info < (2, 7):
                 raise ExoException('diff command requires Python 2.7 or above')
 
-            diffs = er.diff(cik,
+            diffs = er.diff(auth,
                             args['<cik2>'],
                             full=args['--full'],
                             nochildren=args['--no-children'])
@@ -3312,6 +3356,7 @@ def handle_args(cmd, args):
         elif cmd == 'data':
             reads = args['--read']
             writes = args['--write']
+            cik = ExoUtilities.get_cik(auth)
             def get_alias_values(writes):
                 # TODO: support values with commas
                 alias_values = []
@@ -3346,7 +3391,9 @@ def handle_args(cmd, args):
                 if len(unknownprocs) > 0:
                     raise ExoException(
                         'Unknown procedure(s) {0}'.format(','.join(unknownprocs)))
-            data = {'auth': {'cik': cik},
+            if not isinstance(auth, six.string_types):
+                raise ExoException("provision command requires cik for auth")
+            data = {'auth': {'cik': auth},
                     'calls':[{'procedure': p, 'arguments': [], 'id': i}
                              for i, p in enumerate(procedures)]}
             portals.invalidate(data)
@@ -3358,7 +3405,7 @@ def handle_args(cmd, args):
             meta = args['--meta']
             if meta is not None:
                 options['meta'] = meta
-            pr(er.share(cik,
+            pr(er.share(auth,
                         rids[0],
                         options))
         elif cmd == 'revoke':
@@ -3368,7 +3415,7 @@ def handle_args(cmd, args):
             else:
                 typ = 'client'
                 code = args['--client']
-            pr(er.revoke(cik, typ, code))
+            pr(er.revoke(auth, typ, code))
         elif cmd == 'activate':
             if args['--share'] is not None:
                 typ = 'share'
@@ -3376,7 +3423,7 @@ def handle_args(cmd, args):
             else:
                 typ = 'client'
                 code = args['--client']
-            er.activate(cik, typ, code)
+            er.activate(auth, typ, code)
         elif cmd == 'deactivate':
             if args['--share'] is not None:
                 typ = 'share'
@@ -3384,7 +3431,7 @@ def handle_args(cmd, args):
             else:
                 typ = 'client'
                 code = args['--client']
-            er.deactivate(cik, typ, code)
+            er.deactivate(auth, typ, code)
         elif cmd == 'clone':
             options = {}
             if args['--share'] is not None:
@@ -3394,20 +3441,20 @@ def handle_args(cmd, args):
                 if er.regex_rid.match(rid_to_clone) is None:
                     # try to look up RID for an alias
                     alias = rid_to_clone
-                    rid_to_clone = er.lookup(cik, alias)
+                    rid_to_clone = er.lookup(auth, alias)
                 options['rid'] = rid_to_clone
 
             options['noaliases'] = args['--noaliases']
             options['nohistorical'] = args['--nohistorical']
 
-            rid = er.clone(cik, options)
+            rid = er.clone(auth, options)
             pr('rid: {0}'.format(rid))
-            info = er.info(cik, rid, {'basic': True, 'key': True})
+            info = er.info(auth, rid, {'basic': True, 'key': True})
             typ = info['basic']['type']
             copycik = info['key']
             if typ == 'client':
                 if not args['--noactivate']:
-                    er.activate(cik, 'client', copycik)
+                    er.activate(auth, 'client', copycik)
                 # for convenience, look up the cik
                 pr('cik: {0}'.format(copycik))
         else:
@@ -3417,7 +3464,7 @@ def handle_args(cmd, args):
             for plugin in plugins:
                 if cmd in plugin.command():
                     options = {
-                            'cik': cik,
+                            'auth': auth,
                             'rids': rids,
                             'rpc': er,
                             'provision': pop,

@@ -2,7 +2,7 @@
 '''Transform data on in a dataport by mapping all values (alpha)
 
 Usage:
-    exo [options] transform <cik> <rid> <func>
+    exo [options] transform <auth> <rid> <func>
 
 Command Options:
     --cma           Save data to cvs files just in case.
@@ -44,10 +44,10 @@ Command Options:
 '''
 
 from __future__ import unicode_literals
-import os
 import csv
 import sys
 
+import six
 
 class Plugin():
     def command(self):
@@ -55,7 +55,7 @@ class Plugin():
 
     def run(self, cmd, args, options):
 
-        cik = options['cik']
+        auth = options['auth']
         rid = options['rids'][0]
         mapFunc = args['<func>']
         mpfn = None
@@ -75,14 +75,16 @@ class Plugin():
         start, end = ExoUtilities.get_startend(args)
 
         # read data in range, get as array of values.
-        response = rpc.read(cik, rid, 65535, 'asc', start, end, 'all')
+        response = rpc.read(auth, rid, 65535, 'asc', start, end, 'all')
         # response is array of arrays
 
         if len(response) == 0:
             raise ExoException('No data read')
 
+        if cma and not isinstance(auth, six.string_types):
+            raise ExoException('--cma option expects <auth> to be a cik')
         if cma:
-            with open(cik + '-read.csv', 'wb') as cvsfile:
+            with open(auth + '-read.csv', 'wb') as cvsfile:
                 cw = csv.writer(cvsfile)
                 cw.writerows(response)
 
@@ -97,7 +99,7 @@ class Plugin():
         data = zip(*rotated)
 
         if cma:
-            with open(cik + '-transformed.csv', 'wb') as cvsfile:
+            with open(auth + '-transformed.csv', 'wb') as cvsfile:
                 cw = csv.writer(cvsfile)
                 cw.writerows(data)
 
@@ -114,11 +116,11 @@ class Plugin():
             end = end + 1
 
         if not dry:
-            rpc.flush(cik, [rid], start, end)
+            rpc.flush(auth, [rid], start, end)
 
         # Put the modified values back
         if not dry:
-            rpc.record(cik, rid, data)
+            rpc.record(auth, rid, data)
 
 
 # vim: set ai et sw=4 ts=4 :

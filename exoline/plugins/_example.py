@@ -3,7 +3,7 @@
    This is an example Exoline plugin.
 
 Usage:
-    exo [options] hello <cik> <rid>
+    exo [options] hello <auth> <rid>
 
 Command Options:
     --greeting=<greeting>  Custom greeting, in case "hello" is not good
@@ -25,21 +25,25 @@ class Plugin():
 
     def run(self, cmd, args, options):
 
-        ## Common arguments
+        # Common arguments
+        # ----------------
         # exo.ExoRPC instance configured with host, port, other options
         rpc = options['rpc']
-        # cik is the RPC auth, either a 40 character CIK
+        # auth is the RPC auth, either a 40 character CIK
         # or auth dictionary, like this {"cik": <cik> ...}
-        cik = options['cik']
+        # For more: http://docs.exosite.com/rpc/#authentication
+        auth = options['auth']
         # rids is either a 40 character RID or an alias
         # dict, like {"alias": "temperature}. If <rid> is not
         # in the usage docs, then options['rids'] is an empty
         # list.
         rid = options['rids'][0]
 
-        ## Custom arguments, defined in the docstring at the top
-        ## of this file. For details of docopt syntax:
-        ## https://github.com/docopt/docopt
+        # Custom arguments
+        # ----------------
+        # Defined in the docstring at the top
+        # of this file. For details of docopt syntax:
+        # https://github.com/docopt/docopt
         greeting = args['--greeting']
 
         # this is True or False depending on whether it
@@ -50,7 +54,7 @@ class Plugin():
         print(args)
 
         # ExoRPC methods will raise an exception if something goes wrong
-        points = rpc.read(cik, rid, 1)
+        points = rpc.read(auth, rid, 1)
         if len(points) == 0:
             print('No value in that dataport')
         else:

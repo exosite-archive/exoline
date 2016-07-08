@@ -2,7 +2,7 @@
 '''Write a zip file with all of a client's data
 
 Usage:
-    exo [options] dump <cik> <filename>
+    exo [options] dump <auth> <filename>
 
 Command Options:
     --silent  Don't show search progress
@@ -30,10 +30,11 @@ class Plugin():
         return 'dump'
 
     def run(self, cmd, args, options):
-        cik = options['cik']
+        auth = options['auth']
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
+        cik = ExoUtilities.get_cik(auth)
 
         counts = {
             'resources': 0,
@@ -57,14 +58,14 @@ class Plugin():
         def seriesprogress(rid, count):
             sys.stderr.write('\r{0}.json {1}'.format(rid, six.next(spinner)))
             sys.stderr.flush()
-        def dumpTimeSeries(cik, tree, dumpzipfile):
+        def dumpTimeSeries(auth, tree, dumpzipfile):
             resources = [c for c in tree['info']['children'] if c['info']['basic']['type'] in ['dataport', 'datarule']]
             for i, resource in enumerate(resources):
                 progress['current'] += 1
                 sys.stderr.write('\r{0}.json'.format(resource['rid']))
                 sys.stderr.flush()
                 data = rpc.readmult(
-                    cik,
+                    auth,
                     [resource['rid']],
                     MAX_POINTS,
                     sort='asc',
@@ -82,7 +83,7 @@ class Plugin():
 
             for c in tree['info']['children']:
                 if c['info']['basic']['type'] == 'client':
-                    dumpTimeSeries(cik, c, dumpzipfile)
+                    dumpTimeSeries(auth, c, dumpzipfile)
 
         now = datetime.now()
         nowts = ExoUtilities.parse_ts_tuple(now.timetuple())
@@ -99,7 +100,7 @@ class Plugin():
             })
             sys.stderr.write("\nERROR: {0} {1}\n".format(msg, auth))
         tree = rpc._infotree(
-            cik,
+            auth,
             options={"description": True, "key": True, "basic": True, "aliases": True},
             nodeidfn=treeprogress if not args['--silent'] else lambda rid, info: rid,
             level=None,
@@ -111,7 +112,7 @@ class Plugin():
         tree['info']['key'] = cik
         try:
             zf.writestr('infotree.json', json.dumps(tree))
-            dumpTimeSeries(cik, tree, zf)
+            dumpTimeSeries(auth, tree, zf)
             sys.stderr.write('dump.json\n')
             sys.stderr.flush()
             zf.writestr('dump.json', json.dumps(

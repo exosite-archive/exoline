@@ -2667,6 +2667,32 @@ class TestRPC(TestCase):
         os.remove(file)
 
 
+    def token_test(self):
+        '''Token auth'''
+        cik = self.client.cik()
+        rid = self.client.rid
+        dp = self._createDataports(cik)
+        childrid = dp['string'].rid
+
+        # grant token
+        onep = ExolineOnepV1(host=config['host'], port=config['port'], https=config['https'])
+        ok, result = onep.grant(
+            cik,
+            rid,
+            { rid: [ "read", "write" ] },
+            ttl=1000)
+
+        self.assertTrue(ok, 'grant succeeded')
+        token = result
+        self.assertEqual(len(token), 40, 'token is correct length')
+        r = rpc('write', 'token:' + token, childrid, '--value=你好')
+        self.ok(r, 'write using token')
+
+        r = rpc('read', 'token:' + token, childrid)
+        self.ok(r, 'read using token')
+        self.assertTrue(len(r.stdout) > 0, 'read has output')
+
+
 def tearDownModule(self):
     '''Do some clean up after all tests are run'''
     if not NOTEARDOWN:

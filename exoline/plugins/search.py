@@ -2,7 +2,7 @@
 '''Search resource names, aliases, serial numbers, and script content
 
 Usage:
-    exo [options] search <cik> <query-regex>
+    exo [options] search <auth> <query-regex>
 
 Command Options:
     --matchcase   Match case when searching
@@ -22,10 +22,12 @@ class Plugin():
         return 'search'
 
     def run(self, cmd, args, options):
-        cik = options['cik']
+        auth = options['auth']
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
+        # require a CIK
+        cik = ExoUtilities.get_cik(auth)
 
         count = [0]
         def progress(rid, info):
