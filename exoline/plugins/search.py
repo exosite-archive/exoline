@@ -26,6 +26,8 @@ class Plugin():
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
+        # require a CIK
+        cik = ExoUtilities.get_cik(auth)
 
         count = [0]
         def progress(rid, info):
@@ -133,7 +135,7 @@ class Plugin():
         #counts = info['counts']
         #total = counts['client'] + counts['dispatch'] + counts['dataport'] + counts['datarule']
         tree = rpc._infotree(
-            auth,
+            cik,
             options={"description": True, "key": True, "basic": True, "aliases": True},
             nodeidfn=progress if not args['--silent'] else lambda rid, info: rid,
             level=None,
@@ -143,5 +145,5 @@ class Plugin():
         if 'exception' in tree:
             print('Exception was: ' + str(tree))
         else:
-            tree['info']['key'] = auth
+            tree['info']['key'] = cik
             searchnodes(tree, [], [])

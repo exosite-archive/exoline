@@ -552,6 +552,7 @@ datarules:
 
 
         input_auth = options['auth']
+        exoutils = options['utils']
         rpc = options['rpc']
         asrid = args['--asrid']
 
@@ -750,15 +751,17 @@ datarules:
                     return auth
 
             if args['--portal'] == True:
-                portal_ciks.append((input_auth,''))
+                cik = exoutils.get_cik(input_auth, allow_only_cik=True)
+                portal_ciks.append((cik,''))
                 iterate_portals = True
 
             if args['--domain'] == True:
+                cik = exoutils.get_cik(input_auth, allow_only_cik=True)
                 #set iterate_portals flag to true so we can interate over each portal
                 iterate_portals = True
                 # Get list of users under a domain
                 user_keys = []
-                clients = rpc._listing_with_info(input_auth,['client'])
+                clients = rpc._listing_with_info(cik,['client'])
 
                 email_regex = re.compile(r'[^@]+@[^@]+\.[^@]+')
 

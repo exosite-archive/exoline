@@ -1,6 +1,11 @@
 History
 =======
 
+0.10.0 (2016-07-07)
+-------------------
+- add token support in auth via "token:<token>"
+- fix read from multiple dataports sometimes returning incomplete data
+
 0.9.25 (2015-12-01)
 -------------------
 

@@ -34,6 +34,7 @@ class Plugin():
         rpc = options['rpc']
         ExoException = options['exception']
         ExoUtilities = options['utils']
+        cik = ExoUtilities.get_cik(auth)
 
         counts = {
             'resources': 0,
@@ -108,7 +109,7 @@ class Plugin():
         sys.stderr.write('\n')
 
         zf = zipfile.ZipFile(args['<filename>'], 'w', compression=zipfile.ZIP_DEFLATED)
-        tree['info']['key'] = auth
+        tree['info']['key'] = cik
         try:
             zf.writestr('infotree.json', json.dumps(tree))
             dumpTimeSeries(auth, tree, zf)

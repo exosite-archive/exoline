@@ -653,26 +653,43 @@ class ExoConfig:
             except IOError as ex:
                 self.config = {}
 
+    def authparts(self, auth_str, authtype_default):
+        '''Returns a tuple of auth type ('token' or 'cik') and the 40
+        character token/CIK from an auth string'''
+        match = re.match('^(token|cik):(.*)', auth_str)
+        if match is not None:
+            return match.groups()
+        else:
+            return authtype_default, auth_str
+
     def lookup_shortcut(self, auth):
-        '''If a CIK has client/resource parts, seperate and look thouse up'''
-        if ':c' in auth:
+        '''If a CIK has client/resource parts, separate and look those up'''
+        # default to CIK type auth, for backward compatibility
+        authtype, detypedauth = self.authparts(auth, 'cik')
+
+        if ':c' in detypedauth:
             # break into parts, then lookup each.
             c,g,r = auth.partition(':c')
-            auth = { 'cik': self._lookup_shortcut(c),
-                    'client_id': self._lookup_shortcut(r) }
-        elif ':r' in auth:
+            auth = { authtype: self._lookup_shortcut(c),
+                     'client_id': self._lookup_shortcut(r) }
+        elif ':r' in detypedauth:
             c,g,r = auth.partition(':r')
-            auth = { 'cik': self._lookup_shortcut(c),
-                    'resource_id': self._lookup_shortcut(r) }
+            auth = { authtype: self._lookup_shortcut(c),
+                     'resource_id': self._lookup_shortcut(r) }
         else:
             # look it up, then check again for parts.
-            auth = self._lookup_shortcut(auth)
+            auth = self._lookup_shortcut(detypedauth)
+            authtype, detypedauth = self.authparts(auth, authtype)
             if ':c' in auth:
                 c,g,r = auth.partition(':c')
-                auth = {'cik': c, 'client_id': r}
+                auth = { authtype: c,
+                         'client_id': r }
             elif ':r' in auth:
                 c,g,r = auth.partition(':r')
-                auth = {'cik': c, 'resource_id': r}
+                auth = { authtype: c,
+                         'resource_id': r }
+            else:
+                auth = { authtype: detypedauth }
 
         return auth
 
@@ -1151,12 +1168,14 @@ class ExoRPC():
         else:
             # Read chunks by limit.
             maxLimit = options['limit']
+
             if 'sort' in options and options['sort'] == 'desc':
                 # descending
                 if 'endtime' in options:
                     nextStart = options['endtime']
                 else:
                     nextStart = ExoUtilities.parse_ts_tuple(datetime.now().timetuple())
+
                 while True:
                     chunkOpt = options.copy()
                     chunkOpt['endtime'] = nextStart
@@ -1164,9 +1183,10 @@ class ExoRPC():
                     res = _read(auth, rids, chunkOpt);
                     if len(res) == 0:
                         break
+
                     maxLimit = maxLimit - len(res)
                     if maxLimit <= 0:
-                        break;
+                        break
                     #save oldest
                     nextStart = res[-1][0] - 1
                     for r in res:
@@ -1532,11 +1552,11 @@ class ExoRPC():
             #v = values[0][1]
             #return self._format_value_with_previous(v, prev, maxlen)
 
-    def _print_node(self, rid, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
+    def _print_node(self, rid, auth_type, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
         twee = cli_args['<command>'] == 'twee'
         typ = info['basic']['type']
         if typ == 'client':
-            id = 'cik: ' + info['key']
+            id = auth_type + ': ' + info['key']
         else:
             id = 'rid: ' + rid
         name = info['description']['name']
@@ -1711,30 +1731,41 @@ class ExoRPC():
                 '' if len(opt) == 0 else '({0})'.format(', '.join(
                     ['{0}: {1}'.format(k, v) for k, v in iteritems(opt)]))))
 
+    def auth_dict_parts(self, auth_dict):
+        '''Return tuple of auth_type ('cik' or 'token'),
+           auth_str from an auth dictionary'''
+        return ('cik' if 'cik' in auth_dict else 'token',
+            auth_dict['cik'] if 'cik' in auth_dict else auth_dict['token'])
+
     def tree(self, auth, aliases=None, cli_args={}, spacer='', level=0, info_options={}):
         '''Print a tree of entities in OneP'''
         max_level = int(cli_args['--level'])
         # print root node
         isroot = len(spacer) == 0
         if isinstance(auth, six.string_types):
-            cik = auth
+            auth_type = 'cik'
+            auth_str = auth
         elif type(auth) is dict:
-            cik = auth['cik']
-            rid = auth['client_id']
+            auth_type, auth_str = self.auth_dict_parts(auth)
+            rid = auth.get('client_id', None)
         else:
             raise ExoException('Unexpected auth type ' + str(type(auth)))
         if isroot:
             # usage and counts are slow, so omit them if we don't need them
             exclude = ['usage', 'counts']
+            #if auth_type == 'token':
+            #    exclude.append('key')
+            #    exclude.append('subscribers')
             info_options = self.make_info_options(exclude=exclude)
             rid, info = self._exomult(auth,
                                       [['lookup', 'alias', ''],
                                        ['info', {'alias': ''}, info_options]])
             # info doesn't contain key
-            info['key'] = cik
+            info['key'] = auth_str
             aliases = info['aliases']
             root_aliases = 'see parent'
             self._print_node(rid,
+                             auth_type,
                              info,
                              root_aliases,
                              cli_args,
@@ -1777,7 +1808,7 @@ class ExoRPC():
             self._print_tree_line(
                 spacer +
                 "  └─listing for {0} failed. info['basic']['status'] is \
-probably not valid.".format(cik))
+probably not valid.".format(auth_str))
         except ExoRPC.RPCException as ex:
             if str(ex).startswith('locked ('):
                 self._print_tree_line(
@@ -1828,11 +1859,11 @@ probably not valid.".format(cik))
                             own_spacer   = spacer + '  +-'
 
                     if t == 'client':
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen)
+                        self._print_node(rid, auth_type, info, aliases, cli_args, own_spacer, islast, maxlen)
                         if max_level == -1 or level < max_level:
-                            self.tree({'cik': cik, 'client_id': rid}, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
+                            self.tree({auth_type: auth_str, 'client_id': rid}, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
                     else:
-                        self._print_node(rid, info, aliases, cli_args, own_spacer, islast, maxlen, values=info['read'] if 'read' in info else None)
+                        self._print_node(rid, auth_type, info, aliases, cli_args, own_spacer, islast, maxlen, values=info['read'] if 'read' in info else None)
 
     def drop_all_children(self, auth):
         isok, listing = self.exo.listing(
@@ -2650,6 +2681,16 @@ class ExoUtilities():
         return int(time.mktime(t))
 
     @classmethod
+    def get_cik(cls, auth, allow_only_cik=True):
+        '''Get the 40 character CIK from auth dict, or raise
+           an error that CIK type auth is required.'''
+        if 'cik' not in auth:
+            raise ExoException('This operation requires a CIK')
+        if allow_only_cik and len(auth.keys()) > 1:
+            raise ExoException('This operation does not support client_id and resource_id access')
+        return auth['cik']
+
+    @classmethod
     def get_startend(cls, args):
         '''Get start and end timestamps based on standard arguments'''
         start = args.get('--start', None)
@@ -3250,11 +3291,15 @@ def handle_args(cmd, args):
             er.usage(auth, rids[0], allmetrics, start, end)
         # special commands
         elif cmd == 'tree':
+            if 'token' in auth:
+                raise Exception('tree and twee are not yet supported with tokens')
             er.tree(auth, cli_args=args)
         elif cmd == 'find':
             shows = args['--show'] if args['--show'] else "cik"
             er.find(auth, args['--match'], shows)
         elif cmd == 'twee':
+            if 'token' in auth:
+                raise Exception('tree and twee are not yet supported with tokens')
             args['--values'] = True
             if platform.system() == 'Windows':
                 args['--nocolor'] = True
@@ -3305,6 +3350,7 @@ def handle_args(cmd, args):
         elif cmd == 'data':
             reads = args['--read']
             writes = args['--write']
+            cik = ExoUtilities.get_cik(auth)
             def get_alias_values(writes):
                 # TODO: support values with commas
                 alias_values = []
@@ -3320,12 +3366,12 @@ def handle_args(cmd, args):
 
             if len(reads) > 0 and len(writes) > 0:
                 alias_values = get_alias_values(writes)
-                print(ed.writeread(auth, alias_values, reads))
+                print(ed.writeread(cik, alias_values, reads))
             elif len(reads) > 0:
-                print(ed.read(auth, reads))
+                print(ed.read(cik, reads))
             elif len(writes) > 0:
                 alias_values = get_alias_values(writes)
-                ed.write(auth, alias_values)
+                ed.write(cik, alias_values)
         elif cmd == 'portals':
 
             procedures = args['<procedure>']
