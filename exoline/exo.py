@@ -1558,11 +1558,14 @@ class ExoRPC():
             #v = values[0][1]
             #return self._format_value_with_previous(v, prev, maxlen)
 
-    def _print_node(self, rid, auth_type, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
+    def _print_node(self, rid, auth_dict, info, aliases, cli_args, spacer, islast, maxlen=None, values=None):
         twee = cli_args['<command>'] == 'twee'
         typ = info['basic']['type']
+        auth_type, auth_str = self.auth_dict_parts(auth_dict)
         if typ == 'client':
-            id = auth_type + ': ' + info['key']
+            id = auth_type + ': ' + auth_str
+            if 'client_id' in auth_dict:
+                id = id + ' client_id:' + auth_dict['client_id']
         else:
             id = 'rid: ' + rid
         name = info['description']['name']
@@ -1666,12 +1669,12 @@ class ExoRPC():
 
             if typ == 'client':
                 if cli_args['--rids']:
-                    tweeid = SPACER + 'rid: ' + ID + rid
+                    tweeid = SPACER + ID + id
                 else:
-                    tweeid = SPACER + 'cik: ' + ID + id[5:]
+                    tweeid = SPACER + ID + id
             else:
                 if cli_args['--rids']:
-                    tweeid = SPACER + 'rid: ' + ID + rid
+                    tweeid = SPACER + ID + id
                 else:
                     if aliases is not None and len(aliases) > 0:
                         tweeid = aliases[0]
@@ -1759,9 +1762,6 @@ class ExoRPC():
         if isroot:
             # usage and counts are slow, so omit them if we don't need them
             exclude = ['usage', 'counts']
-            #if auth_type == 'token':
-            #    exclude.append('key')
-            #    exclude.append('subscribers')
             info_options = self.make_info_options(exclude=exclude)
             rid, info = self._exomult(auth,
                                       [['lookup', 'alias', ''],
@@ -1771,7 +1771,7 @@ class ExoRPC():
             aliases = info['aliases']
             root_aliases = 'see parent'
             self._print_node(rid,
-                             auth_type,
+                             auth,
                              info,
                              root_aliases,
                              cli_args,
@@ -1865,11 +1865,12 @@ probably not valid.".format(auth_str))
                             own_spacer   = spacer + '  +-'
 
                     if t == 'client':
-                        self._print_node(rid, auth_type, info, aliases, cli_args, own_spacer, islast, maxlen)
+                        self._print_node(rid, auth, info, aliases, cli_args, own_spacer, islast, maxlen)
                         if max_level == -1 or level < max_level:
+                            print((auth_type, auth_str, rid))
                             self.tree({auth_type: auth_str, 'client_id': rid}, info['aliases'], cli_args, child_spacer, level=level + 1, info_options=info_options)
                     else:
-                        self._print_node(rid, auth_type, info, aliases, cli_args, own_spacer, islast, maxlen, values=info['read'] if 'read' in info else None)
+                        self._print_node(rid, auth, info, aliases, cli_args, own_spacer, islast, maxlen, values=info['read'] if 'read' in info else None)
 
     def drop_all_children(self, auth):
         isok, listing = self.exo.listing(
