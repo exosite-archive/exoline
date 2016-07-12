@@ -1183,7 +1183,7 @@ class ExoRPC():
                         chunkOpt['limit'] = chunksize
                     else:
                         chunkOpt['limit'] = maxLimit
-                    res = _read(cik, rids, chunkOpt);
+                    res = _read(auth, rids, chunkOpt);
                     for r in res:
                         yield r
                     if len(res) == 0:
@@ -1207,7 +1207,7 @@ class ExoRPC():
                         chunkOpt['limit'] = chunksize
                     else:
                         chunkOpt['limit'] = maxLimit
-                    res = _read(cik, rids, chunkOpt)
+                    res = _read(auth, rids, chunkOpt)
                     for r in res:
                         yield r
                     if len(res) == 0:
