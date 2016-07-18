@@ -1156,18 +1156,49 @@ class ExoRPC():
         options = self._readoptions(limit, sort, starttime, endtime, selection)
 
         count = [0]
-        def _read(auth, rids, options):
-            responses = self._exomult(auth, [['read', rid, options] for rid in rids])
+        def _read(auth, rids, rid_options):
+            '''Returns a list of lists.  Each of the inner lists is the
+               set of timestamp, value responses for a RID.'''
+            #print("options: ", rid_options)
+            responses = self._exomult(auth, [['read', r, o] for r, o in zip(rids, rid_options)])
             count[0] += len(responses)
             progress(count[0])
-            return self._combinereads(responses, options['sort'])
+            return responses
 
+        # Each RID needs to keep track of its stating point for each
+        # seperately.  If all of the datapoints requested were not created
+        # at the same time,we'll get out of step and skip data.
+        ridOptions = []
+
+        for r in rids:
+            # Create a copy of the options that will be sent along with
+            # each RID
+            ridOptions.append(options.copy())
+
+        # Create a list of empty lists to hold the results for each RID
+        totals = [[] for i in range(len(rids))]
+
+        # Check if the limit is smaller than the chunksize, if so we can read
+        # it in a single slurp.  Otherwise we need to read the results from
+        # each RID into memory and then merge them and turncage the resuling
+        # list to the limit.
         if limit <= chunksize :
-            for r in _read(auth, rids, options):
-                yield r
+            responses = _read(auth, rids, ridOptions)
+
+            # Add the set of responses to the result
+            i = 0
+            for r in responses:
+                totals[i].extend(r)
+                i += 1
         else:
-            # Read chunks by limit.
-            maxLimit = options['limit']
+            # Each RID also needs a list to track the number of items remaining
+            # to read as one RID may run out of data before another.
+            ridMaxLimits = []
+
+            for r in rids:
+                # Create another copy of the options told hold the current
+                # value of the limit (since it'll be larger than the chunksize)
+                ridMaxLimits.append(options.copy())
 
             if 'sort' in options and options['sort'] == 'desc':
                 # descending
@@ -1176,47 +1207,106 @@ class ExoRPC():
                 else:
                     nextStart = ExoUtilities.parse_ts_tuple(datetime.now().timetuple())
 
-                while True:
-                    chunkOpt = options.copy()
-                    chunkOpt['endtime'] = nextStart
-                    if maxLimit > chunksize:
-                        chunkOpt['limit'] = chunksize
-                    else:
-                        chunkOpt['limit'] = maxLimit
-                    res = _read(auth, rids, chunkOpt);
-                    for r in res:
-                        yield r
-                    if len(res) == 0:
-                        break
+                for o in ridOptions:
+                    o['endtime'] = nextStart
+                    o['limit'] = chunksize
 
-                    maxLimit = maxLimit - len(res)
-                    if maxLimit <= 0:
+                done = False
+                while not done:
+                    # Read the chunk
+                    responses = _read(auth, rids, ridOptions)
+
+                    # Get the last time from the responses for each RID and
+                    # subtract a second.  This is the start time for the next
+                    # chunk.
+                    for o, m, r in zip(ridOptions, ridMaxLimits, responses):
+                        # Decrement the max to read by the amount we've read
+                        m['limit'] = m['limit'] - len(r)
+                        if m['limit'] <= 0:
+                            done = True
+                            break
+
+                        # Set the limit
+                        if m['limit'] > chunksize:
+                            o['limit'] = chunksize
+                        else:
+                            o['limit'] = m['limit']
+
+                        if len(r) > 0:
+                            # Set the next time to read from
+                            o['endtime'] = r[-1][0] - 1
+
+                    # Add the set of responses to the result
+                    i = 0
+                    for r in responses:
+                        totals[i].extend(r)
+                        i += 1
+
+                    # Check the length of all of the returned lists, when
+                    # they're all zero, we can exit
+                    length = []
+                    for r in responses:
+                        length.append(len(r))
+
+                    if max(length) == 0:
                         break
-                    #save oldest
-                    nextStart = res[-1][0] - 1
             else:
                 # ascending
                 if 'starttime' in options:
                     nextStart = options['starttime']
                 else:
                     nextStart = 0
-                while True:
-                    chunkOpt = options.copy()
-                    chunkOpt['starttime'] = nextStart
-                    if maxLimit > chunksize:
-                        chunkOpt['limit'] = chunksize
-                    else:
-                        chunkOpt['limit'] = maxLimit
-                    res = _read(auth, rids, chunkOpt)
-                    for r in res:
-                        yield r
-                    if len(res) == 0:
+
+                for o in ridOptions:
+                    o['starttime'] = nextStart
+                    o['limit'] = chunksize
+
+                done = False
+                while not done:
+                    # Read the chunk
+                    responses = _read(auth, rids, ridOptions)
+
+                    # Get the last time from the responses for each RID and
+                    # add a second.  This is the start time for the next
+                    # chunk.
+                    for o, m, r in zip(ridOptions, ridMaxLimits, responses):
+                        # Decrement the max to read by the amount we've read
+                        m['limit'] = m['limit'] - len(r)
+                        if m['limit'] <= 0:
+                            done = True
+                            break
+
+                        # Set the limit
+                        if m['limit'] > chunksize:
+                            o['limit'] = chunksize
+                        else:
+                            o['limit'] = m['limit']
+
+                        if len(r) > 0:
+                            # Set the next time to read from
+                            o['starttime'] = r[-1][0] + 1
+
+                    # Add the set of responses to the result
+                    i = 0
+                    for r in responses:
+                        totals[i].extend(r)
+                        i += 1
+
+                    # Check the length of all of the returned lists, when
+                    # they're all zero, we can exit
+                    length = []
+                    for r in responses:
+                        length.append(len(r))
+
+                    if max(length) == 0:
                         break
-                    maxLimit = maxLimit - len(res)
-                    if maxLimit <= 0:
-                        break
-                    #save oldest
-                    nextStart = res[-1][0] + 1
+
+        # Combine all of the data read
+        res = self._combinereads(totals, options['sort'])
+
+        # Truncate the list to the requested limit and generate the results
+        for r in res[:options['limit']]:
+            yield r
 
     def write(self, auth, rid, value):
         isok, response = self.exo.write(auth, rid, value)
