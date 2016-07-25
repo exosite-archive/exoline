@@ -3298,15 +3298,11 @@ def handle_args(cmd, args):
             er.usage(auth, rids[0], allmetrics, start, end)
         # special commands
         elif cmd == 'tree':
-            if 'token' in auth:
-                raise Exception('tree and twee are not yet supported with tokens')
             er.tree(auth, cli_args=args)
         elif cmd == 'find':
             shows = args['--show'] if args['--show'] else "cik"
             er.find(auth, args['--match'], shows)
         elif cmd == 'twee':
-            if 'token' in auth:
-                raise Exception('tree and twee are not yet supported with tokens')
             args['--values'] = True
             if platform.system() == 'Windows':
                 args['--nocolor'] = True
